@@ -1,0 +1,30 @@
+line-length = 99
+target-version = "py314"
+
+exclude = [
+    "*.ipynb",
+    "locales/",
+    ".venv/",
+]
+
+lint.select = [
+    "F",        # Pyflakes
+    "E",        # pycodestyle errors
+    "W",        # pycodestyle warnings
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # flake8-bugbear
+    "A",        # flake8-builtins
+    "C4",       # flake8-comprehensions
+    "DTZ",      # flake8-datetimez
+    "T20",      # flake8-print
+    "RET",      # flake8-return
+    "SIM",      # flake8-simplify
+    "TID",      # flake8-tidy-imports
+    "ARG",      # flake8-unused-arguments
+    "ASYNC",    # flake8-async
+    "PERF",     # Perflint
+    "RUF",      # Ruff-specific rules
+    "PLC", "PLE", "PLR", "PLW",
+]

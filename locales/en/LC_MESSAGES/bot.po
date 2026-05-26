@@ -1,0 +1,32 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: task-py-4 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "welcome"
+msgstr "Hi there! Send /form to start the demo flow, or /restart to abort."
+
+msgid "form.ask_name"
+msgstr "What's your name?"
+
+msgid "form.ask_language"
+msgstr "Nice to meet you, {name}! What's your favourite programming language?"
+
+msgid "form.done"
+msgstr "Got it: {name} likes {language}. Send /form to try again."
+
+msgid "form.restarted"
+msgstr "Restarted. Send /form to start again."
+
+msgid "form.nothing_to_restart"
+msgstr "Nothing to restart."
+
+msgid "form.finished_filling"
+msgstr "Form finished filling."
+
+msgid "unknown"
+msgstr "I don't understand that. Try /form."

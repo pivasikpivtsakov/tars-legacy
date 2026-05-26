@@ -1,0 +1,32 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: task-py-4 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "welcome"
+msgstr "Привет! Отправь /form, чтобы начать демо-сценарий, или /restart, чтобы начать заново."
+
+msgid "form.ask_name"
+msgstr "Как тебя зовут?"
+
+msgid "form.ask_language"
+msgstr "Приятно познакомиться, {name}! Какой у тебя любимый язык программирования?"
+
+msgid "form.done"
+msgstr "Записал: {name} любит {language}. Отправь /form, чтобы попробовать снова."
+
+msgid "form.restarted"
+msgstr "Перезапущено. Отправь /form, чтобы начать снова."
+
+msgid "form.nothing_to_restart"
+msgstr "Нечего перезапускать."
+
+msgid "form.finished_filling"
+msgstr "Заполнение формы завершено."
+
+msgid "unknown"
+msgstr "Не понимаю. Попробуй /form."
