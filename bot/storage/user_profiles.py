@@ -16,7 +16,7 @@ class UserProfileStatus(StrEnum):
 
 _SELECT_COLUMNS = (
     "user_id, works_alone, packages, withdrawal_method, "
-    "work_start, work_end, with_codes, status"
+    "work_start, work_end, is_online, with_codes, status"
 )
 
 
@@ -28,6 +28,7 @@ class UserProfile:
     withdrawal_method: str | None
     work_start: time | None
     work_end: time | None
+    is_online: bool
     with_codes: bool
     status: UserProfileStatus
 
@@ -41,6 +42,7 @@ def _row_to_profile(row: asyncpg.Record) -> UserProfile:
         withdrawal_method=row["withdrawal_method"],
         work_start=row["work_start"],
         work_end=row["work_end"],
+        is_online=row["is_online"],
         with_codes=row["with_codes"],
         status=UserProfileStatus(row["status"]),
     )
@@ -131,6 +133,17 @@ class UserProfileRepository:
         )
         if row is None:
             msg = f"failed to upsert {_TABLE} row for user_id={user_id}"
+            raise LookupError(msg)
+        return _row_to_profile(row)
+
+    async def toggle_is_online_and_get(self, *, user_id: int) -> UserProfile:
+        row = await self._pool.fetchrow(
+            f"UPDATE {_TABLE} SET is_online = NOT is_online, updated_at = NOW() "
+            f"WHERE user_id = $1 RETURNING {_SELECT_COLUMNS}",
+            user_id,
+        )
+        if row is None:
+            msg = f"no {_TABLE} row to toggle for user_id={user_id}"
             raise LookupError(msg)
         return _row_to_profile(row)
 

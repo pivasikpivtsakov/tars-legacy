@@ -7,53 +7,95 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-msgid "welcome"
-msgstr "Привет! Отправь /form, чтобы начать демо-сценарий, или /restart, чтобы начать заново."
+msgid "start.welcome"
+msgstr "Добро пожаловать! Выбери раздел ниже."
 
-msgid "form.ask_works_alone"
+msgid "start.btn_online_on"
+msgstr "Войти онлайн"
+
+msgid "start.btn_online_off"
+msgstr "Выйти оффлайн"
+
+msgid "start.btn_withdraw"
+msgstr "Вывод денег"
+
+msgid "start.btn_packs"
+msgstr "Паки / цена"
+
+msgid "start.btn_priority"
+msgstr "Приоритет"
+
+msgid "start.btn_register"
+msgstr "Регистрация / изменить профиль"
+
+msgid "start.btn_back"
+msgstr "Назад"
+
+msgid "start.online_now_on"
+msgstr "Ты теперь онлайн."
+
+msgid "start.online_now_off"
+msgstr "Ты теперь оффлайн."
+
+msgid "start.priority"
+msgstr "Твой приоритет:\nскорость: {speed}\nцена: {price}\nотмены: {cancellations}"
+
+msgid "start.profile_required"
+msgstr "Сначала заверши регистрацию."
+
+msgid "withdraw.placeholder"
+msgstr "Вывод средств пока не подключён. Нажми «Назад», чтобы вернуться."
+
+msgid "packs.title"
+msgstr "Отметь пакеты, которые делаешь, и нажми «Сохранить»."
+
+msgid "packs.btn_save"
+msgstr "Сохранить"
+
+msgid "registration.ask_works_alone"
 msgstr "Ты работаешь один?"
 
-msgid "form.btn_yes"
+msgid "registration.btn_yes"
 msgstr "Да"
 
-msgid "form.btn_no"
+msgid "registration.btn_no"
 msgstr "Нет"
 
-msgid "form.ask_packages"
+msgid "registration.ask_packages"
 msgstr "Какие пакеты ты делаешь? Отметь сколько нужно и нажми «Готово»."
 
-msgid "form.btn_done"
+msgid "registration.btn_done"
 msgstr "Готово"
 
-msgid "form.no_packages_selected"
+msgid "registration.no_packages_selected"
 msgstr "Выбери хотя бы один пакет."
 
-msgid "form.ask_withdrawal_method"
+msgid "registration.ask_withdrawal_method"
 msgstr "Каким способом ты выводишь деньги?"
 
-msgid "form.ask_work_start"
+msgid "registration.ask_work_start"
 msgstr "Во сколько ты начинаешь работу? (формат HH:MM, по МСК)"
 
-msgid "form.ask_work_end"
+msgid "registration.ask_work_end"
 msgstr "Во сколько ты заканчиваешь работу? (формат HH:MM, по МСК)"
 
-msgid "form.invalid_time"
+msgid "registration.invalid_time"
 msgstr "Не получилось распознать время. Отправь его в формате HH:MM, например 09:30."
 
-msgid "form.work_end_before_start"
+msgid "registration.work_end_before_start"
 msgstr "Время окончания должно быть позже времени начала. Пришли время окончания ещё раз."
 
-msgid "form.done"
-msgstr "Записал: один={works_alone}, пакеты={packages}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК. Отправь /form, чтобы попробовать снова."
+msgid "registration.done"
+msgstr "Записал: один={works_alone}, пакеты={packages}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
 
-msgid "form.restarted"
-msgstr "Перезапущено. Отправь /form, чтобы начать снова."
+msgid "registration.restarted"
+msgstr "Перезапущено. Отправь /register, чтобы начать снова."
 
-msgid "form.nothing_to_restart"
+msgid "registration.nothing_to_restart"
 msgstr "Нечего перезапускать."
 
-msgid "form.finished_filling"
-msgstr "Заполнение формы завершено."
+msgid "registration.finished_filling"
+msgstr "Регистрация уже завершена. Отправь /start, чтобы открыть меню."
 
 msgid "unknown"
-msgstr "Не понимаю. Попробуй /form."
+msgstr "Не понимаю. Попробуй /start."

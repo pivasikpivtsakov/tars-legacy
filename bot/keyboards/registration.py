@@ -1,15 +1,13 @@
+from collections.abc import Iterable
+
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-PACKAGE_SIZES: tuple[int, ...] = (60, 325, 660, 1800, 3850, 8100)
+from bot.keyboards._packages import package_rows
 
 
 class WorksAloneCB(CallbackData, prefix="wa"):
     value: bool
-
-
-class PackageToggleCB(CallbackData, prefix="pkg"):
-    value: int
 
 
 class PackagesDoneCB(CallbackData, prefix="pkg_done"):
@@ -33,17 +31,8 @@ def works_alone_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
     )
 
 
-def packages_kb(*, selected: set[int], done_text: str) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    for chunk_start in range(0, len(PACKAGE_SIZES), 3):
-        row = [
-            InlineKeyboardButton(
-                text=f"\u2713 {size}" if size in selected else str(size),
-                callback_data=PackageToggleCB(value=size).pack(),
-            )
-            for size in PACKAGE_SIZES[chunk_start : chunk_start + 3]
-        ]
-        rows.append(row)
+def packages_kb(*, selected: Iterable[int], done_text: str) -> InlineKeyboardMarkup:
+    rows = package_rows(selected)
     rows.append(
         [
             InlineKeyboardButton(

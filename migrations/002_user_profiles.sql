@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     withdrawal_method  TEXT,
     work_start         TIMETZ,
     work_end           TIMETZ,
+    is_online          BOOLEAN             NOT NULL DEFAULT FALSE,
     with_codes         BOOLEAN             NOT NULL DEFAULT FALSE,
     status             user_profile_status NOT NULL DEFAULT 'inactive',
     created_at         TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
