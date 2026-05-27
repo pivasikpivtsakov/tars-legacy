@@ -10,14 +10,41 @@ msgstr ""
 msgid "welcome"
 msgstr "Привет! Отправь /form, чтобы начать демо-сценарий, или /restart, чтобы начать заново."
 
-msgid "form.ask_name"
-msgstr "Как тебя зовут?"
+msgid "form.ask_works_alone"
+msgstr "Ты работаешь один?"
 
-msgid "form.ask_language"
-msgstr "Приятно познакомиться, {name}! Какой у тебя любимый язык программирования?"
+msgid "form.btn_yes"
+msgstr "Да"
+
+msgid "form.btn_no"
+msgstr "Нет"
+
+msgid "form.ask_packages"
+msgstr "Какие пакеты ты делаешь? Отметь сколько нужно и нажми «Готово»."
+
+msgid "form.btn_done"
+msgstr "Готово"
+
+msgid "form.no_packages_selected"
+msgstr "Выбери хотя бы один пакет."
+
+msgid "form.ask_withdrawal_method"
+msgstr "Каким способом ты выводишь деньги?"
+
+msgid "form.ask_work_start"
+msgstr "Во сколько ты начинаешь работу? (формат HH:MM, по МСК)"
+
+msgid "form.ask_work_end"
+msgstr "Во сколько ты заканчиваешь работу? (формат HH:MM, по МСК)"
+
+msgid "form.invalid_time"
+msgstr "Не получилось распознать время. Отправь его в формате HH:MM, например 09:30."
+
+msgid "form.work_end_before_start"
+msgstr "Время окончания должно быть позже времени начала. Пришли время окончания ещё раз."
 
 msgid "form.done"
-msgstr "Записал: {name} любит {language}. Отправь /form, чтобы попробовать снова."
+msgstr "Записал: один={works_alone}, пакеты={packages}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК. Отправь /form, чтобы попробовать снова."
 
 msgid "form.restarted"
 msgstr "Перезапущено. Отправь /form, чтобы начать снова."
