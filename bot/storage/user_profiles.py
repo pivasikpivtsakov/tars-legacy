@@ -15,7 +15,7 @@ class UserProfileStatus(StrEnum):
 
 
 _SELECT_COLUMNS = (
-    "user_id, works_alone, packages, withdrawal_method, "
+    "user_id, works_alone, packages, price_60, withdrawal_method, "
     "work_start, work_end, is_online, with_codes, status"
 )
 
@@ -25,6 +25,7 @@ class UserProfile:
     user_id: int
     works_alone: bool | None
     packages: tuple[int, ...] | None
+    price_60: int | None
     withdrawal_method: str | None
     work_start: time | None
     work_end: time | None
@@ -33,12 +34,19 @@ class UserProfile:
     status: UserProfileStatus
 
 
+def selected_packages(profile: UserProfile | None) -> set[int]:
+    if profile is None or profile.packages is None:
+        return set()
+    return set(profile.packages)
+
+
 def _row_to_profile(row: asyncpg.Record) -> UserProfile:
     packages = row["packages"]
     return UserProfile(
         user_id=row["user_id"],
         works_alone=row["works_alone"],
         packages=tuple(packages) if packages is not None else None,
+        price_60=row["price_60"],
         withdrawal_method=row["withdrawal_method"],
         work_start=row["work_start"],
         work_end=row["work_end"],
@@ -67,13 +75,6 @@ class UserProfileRepository:
             value,
         )
 
-    async def set_works_alone(self, *, user_id: int, works_alone: bool) -> None:
-        await self._upsert_field(
-            user_id=user_id,
-            column="works_alone",
-            value=works_alone,
-        )
-
     async def set_packages(
         self,
         *,
@@ -84,25 +85,6 @@ class UserProfileRepository:
             user_id=user_id,
             column="packages",
             value=list(packages),
-        )
-
-    async def set_withdrawal_method(
-        self,
-        *,
-        user_id: int,
-        withdrawal_method: str,
-    ) -> None:
-        await self._upsert_field(
-            user_id=user_id,
-            column="withdrawal_method",
-            value=withdrawal_method,
-        )
-
-    async def set_work_start(self, *, user_id: int, work_start: time) -> None:
-        await self._upsert_field(
-            user_id=user_id,
-            column="work_start",
-            value=work_start,
         )
 
     async def set_status(
@@ -117,18 +99,37 @@ class UserProfileRepository:
             value=status.value,
         )
 
-    async def set_work_end_and_get(
+    async def create_or_update(  # noqa: PLR0913
         self,
         *,
         user_id: int,
+        works_alone: bool,
+        packages: Sequence[int],
+        price_60: int,
+        withdrawal_method: str,
+        work_start: time,
         work_end: time,
     ) -> UserProfile:
         row = await self._pool.fetchrow(
-            f"INSERT INTO {_TABLE} (user_id, work_end) VALUES ($1, $2) "
-            f"ON CONFLICT (user_id) DO UPDATE "
-            f"SET work_end = EXCLUDED.work_end, updated_at = NOW() "
+            f"INSERT INTO {_TABLE} "
+            f"(user_id, works_alone, packages, price_60, withdrawal_method, "
+            f"work_start, work_end) "
+            f"VALUES ($1, $2, $3, $4, $5, $6, $7) "
+            f"ON CONFLICT (user_id) DO UPDATE SET "
+            f"works_alone = EXCLUDED.works_alone, "
+            f"packages = EXCLUDED.packages, "
+            f"price_60 = EXCLUDED.price_60, "
+            f"withdrawal_method = EXCLUDED.withdrawal_method, "
+            f"work_start = EXCLUDED.work_start, "
+            f"work_end = EXCLUDED.work_end, "
+            f"updated_at = NOW() "
             f"RETURNING {_SELECT_COLUMNS}",
             user_id,
+            works_alone,
+            list(packages),
+            price_60,
+            withdrawal_method,
+            work_start,
             work_end,
         )
         if row is None:

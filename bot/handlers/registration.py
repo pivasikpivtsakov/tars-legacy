@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.common import render_welcome
+from bot.handlers.menu import render_menu
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.registration import (
     PackagesDoneCB,
@@ -22,11 +22,13 @@ router = Router(name="registration")
 
 MSK_TZ = timezone(timedelta(hours=3))
 _TIME_FORMAT = "%H:%M"
+_MAX_PRICE = 1_000
 
 
 class Registration(StatesGroup):
     works_alone = State()
     packages = State()
+    price_60 = State()
     withdrawal_method = State()
     work_start = State()
     work_end = State()
@@ -39,6 +41,16 @@ def _parse_msk_time(raw: str) -> time | None:
     except ValueError:
         return None
     return parsed.replace(tzinfo=MSK_TZ)
+
+
+def _parse_price(raw: str) -> int | None:
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        return None
+    if value <= 0 or value > _MAX_PRICE:
+        return None
+    return value
 
 
 def _fmt_packages(packages: tuple[int, ...] | None) -> str:
@@ -59,19 +71,26 @@ def _fmt_bool(value: bool | None) -> str:
     return _("registration.btn_yes") if value else _("registration.btn_no")
 
 
+def _fmt_price(value: int | None) -> str:
+    if value is None:
+        return "-"
+    return str(value)
+
+
 def _render_summary(profile: UserProfile) -> str:
     return _("registration.done").format(
         works_alone=_fmt_bool(profile.works_alone),
         packages=_fmt_packages(profile.packages),
+        price_60=_fmt_price(profile.price_60),
         withdrawal_method=profile.withdrawal_method or "-",
         work_start=_fmt_time(profile.work_start),
         work_end=_fmt_time(profile.work_end),
     )
 
 
-async def _begin_registration(*, message: Message, state: FSMContext) -> None:
+async def begin_registration(*, message: Message, state: FSMContext) -> None:
+    await state.clear()
     await state.set_state(Registration.works_alone)
-    await state.update_data(packages=[])
     await message.answer(
         _("registration.ask_works_alone"),
         reply_markup=works_alone_kb(
@@ -83,14 +102,13 @@ async def _begin_registration(*, message: Message, state: FSMContext) -> None:
 
 @router.message(Command("register"))
 async def cmd_register(message: Message, state: FSMContext) -> None:
-    await _begin_registration(message=message, state=state)
+    await begin_registration(message=message, state=state)
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.REGISTER))
 async def open_register(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
     await callback.message.edit_reply_markup(reply_markup=None)
-    await _begin_registration(message=callback.message, state=state)
+    await begin_registration(message=callback.message, state=state)
     await callback.answer()
 
 
@@ -110,18 +128,14 @@ async def process_works_alone(
     callback: CallbackQuery,
     callback_data: WorksAloneCB,
     state: FSMContext,
-    profiles: UserProfileRepository,
 ) -> None:
-    await profiles.set_works_alone(
-        user_id=callback.from_user.id,
-        works_alone=callback_data.value,
-    )
+    await state.update_data(works_alone=callback_data.value)
     await state.set_state(Registration.packages)
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(
         _("registration.ask_packages"),
         reply_markup=packages_kb(
-            selected=set(),
+            selected=(),
             done_text=_("registration.btn_done"),
         ),
     )
@@ -135,7 +149,7 @@ async def process_package_toggle(
     state: FSMContext,
 ) -> None:
     data = await state.get_data()
-    selected: set[int] = set(data["packages"])
+    selected = set(data.get("packages", []))
     if callback_data.value in selected:
         selected.remove(callback_data.value)
     else:
@@ -154,33 +168,40 @@ async def process_package_toggle(
 async def process_packages_done(
     callback: CallbackQuery,
     state: FSMContext,
-    profiles: UserProfileRepository,
 ) -> None:
     data = await state.get_data()
-    selected: list[int] = sorted(set(data["packages"]))
-    if not selected:
+    if not data.get("packages"):
         await callback.answer(
             _("registration.no_packages_selected"),
             show_alert=True,
         )
         return
-    await profiles.set_packages(user_id=callback.from_user.id, packages=selected)
-    await state.set_state(Registration.withdrawal_method)
+    await state.set_state(Registration.price_60)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer(_("registration.ask_withdrawal_method"))
+    await callback.message.answer(_("registration.ask_price"))
     await callback.answer()
+
+
+@router.message(Registration.price_60, F.text)
+async def process_price(
+    message: Message,
+    state: FSMContext,
+) -> None:
+    parsed = _parse_price(message.text)
+    if parsed is None:
+        await message.answer(_("registration.invalid_price"))
+        return
+    await state.update_data(price_60=parsed)
+    await state.set_state(Registration.withdrawal_method)
+    await message.answer(_("registration.ask_withdrawal_method"))
 
 
 @router.message(Registration.withdrawal_method, F.text)
 async def process_withdrawal_method(
     message: Message,
     state: FSMContext,
-    profiles: UserProfileRepository,
 ) -> None:
-    await profiles.set_withdrawal_method(
-        user_id=message.from_user.id,
-        withdrawal_method=message.text,
-    )
+    await state.update_data(withdrawal_method=message.text)
     await state.set_state(Registration.work_start)
     await message.answer(_("registration.ask_work_start"))
 
@@ -189,14 +210,12 @@ async def process_withdrawal_method(
 async def process_work_start(
     message: Message,
     state: FSMContext,
-    profiles: UserProfileRepository,
 ) -> None:
     parsed = _parse_msk_time(message.text)
     if parsed is None:
         await message.answer(_("registration.invalid_time"))
         return
-    await profiles.set_work_start(user_id=message.from_user.id, work_start=parsed)
-    await state.update_data(work_start=parsed.strftime(_TIME_FORMAT))
+    await state.update_data(work_start=parsed.isoformat())
     await state.set_state(Registration.work_end)
     await message.answer(_("registration.ask_work_end"))
 
@@ -212,18 +231,27 @@ async def process_work_end(
         await message.answer(_("registration.invalid_time"))
         return
     data = await state.get_data()
-    start_raw = data["work_start"]
-    start = datetime.strptime(start_raw, _TIME_FORMAT).time().replace(tzinfo=MSK_TZ)
-    if parsed <= start:
+    work_start_iso = data.get("work_start")
+    if work_start_iso is None:
+        await state.set_state(Registration.work_start)
+        await message.answer(_("registration.ask_work_start"))
+        return
+    work_start = time.fromisoformat(work_start_iso)
+    if parsed <= work_start:
         await message.answer(_("registration.work_end_before_start"))
         return
-    profile = await profiles.set_work_end_and_get(
+    profile = await profiles.create_or_update(
         user_id=message.from_user.id,
+        works_alone=data["works_alone"],
+        packages=data["packages"],
+        price_60=data["price_60"],
+        withdrawal_method=data["withdrawal_method"],
+        work_start=work_start,
         work_end=parsed,
     )
     await state.set_state(Registration.finished_filling)
     await message.answer(_render_summary(profile))
-    await render_welcome(target=message, profile=profile)
+    await render_menu(target=message, profile=profile)
 
 
 @router.message(Registration.finished_filling)

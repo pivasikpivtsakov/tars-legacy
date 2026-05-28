@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     user_id            BIGINT              PRIMARY KEY,
     works_alone        BOOLEAN,
     packages           INTEGER[],
+    price_60           INTEGER,
     withdrawal_method  TEXT,
     work_start         TIMETZ,
     work_end           TIMETZ,

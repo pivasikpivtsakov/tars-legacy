@@ -6,11 +6,15 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.common import render_welcome, require_complete_profile
+from bot.handlers.menu import render_menu, require_complete_profile
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.packs import PacksSaveCB, packages_editor_kb
 from bot.keyboards.start import OpenZoneCB, StartZone
-from bot.storage.user_profiles import UserProfileRepository
+from bot.storage.user_profiles import (
+    UserProfile,
+    UserProfileRepository,
+    selected_packages,
+)
 
 router = Router(name="packs")
 
@@ -31,17 +35,14 @@ def _editor_kb(selected: Iterable[int]) -> InlineKeyboardMarkup:
 async def open_packs(
     callback: CallbackQuery,
     state: FSMContext,
-    profiles: UserProfileRepository,
+    profile: UserProfile | None,
 ) -> None:
-    profile = await require_complete_profile(callback=callback, profiles=profiles)
-    if profile is None:
+    if (await require_complete_profile(callback=callback, profile=profile)) is None:
         return
-    current = list(profile.packages) if profile.packages is not None else []
     await state.set_state(PacksEditor.editing)
-    await state.update_data(packages=current)
     await callback.message.edit_text(
         _("packs.title"),
-        reply_markup=_editor_kb(current),
+        reply_markup=_editor_kb(selected_packages(profile)),
     )
     await callback.answer()
 
@@ -50,15 +51,18 @@ async def open_packs(
 async def toggle_pack(
     callback: CallbackQuery,
     callback_data: PackageToggleCB,
-    state: FSMContext,
+    profiles: UserProfileRepository,
+    profile: UserProfile | None,
 ) -> None:
-    data = await state.get_data()
-    selected: set[int] = set(data["packages"])
+    selected = selected_packages(profile)
     if callback_data.value in selected:
         selected.remove(callback_data.value)
     else:
         selected.add(callback_data.value)
-    await state.update_data(packages=sorted(selected))
+    await profiles.set_packages(
+        user_id=callback.from_user.id,
+        packages=sorted(selected),
+    )
     await callback.message.edit_reply_markup(reply_markup=_editor_kb(selected))
     await callback.answer()
 
@@ -67,18 +71,14 @@ async def toggle_pack(
 async def save_packs(
     callback: CallbackQuery,
     state: FSMContext,
-    profiles: UserProfileRepository,
+    profile: UserProfile | None,
 ) -> None:
-    data = await state.get_data()
-    selected: list[int] = sorted(set(data["packages"]))
-    if not selected:
+    if not selected_packages(profile):
         await callback.answer(
             _("registration.no_packages_selected"),
             show_alert=True,
         )
         return
-    await profiles.set_packages(user_id=callback.from_user.id, packages=selected)
     await state.clear()
-    profile = await profiles.get(user_id=callback.from_user.id)
-    await render_welcome(target=callback, profile=profile)
+    await render_menu(target=callback, profile=profile)
     await callback.answer()

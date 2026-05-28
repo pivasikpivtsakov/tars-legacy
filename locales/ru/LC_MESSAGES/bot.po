@@ -70,6 +70,12 @@ msgstr "Готово"
 msgid "registration.no_packages_selected"
 msgstr "Выбери хотя бы один пакет."
 
+msgid "registration.ask_price"
+msgstr "Какая твоя цена за пак 60 UC? Пришли целое число, например 60."
+
+msgid "registration.invalid_price"
+msgstr "Не получилось распознать цену. Пришли положительное целое число, например 60."
+
 msgid "registration.ask_withdrawal_method"
 msgstr "Каким способом ты выводишь деньги?"
 
@@ -86,7 +92,7 @@ msgid "registration.work_end_before_start"
 msgstr "Время окончания должно быть позже времени начала. Пришли время окончания ещё раз."
 
 msgid "registration.done"
-msgstr "Записал: один={works_alone}, пакеты={packages}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
+msgstr "Записал: один={works_alone}, пакеты={packages}, цена/60={price_60}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
 
 msgid "registration.restarted"
 msgstr "Перезапущено. Отправь /register, чтобы начать снова."

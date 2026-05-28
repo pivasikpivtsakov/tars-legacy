@@ -70,6 +70,12 @@ msgstr "Done"
 msgid "registration.no_packages_selected"
 msgstr "Pick at least one package."
 
+msgid "registration.ask_price"
+msgstr "What is your price for the 60 UC pack? Send a whole number, e.g. 60."
+
+msgid "registration.invalid_price"
+msgstr "I couldn't parse that. Please send a positive whole number, e.g. 60."
+
 msgid "registration.ask_withdrawal_method"
 msgstr "How do you withdraw your money?"
 
@@ -86,7 +92,7 @@ msgid "registration.work_end_before_start"
 msgstr "End time must be later than start time. Please send the end time again."
 
 msgid "registration.done"
-msgstr "Got it: solo={works_alone}, packages={packages}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
+msgstr "Got it: solo={works_alone}, packages={packages}, price/60={price_60}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
 
 msgid "registration.restarted"
 msgstr "Restarted. Send /register to start again."
