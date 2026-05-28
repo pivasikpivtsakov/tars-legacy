@@ -1,15 +1,22 @@
 import asyncio
 import html
+import random
 import sys
 
 from aiogram import Router
-from aiogram.filters import BaseFilter, Command
+from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.i18n import I18n
 
 from bot.i18n import DOMAIN, LOCALES_DIR
-from bot.storage.user_profiles import UserProfileRepository
+from common.repositories.orders import OrderRepository
+from common.repositories.user_profiles import UserProfileRepository
+from common.services.order_processing import (
+    OrderAmountError,
+    OrderInput,
+    OrderManager,
+)
 
 router = Router(name="admin")
 
@@ -62,3 +69,23 @@ async def cmd_full_restart(
     await profiles.delete(user_id=message.from_user.id)
     await state.clear()
     await message.answer("profile and FSM state wiped")
+
+
+@router.message(Command("create_order", prefix="#"), _is_admin)
+async def cmd_create_order(message: Message, orders: OrderRepository, order_manager: OrderManager) -> None:
+    # currently fakes! no order source yet
+    order = await orders.create(
+        original_id=random.randint(1, 1_000_000),
+        # amount=random.randint(60, 2999),
+        amount=385,
+        pubg_id=random.randint(10_000_000, 9_999_999_999),
+    )
+    candidates = await order_manager.select_candidates(order=order)
+    rendered = ", ".join(
+        f"{c.user_id} (price={c.full_price})" for c in candidates
+    )
+    await message.answer(
+        f"order id={order.id}\n"
+        f"amount={order.amount}\n"
+        f"ranked candidates: {rendered}",
+    )

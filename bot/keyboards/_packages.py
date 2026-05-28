@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton
 
-PACKAGE_SIZES: tuple[int, ...] = (60, 325, 660, 1800, 3850, 8100)
+from common.packages import PACKAGE_SIZES
 
 
 class PackageToggleCB(CallbackData, prefix="pkg"):

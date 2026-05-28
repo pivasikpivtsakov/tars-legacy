@@ -56,3 +56,14 @@ def _parse_admin_ids(value: str | None) -> frozenset[int]:
 ADMIN_USER_IDS = _parse_admin_ids(
     env_get("ADMIN_USER_IDS", default="", raise_if_failed=False),
 )
+
+SCHEDULER_INTERVAL_SECONDS = int(
+    env_get(
+        "SCHEDULER_INTERVAL_SECONDS",
+        default="30",
+        validation_rule=lambda v: v.isdigit() and int(v) > 0,
+        warning_message="SCHEDULER_INTERVAL_SECONDS must be a positive integer",
+        raise_if_failed=False,
+    )
+    or "30"
+)

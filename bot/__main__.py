@@ -2,9 +2,9 @@ import asyncio
 import logging
 
 from bot.app import build_bot, build_dispatcher
-from bot.db import create_pool
-from bot.logging_config import setup_logging
-from environment import ADMIN_USER_IDS, REDIS_URL, TELEGRAM_BOT_TOKEN
+from common.db import create_pool
+from common.environment import ADMIN_USER_IDS, REDIS_URL, TELEGRAM_BOT_TOKEN
+from common.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
 

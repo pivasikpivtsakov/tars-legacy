@@ -10,7 +10,7 @@ from bot.handlers.menu import require_complete_profile
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.packs import packages_editor_kb
 from bot.keyboards.start import OpenZoneCB, StartZone
-from bot.storage.user_profiles import (
+from common.repositories.user_profiles import (
     UserProfile,
     UserProfileRepository,
     selected_packages,

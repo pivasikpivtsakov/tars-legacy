@@ -2,7 +2,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
 
 from bot.keyboards.start import welcome_kb
-from bot.storage.user_profiles import UserProfile
+from common.repositories.user_profiles import UserProfile
 
 
 def _is_profile_complete(profile: UserProfile | None) -> bool:

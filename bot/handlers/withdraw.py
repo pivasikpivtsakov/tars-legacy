@@ -4,7 +4,7 @@ from aiogram.utils.i18n import gettext as _
 
 from bot.handlers.menu import require_complete_profile
 from bot.keyboards.start import OpenZoneCB, StartZone, back_kb
-from bot.storage.user_profiles import UserProfile
+from common.repositories.user_profiles import UserProfile
 
 router = Router(name="withdraw")
 

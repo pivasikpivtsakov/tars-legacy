@@ -16,7 +16,7 @@ from bot.keyboards.registration import (
     works_alone_kb,
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
-from bot.storage.user_profiles import UserProfile, UserProfileRepository
+from common.repositories.user_profiles import UserProfile, UserProfileRepository
 
 router = Router(name="registration")
 

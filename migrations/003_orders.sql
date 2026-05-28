@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS orders (
     broken_codes VARCHAR(255)[] DEFAULT '{}',
     redeemed_codes VARCHAR(255)[] DEFAULT '{}',
     additional_data JSON,
-    last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    creation_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    creation_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -33,27 +33,27 @@ class UserProfile:
     with_codes: bool
     status: UserProfileStatus
 
+    @classmethod
+    def from_row(cls, row: asyncpg.Record) -> "UserProfile":
+        packages = row["packages"]
+        return cls(
+            user_id=row["user_id"],
+            works_alone=row["works_alone"],
+            packages=tuple(packages) if packages is not None else None,
+            price_60=row["price_60"],
+            withdrawal_method=row["withdrawal_method"],
+            work_start=row["work_start"],
+            work_end=row["work_end"],
+            is_online=row["is_online"],
+            with_codes=row["with_codes"],
+            status=UserProfileStatus(row["status"]),
+        )
+
 
 def selected_packages(profile: UserProfile | None) -> set[int]:
     if profile is None or profile.packages is None:
         return set()
     return set(profile.packages)
-
-
-def _row_to_profile(row: asyncpg.Record) -> UserProfile:
-    packages = row["packages"]
-    return UserProfile(
-        user_id=row["user_id"],
-        works_alone=row["works_alone"],
-        packages=tuple(packages) if packages is not None else None,
-        price_60=row["price_60"],
-        withdrawal_method=row["withdrawal_method"],
-        work_start=row["work_start"],
-        work_end=row["work_end"],
-        is_online=row["is_online"],
-        with_codes=row["with_codes"],
-        status=UserProfileStatus(row["status"]),
-    )
 
 
 class UserProfileRepository:
@@ -135,7 +135,7 @@ class UserProfileRepository:
         if row is None:
             msg = f"failed to upsert {_TABLE} row for user_id={user_id}"
             raise LookupError(msg)
-        return _row_to_profile(row)
+        return UserProfile.from_row(row)
 
     async def toggle_is_online_and_get(self, *, user_id: int) -> UserProfile:
         row = await self._pool.fetchrow(
@@ -146,7 +146,7 @@ class UserProfileRepository:
         if row is None:
             msg = f"no {_TABLE} row to toggle for user_id={user_id}"
             raise LookupError(msg)
-        return _row_to_profile(row)
+        return UserProfile.from_row(row)
 
     async def delete(self, *, user_id: int) -> None:
         await self._pool.execute(
@@ -161,4 +161,21 @@ class UserProfileRepository:
         )
         if row is None:
             return None
-        return _row_to_profile(row)
+        return UserProfile.from_row(row)
+
+    async def list_online_with_packages(
+        self,
+        *,
+        required_packages: Sequence[int],
+    ) -> list[UserProfile]:
+        rows = await self._pool.fetch(
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
+            f"WHERE is_online = TRUE "
+            f"AND status = $1 "
+            f"AND price_60 IS NOT NULL "
+            f"AND packages @> $2::INTEGER[] "
+            f"ORDER BY price_60 ASC, user_id ASC",
+            UserProfileStatus.ACTIVE.value,
+            list(required_packages),
+        )
+        return [UserProfile.from_row(row) for row in rows]

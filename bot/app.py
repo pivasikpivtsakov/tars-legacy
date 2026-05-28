@@ -12,7 +12,9 @@ from aiogram.utils.i18n import FSMI18nMiddleware
 
 from bot.handlers import admin, common, fallback, packs, registration, withdraw
 from bot.i18n import build_i18n
-from bot.storage.user_profiles import UserProfileRepository
+from common.repositories.orders import OrderRepository
+from common.repositories.user_profiles import UserProfileRepository
+from common.services.order_processing import OrderManager
 
 
 class _ProfileMiddleware(BaseMiddleware):
@@ -46,7 +48,10 @@ def build_dispatcher(
         key_builder=DefaultKeyBuilder(prefix="aiogram_fsm", with_destiny=True),
     )
     dispatcher = Dispatcher(storage=storage)
-    dispatcher["profiles"] = UserProfileRepository(pool=pool)
+    profiles = UserProfileRepository(pool=pool)
+    dispatcher["profiles"] = profiles
+    dispatcher["orders"] = OrderRepository(pool=pool)
+    dispatcher["order_manager"] = OrderManager(profiles=profiles)
     dispatcher["admin_ids"] = admin_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
 

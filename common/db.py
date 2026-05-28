@@ -2,7 +2,7 @@ import json
 
 import asyncpg
 
-from environment import (
+from common.environment import (
     RDS_DB_NAME,
     RDS_HOSTNAME,
     RDS_PASSWORD,

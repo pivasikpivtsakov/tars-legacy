@@ -7,7 +7,7 @@ from aiogram.utils.i18n import gettext as _
 from bot.handlers.menu import render_menu, require_complete_profile
 from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone, back_kb
-from bot.storage.user_profiles import UserProfile, UserProfileRepository
+from common.repositories.user_profiles import UserProfile, UserProfileRepository
 
 router = Router(name="start")
 
