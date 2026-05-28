@@ -18,5 +18,19 @@ services:
     ports:
       - "${RDS_PORT:-5433}:5432"
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
 volumes:
   postgres-data:
+  redis-data:

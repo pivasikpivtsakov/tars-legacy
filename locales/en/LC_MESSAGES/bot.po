@@ -47,10 +47,7 @@ msgid "withdraw.placeholder"
 msgstr "Withdrawal flow is not wired yet. Tap Back to return."
 
 msgid "packs.title"
-msgstr "Toggle the packages you make, then press Save."
-
-msgid "packs.btn_save"
-msgstr "Save"
+msgstr "Toggle the packages you make, then press Back."
 
 msgid "registration.ask_works_alone"
 msgstr "Do you work alone?"

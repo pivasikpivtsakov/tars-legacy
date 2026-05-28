@@ -5,12 +5,13 @@ import asyncpg
 from aiogram import BaseMiddleware, Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.base import DefaultKeyBuilder
+from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import TelegramObject, User
 from aiogram.utils.i18n import FSMI18nMiddleware
 
 from bot.handlers import admin, common, fallback, packs, registration, withdraw
 from bot.i18n import build_i18n
-from bot.storage.postgres import PostgresStorage
 from bot.storage.user_profiles import UserProfileRepository
 
 
@@ -37,9 +38,14 @@ def build_bot(token: str) -> Bot:
 def build_dispatcher(
     *,
     pool: asyncpg.Pool,
+    redis_url: str,
     admin_ids: frozenset[int],
 ) -> Dispatcher:
-    dispatcher = Dispatcher(storage=PostgresStorage(pool=pool))
+    storage = RedisStorage.from_url(
+        redis_url,
+        key_builder=DefaultKeyBuilder(prefix="aiogram_fsm", with_destiny=True),
+    )
+    dispatcher = Dispatcher(storage=storage)
     dispatcher["profiles"] = UserProfileRepository(pool=pool)
     dispatcher["admin_ids"] = admin_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))

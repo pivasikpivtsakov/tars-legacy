@@ -47,10 +47,7 @@ msgid "withdraw.placeholder"
 msgstr "Вывод средств пока не подключён. Нажми «Назад», чтобы вернуться."
 
 msgid "packs.title"
-msgstr "Отметь пакеты, которые делаешь, и нажми «Сохранить»."
-
-msgid "packs.btn_save"
-msgstr "Сохранить"
+msgstr "Отметь пакеты, которые делаешь, и нажми «Назад»."
 
 msgid "registration.ask_works_alone"
 msgstr "Ты работаешь один?"

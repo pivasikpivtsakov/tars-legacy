@@ -1,6 +1,6 @@
 -- Durable, user-centric form data gathered via the /form FSM flow.
--- Kept separate from aiogram_fsm so FSM state remains transient while
--- collected values survive state.clear() and chat changes.
+-- Kept separate from aiogram FSM (Redis-backed) so transient FSM state can be
+-- discarded while collected values survive state.clear() and chat changes.
 
 DO $$ BEGIN
     CREATE TYPE user_profile_status AS ENUM ('inactive', 'active', 'banned');

@@ -21,3 +21,4 @@ locales/**/*.mo
 .mypy_cache/
 
 .idea/
+/tars_legacy.md

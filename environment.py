@@ -35,6 +35,12 @@ RDS_USERNAME = env_get("RDS_USERNAME")
 RDS_PASSWORD = env_get("RDS_PASSWORD")
 RDS_DB_NAME = env_get("RDS_DB_NAME")
 
+REDIS_URL = env_get(
+    "REDIS_URL",
+    default="redis://localhost:6379/0",
+    raise_if_failed=False,
+)
+
 TELEGRAM_BOT_TOKEN = env_get(
     "TELEGRAM_BOT_TOKEN",
     warning_message="obtain TELEGRAM_BOT_TOKEN from @BotFather"

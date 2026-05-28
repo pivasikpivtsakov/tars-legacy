@@ -6,9 +6,9 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import render_menu, require_complete_profile
+from bot.handlers.menu import require_complete_profile
 from bot.keyboards._packages import PackageToggleCB
-from bot.keyboards.packs import PacksSaveCB, packages_editor_kb
+from bot.keyboards.packs import packages_editor_kb
 from bot.keyboards.start import OpenZoneCB, StartZone
 from bot.storage.user_profiles import (
     UserProfile,
@@ -26,7 +26,6 @@ class PacksEditor(StatesGroup):
 def _editor_kb(selected: Iterable[int]) -> InlineKeyboardMarkup:
     return packages_editor_kb(
         selected=selected,
-        save_text=_("packs.btn_save"),
         back_text=_("start.btn_back"),
     )
 
@@ -56,6 +55,12 @@ async def toggle_pack(
 ) -> None:
     selected = selected_packages(profile)
     if callback_data.value in selected:
+        if len(selected) == 1:
+            await callback.answer(
+                _("registration.no_packages_selected"),
+                show_alert=True,
+            )
+            return
         selected.remove(callback_data.value)
     else:
         selected.add(callback_data.value)
@@ -64,21 +69,4 @@ async def toggle_pack(
         packages=sorted(selected),
     )
     await callback.message.edit_reply_markup(reply_markup=_editor_kb(selected))
-    await callback.answer()
-
-
-@router.callback_query(PacksEditor.editing, PacksSaveCB.filter())
-async def save_packs(
-    callback: CallbackQuery,
-    state: FSMContext,
-    profile: UserProfile | None,
-) -> None:
-    if not selected_packages(profile):
-        await callback.answer(
-            _("registration.no_packages_selected"),
-            show_alert=True,
-        )
-        return
-    await state.clear()
-    await render_menu(target=callback, profile=profile)
     await callback.answer()
