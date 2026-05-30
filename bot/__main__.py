@@ -12,21 +12,20 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     setup_logging()
 
-    pool = await create_pool()
-    bot = build_bot(token=TELEGRAM_BOT_TOKEN)
-    dispatcher = build_dispatcher(
-        pool=pool,
-        redis_url=REDIS_URL,
-        admin_ids=ADMIN_USER_IDS,
-    )
+    async with create_pool() as pool:
+        bot = build_bot(token=TELEGRAM_BOT_TOKEN)
+        dispatcher = build_dispatcher(
+            pool=pool,
+            redis_url=REDIS_URL,
+            admin_ids=ADMIN_USER_IDS,
+        )
 
-    logger.info("starting bot polling")
-    try:
-        await dispatcher.start_polling(bot)
-    finally:
-        await bot.session.close()
-        await dispatcher.storage.close()
-        await pool.close()
+        logger.info("starting bot polling")
+        try:
+            await dispatcher.start_polling(bot)
+        finally:
+            await bot.session.close()
+            await dispatcher.storage.close()
 
 
 if __name__ == "__main__":

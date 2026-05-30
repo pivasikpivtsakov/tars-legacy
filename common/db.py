@@ -20,9 +20,9 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
     )
 
 
-async def create_pool() -> asyncpg.Pool:
+def create_pool() -> asyncpg.Pool:
     assert RDS_HOSTNAME and RDS_USERNAME and RDS_PASSWORD and RDS_DB_NAME and RDS_PORT
-    return await asyncpg.create_pool(
+    return asyncpg.create_pool(
         host=RDS_HOSTNAME,
         port=int(RDS_PORT),
         user=RDS_USERNAME,

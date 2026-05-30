@@ -1,15 +1,31 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 
 import asyncpg
 
 _TABLE = "orders"
 
+
+class OrderStatus(StrEnum):
+    PENDING = "pending"
+    OFFERING = "offering"
+    TAKEN = "taken"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    NO_TAKERS = "no_takers"
+
+
+_ACTIVE_FANOUT_STATUSES: tuple[str, ...] = (
+    OrderStatus.PENDING.value,
+    OrderStatus.OFFERING.value,
+)
+
 _SELECT_COLUMNS = (
     "id, original_id, shop_access_key, status, status_reason, amount, pubg_id, "
     "codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
-    "created_at, updated_at"
+    "offered_at, closed_at, created_at, updated_at"
 )
 
 
@@ -18,7 +34,7 @@ class Order:
     id: int
     original_id: int
     shop_access_key: str | None
-    status: str | None
+    status: OrderStatus
     status_reason: str | None
     amount: int | None
     pubg_id: int | None
@@ -27,6 +43,8 @@ class Order:
     broken_codes: tuple[str, ...]
     redeemed_codes: tuple[str, ...]
     additional_data: Any
+    offered_at: datetime | None
+    closed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -36,7 +54,7 @@ class Order:
             id=row["id"],
             original_id=row["original_id"],
             shop_access_key=row["shop_access_key"],
-            status=row["status"],
+            status=OrderStatus(row["status"]),
             status_reason=row["status_reason"],
             amount=row["amount"],
             pubg_id=row["pubg_id"],
@@ -45,6 +63,8 @@ class Order:
             broken_codes=tuple(row["broken_codes"]),
             redeemed_codes=tuple(row["redeemed_codes"]),
             additional_data=row["additional_data"],
+            offered_at=row["offered_at"],
+            closed_at=row["closed_at"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -73,3 +93,34 @@ class OrderRepository:
             msg = "failed to insert order"
             raise LookupError(msg)
         return Order.from_row(row)
+
+    async def list_active_for_fanout(self) -> list[Order]:
+        rows = await self._pool.fetch(
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
+            f"WHERE status = ANY($1::order_status[]) "
+            f"ORDER BY created_at ASC",
+            list(_ACTIVE_FANOUT_STATUSES),
+        )
+        return [Order.from_row(row) for row in rows]
+
+    async def mark_offering(self, *, order_id: int) -> None:
+        await self._pool.execute(
+            f"UPDATE {_TABLE} SET "
+            f"status = $2, "
+            f"offered_at = COALESCE(offered_at, NOW()), "
+            f"updated_at = NOW() "
+            f"WHERE id = $1",
+            order_id,
+            OrderStatus.OFFERING.value,
+        )
+
+    async def mark_no_takers(self, *, order_id: int) -> None:
+        await self._pool.execute(
+            f"UPDATE {_TABLE} SET "
+            f"status = $2, "
+            f"closed_at = NOW(), "
+            f"updated_at = NOW() "
+            f"WHERE id = $1",
+            order_id,
+            OrderStatus.NO_TAKERS.value,
+        )

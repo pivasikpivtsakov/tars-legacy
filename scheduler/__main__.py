@@ -2,9 +2,15 @@ import asyncio
 import contextlib
 import logging
 
-import scheduler.jobs  # noqa: F401  decoration side-effect registers jobs on `sched`
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from common.db import create_pool
+from common.environment import SCHEDULER_INTERVAL_SECONDS, TELEGRAM_BOT_TOKEN
 from common.logging_config import setup_logging
-from scheduler.app import sched
+from scheduler.jobs.order_fanout import job__order_fanout
 
 logger = logging.getLogger(__name__)
 
@@ -12,12 +18,27 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     setup_logging()
 
-    logger.info("starting scheduler")
-    sched.start()
-    try:
-        await asyncio.Event().wait()
-    finally:
-        sched.shutdown(wait=False)
+    async with create_pool() as pool:
+        bot = Bot(
+            token=TELEGRAM_BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        )
+        scheduler = AsyncIOScheduler(job_defaults={"coalesce": True, "max_instances": 1})
+        scheduler.add_job(
+            job__order_fanout,
+            "interval",
+            seconds=SCHEDULER_INTERVAL_SECONDS,
+            kwargs={"bot": bot, "pool": pool},
+            id="order_fanout",
+        )
+
+        logger.info("starting scheduler")
+        scheduler.start()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            scheduler.shutdown(wait=False)
+            await bot.session.close()
 
 
 if __name__ == "__main__":
