@@ -1,7 +1,7 @@
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.keyboards.start import welcome_kb
+from bot.keyboards.start import StartZone, welcome_kb
 from common.repositories.user_profiles import UserProfile
 
 
@@ -23,11 +23,14 @@ def _menu_kb(profile: UserProfile | None) -> InlineKeyboardMarkup:
         _("start.btn_online_off") if is_online else _("start.btn_online_on")
     )
     return welcome_kb(
-        online_text=online_text,
-        withdraw_text=_("start.btn_withdraw"),
-        packs_text=_("start.btn_packs"),
-        priority_text=_("start.btn_priority"),
-        register_text=_("start.btn_register"),
+        buttons={
+            StartZone.ONLINE: online_text,
+            StartZone.BALANCE: _("start.btn_balance"),
+            StartZone.WITHDRAW: _("start.btn_withdraw"),
+            StartZone.PACKS: _("start.btn_packs"),
+            StartZone.PRIORITY: _("start.btn_priority"),
+            StartZone.REGISTER: _("start.btn_register"),
+        },
     )
 
 

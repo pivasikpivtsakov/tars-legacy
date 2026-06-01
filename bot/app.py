@@ -10,11 +10,12 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import TelegramObject, User
 from aiogram.utils.i18n import FSMI18nMiddleware
 
-from bot.handlers import admin, common, fallback, packs, registration, withdraw
-from bot.i18n import build_i18n
+from bot.handlers import admin, common, fallback, orders, packs, registration, withdraw
+from common.i18n import build_i18n
+from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.order_processing import OrderManager
+from common.services.order_processing import OrderLifecycle, OrderManager
 
 
 class _ProfileMiddleware(BaseMiddleware):
@@ -49,14 +50,22 @@ def build_dispatcher(
     )
     dispatcher = Dispatcher(storage=storage)
     profiles = UserProfileRepository(pool=pool)
+    orders_repo = OrderRepository(pool=pool)
+    offers_repo = OrderOfferRepository(pool=pool)
     dispatcher["profiles"] = profiles
-    dispatcher["orders"] = OrderRepository(pool=pool)
+    dispatcher["orders"] = orders_repo
     dispatcher["order_manager"] = OrderManager(profiles=profiles)
+    dispatcher["order_lifecycle"] = OrderLifecycle(
+        pool=pool,
+        orders=orders_repo,
+        offers=offers_repo,
+        profiles=profiles,
+    )
     dispatcher["admin_ids"] = admin_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
 
     profile_middleware = _ProfileMiddleware()
-    for router in (common.router, withdraw.router, packs.router):
+    for router in (common.router, withdraw.router, packs.router, orders.router):
         router.message.middleware(profile_middleware)
         router.callback_query.middleware(profile_middleware)
 
@@ -64,6 +73,7 @@ def build_dispatcher(
     dispatcher.include_router(common.router)
     dispatcher.include_router(withdraw.router)
     dispatcher.include_router(packs.router)
+    dispatcher.include_router(orders.router)
     dispatcher.include_router(registration.router)
     dispatcher.include_router(fallback.router)
 

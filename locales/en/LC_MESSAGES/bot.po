@@ -16,6 +16,9 @@ msgstr "Go online"
 msgid "start.btn_online_off"
 msgstr "Go offline"
 
+msgid "start.btn_balance"
+msgstr "Balance"
+
 msgid "start.btn_withdraw"
 msgstr "Withdraw"
 
@@ -38,7 +41,10 @@ msgid "start.online_now_off"
 msgstr "You are now offline."
 
 msgid "start.priority"
-msgstr "Your priority:\nspeed: {speed}\nprice: {price}\ncancellations: {cancellations}"
+msgstr "Your priority:\nspeed: {speed}\nprice: {price}\ncompleted (strict): {rate_strict}%\ncompleted (incl. not-picked): {rate_full}%"
+
+msgid "start.balance"
+msgstr "Your balance: {balance}"
 
 msgid "start.profile_required"
 msgstr "Finish registration first."
@@ -102,3 +108,33 @@ msgstr "Registration already finished. Use /start to open the menu."
 
 msgid "unknown"
 msgstr "I don't understand that. Try /start."
+
+msgid "order.offer"
+msgstr "<b>New order</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPrice: <b>{full_price}</b>"
+
+msgid "order.btn_take"
+msgstr "Take"
+
+msgid "order.taken"
+msgstr "<b>Order in progress</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPUBG ID: <code>{pubg_id}</code>"
+
+msgid "order.codes_line"
+msgstr "Codes: <code>{codes}</code>"
+
+msgid "order.btn_ready"
+msgstr "Ready"
+
+msgid "order.btn_cancel"
+msgstr "Cancel"
+
+msgid "order.completed"
+msgstr "Order #{order_id} completed. Thanks!"
+
+msgid "order.cancelled"
+msgstr "Order #{order_id} cancelled."
+
+msgid "order.unavailable"
+msgstr "This order is no longer available."
+
+msgid "order.limit_reached"
+msgstr "You already have 3 orders in progress."

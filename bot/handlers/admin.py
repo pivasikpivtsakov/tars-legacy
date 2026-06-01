@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.i18n import I18n
 
-from bot.i18n import DOMAIN, LOCALES_DIR
+from common.i18n import DOMAIN, LOCALES_DIR
 from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
 

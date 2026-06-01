@@ -8,8 +8,8 @@ from aiogram import Bot
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.order_fanout import offer_order_to_next_user
 from common.services.order_processing import OrderManager
+from scheduler.services.order_fanout import offer_order_to_next_user
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ async def fan_out_active_orders(
     order_manager: OrderManager,
 ) -> None:
     active_orders = await orders.list_active_for_fanout()
+    # todo: разбить на чанки итд?
     await asyncio.gather(
         *(
             offer_order_to_next_user(

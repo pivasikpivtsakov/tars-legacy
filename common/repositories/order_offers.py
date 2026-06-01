@@ -51,3 +51,38 @@ class OrderOfferRepository:
             order_id,
             user_id,
         )
+
+    async def mark_taken(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> None:
+        await (conn or self._pool).execute(
+            f"UPDATE {_TABLE} SET "
+            f"status = $3::order_offer_status, "
+            f"resolved_at = NOW() "
+            f"WHERE order_id = $1 AND user_id = $2 "
+            f"AND status = $4::order_offer_status",
+            order_id,
+            user_id,
+            OrderOfferStatus.TAKEN.value,
+            OrderOfferStatus.OFFERED.value,
+        )
+
+    async def expire_offered(
+        self,
+        *,
+        order_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> None:
+        await (conn or self._pool).execute(
+            f"UPDATE {_TABLE} SET "
+            f"status = $2::order_offer_status, "
+            f"resolved_at = NOW() "
+            f"WHERE order_id = $1 AND status = $3::order_offer_status",
+            order_id,
+            OrderOfferStatus.EXPIRED.value,
+            OrderOfferStatus.OFFERED.value,
+        )

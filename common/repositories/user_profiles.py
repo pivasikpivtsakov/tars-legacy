@@ -16,8 +16,33 @@ class UserProfileStatus(StrEnum):
 
 _SELECT_COLUMNS = (
     "user_id, works_alone, packages, price_60, withdrawal_method, "
-    "work_start, work_end, is_online, with_codes, status"
+    "work_start, work_end, is_online, with_codes, status, balance"
 )
+
+# LATERAL lets each subquery see the outer p.user_id and run once per candidate,
+# so speed averages this user's own last 3 completed orders without an N+1.
+_CANDIDATE_STATS_JOINS = """
+LEFT JOIN LATERAL (
+    SELECT extract(epoch FROM avg(o.closed_at - o.taken_at))::int AS speed_seconds
+    FROM (
+        SELECT closed_at, taken_at FROM orders
+        WHERE taken_by = p.user_id AND status = 'completed'
+        ORDER BY closed_at DESC LIMIT 3
+    ) o
+) spd ON true
+LEFT JOIN LATERAL (
+    SELECT count(*) FILTER (WHERE status = 'completed') AS completed,
+           count(*) FILTER (WHERE status = 'cancelled') AS cancelled
+    FROM orders WHERE taken_by = p.user_id
+) cnt ON true
+LEFT JOIN LATERAL (
+    SELECT count(*) AS not_picked
+    FROM order_offers oo JOIN orders o ON o.id = oo.order_id
+    WHERE oo.user_id = p.user_id
+      AND o.status NOT IN ('pending', 'offering')
+      AND (o.taken_by IS NULL OR o.taken_by <> p.user_id)
+) np ON true
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +57,7 @@ class UserProfile:
     is_online: bool
     with_codes: bool
     status: UserProfileStatus
+    balance: int
 
     @classmethod
     def from_row(cls, row: asyncpg.Record) -> "UserProfile":
@@ -47,6 +73,7 @@ class UserProfile:
             is_online=row["is_online"],
             with_codes=row["with_codes"],
             status=UserProfileStatus(row["status"]),
+            balance=row["balance"],
         )
 
 
@@ -54,6 +81,24 @@ def selected_packages(profile: UserProfile | None) -> set[int]:
     if profile is None or profile.packages is None:
         return set()
     return set(profile.packages)
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateRow:
+    user_id: int
+    price_60: int
+    speed_seconds: int | None
+    completed: int
+    cancelled: int
+    not_picked: int
+
+
+@dataclass(frozen=True, slots=True)
+class RankingStats:
+    speed_seconds: int | None
+    completed: int
+    cancelled: int
+    not_picked: int
 
 
 class UserProfileRepository:
@@ -163,19 +208,69 @@ class UserProfileRepository:
             return None
         return UserProfile.from_row(row)
 
+    async def credit_balance(
+        self,
+        *,
+        user_id: int,
+        amount: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> None:
+        await (conn or self._pool).execute(
+            f"UPDATE {_TABLE} SET balance = balance + $2, updated_at = NOW() "
+            f"WHERE user_id = $1",
+            user_id,
+            amount,
+        )
+
     async def list_online_with_packages(
         self,
         *,
         required_packages: Sequence[int],
-    ) -> list[UserProfile]:
+    ) -> list[CandidateRow]:
         rows = await self._pool.fetch(
-            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
-            f"WHERE is_online = TRUE "
-            f"AND status = $1 "
-            f"AND price_60 IS NOT NULL "
-            f"AND packages @> $2::INTEGER[] "
-            f"ORDER BY price_60 ASC, user_id ASC",
+            "SELECT p.user_id, p.price_60, spd.speed_seconds, "
+            "cnt.completed, cnt.cancelled, np.not_picked "
+            f"FROM {_TABLE} p "
+            f"{_CANDIDATE_STATS_JOINS} "
+            "WHERE p.is_online = TRUE "
+            "AND p.status = $1 "
+            "AND p.price_60 IS NOT NULL "
+            "AND p.packages @> $2::INTEGER[] "
+            "ORDER BY p.price_60 ASC, p.user_id ASC",
             UserProfileStatus.ACTIVE.value,
             list(required_packages),
         )
-        return [UserProfile.from_row(row) for row in rows]
+        return [
+            CandidateRow(
+                user_id=row["user_id"],
+                price_60=row["price_60"],
+                speed_seconds=row["speed_seconds"],
+                completed=row["completed"],
+                cancelled=row["cancelled"],
+                not_picked=row["not_picked"],
+            )
+            for row in rows
+        ]
+
+    async def ranking_stats(self, *, user_id: int) -> RankingStats:
+        row = await self._pool.fetchrow(
+            "SELECT "
+            "(SELECT extract(epoch FROM avg(o.closed_at - o.taken_at))::int "
+            " FROM (SELECT closed_at, taken_at FROM orders "
+            "       WHERE taken_by = $1 AND status = 'completed' "
+            "       ORDER BY closed_at DESC LIMIT 3) o) AS speed_seconds, "
+            "(SELECT count(*) FROM orders "
+            " WHERE taken_by = $1 AND status = 'completed') AS completed, "
+            "(SELECT count(*) FROM orders "
+            " WHERE taken_by = $1 AND status = 'cancelled') AS cancelled, "
+            "(SELECT count(*) FROM order_offers oo JOIN orders o ON o.id = oo.order_id "
+            " WHERE oo.user_id = $1 AND o.status NOT IN ('pending', 'offering') "
+            "   AND (o.taken_by IS NULL OR o.taken_by <> $1)) AS not_picked",
+            user_id,
+        )
+        return RankingStats(
+            speed_seconds=row["speed_seconds"],
+            completed=row["completed"],
+            cancelled=row["cancelled"],
+            not_picked=row["not_picked"],
+        )

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from enum import StrEnum
 
 from aiogram.filters.callback_data import CallbackData
@@ -6,6 +7,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 class StartZone(StrEnum):
     ONLINE = "online"
+    BALANCE = "balance"
     WITHDRAW = "withdraw"
     PACKS = "packs"
     PRIORITY = "priority"
@@ -20,45 +22,15 @@ class BackCB(CallbackData, prefix="back"):
     pass
 
 
-def welcome_kb(
-    *,
-    online_text: str,
-    withdraw_text: str,
-    packs_text: str,
-    priority_text: str,
-    register_text: str,
-) -> InlineKeyboardMarkup:
+def welcome_kb(*, buttons: Mapping[StartZone, str]) -> InlineKeyboardMarkup:
     rows = [
         [
             InlineKeyboardButton(
-                text=online_text,
-                callback_data=OpenZoneCB(value=StartZone.ONLINE).pack(),
+                text=text,
+                callback_data=OpenZoneCB(value=zone).pack(),
             ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=withdraw_text,
-                callback_data=OpenZoneCB(value=StartZone.WITHDRAW).pack(),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=packs_text,
-                callback_data=OpenZoneCB(value=StartZone.PACKS).pack(),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=priority_text,
-                callback_data=OpenZoneCB(value=StartZone.PRIORITY).pack(),
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text=register_text,
-                callback_data=OpenZoneCB(value=StartZone.REGISTER).pack(),
-            ),
-        ],
+        ]
+        for zone, text in buttons.items()
     ]
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

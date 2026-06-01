@@ -2,13 +2,17 @@ import logging
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from common.i18n import build_i18n
+from common.keyboards.orders import take_inline_kb
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import Order, OrderRepository
-from common.services.order_processing import OrderManager
+from common.services.order_processing import OrderManager, forward_to_third_party
 
 logger = logging.getLogger(__name__)
+
+_i18n = build_i18n()
+_ = _i18n.gettext
 
 
 async def offer_order_to_next_user(
@@ -26,6 +30,7 @@ async def offer_order_to_next_user(
     )
     if not ranked_candidates:
         await orders.mark_no_takers(order_id=order.id)
+        await offers.expire_offered(order_id=order.id)
         await forward_to_third_party(order=order)
         return
     next_recipient = ranked_candidates[0]
@@ -34,7 +39,10 @@ async def offer_order_to_next_user(
         await bot.send_message(
             chat_id=next_recipient.user_id,
             text=render_offer_text(order=order, full_price=next_recipient.full_price),
-            reply_markup=take_inline_kb(order_id=order.id),
+            reply_markup=take_inline_kb(
+                order_id=order.id,
+                take_text=_("order.btn_take"),
+            ),
         )
     except TelegramAPIError:
         logger.exception(
@@ -45,26 +53,9 @@ async def offer_order_to_next_user(
     await orders.mark_offering(order_id=order.id)
 
 
-async def forward_to_third_party(*, order: Order) -> None:
-    logger.info("third-party hand-off requested order_id=%s", order.id)
-
-
 def render_offer_text(*, order: Order, full_price: int) -> str:
-    return (
-        "<b>Новый заказ</b>\n"
-        f"UC: <b>{order.amount}</b>\n"
-        f"Цена: <b>{full_price}</b>"
-    )
-
-
-def take_inline_kb(*, order_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="Взять",
-                    callback_data=f"take_order:{order_id}",
-                ),
-            ],
-        ],
+    return _("order.offer").format(
+        order_id=order.id,
+        amount=order.amount,
+        full_price=full_price,
     )

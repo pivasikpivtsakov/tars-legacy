@@ -25,7 +25,7 @@ _ACTIVE_FANOUT_STATUSES: tuple[str, ...] = (
 _SELECT_COLUMNS = (
     "id, original_id, shop_access_key, status, status_reason, amount, pubg_id, "
     "codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
-    "offered_at, closed_at, created_at, updated_at"
+    "offered_at, closed_at, taken_at, taken_by, taken_price, created_at, updated_at"
 )
 
 
@@ -45,6 +45,9 @@ class Order:
     additional_data: Any
     offered_at: datetime | None
     closed_at: datetime | None
+    taken_at: datetime | None
+    taken_by: int | None
+    taken_price: int | None
     created_at: datetime
     updated_at: datetime
 
@@ -65,6 +68,9 @@ class Order:
             additional_data=row["additional_data"],
             offered_at=row["offered_at"],
             closed_at=row["closed_at"],
+            taken_at=row["taken_at"],
+            taken_by=row["taken_by"],
+            taken_price=row["taken_price"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -124,3 +130,109 @@ class OrderRepository:
             order_id,
             OrderStatus.NO_TAKERS.value,
         )
+
+    async def get(
+        self,
+        *,
+        order_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> Order | None:
+        row = await (conn or self._pool).fetchrow(
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} WHERE id = $1",
+            order_id,
+        )
+        if row is None:
+            return None
+        return Order.from_row(row)
+
+    async def count_in_work(
+        self,
+        *,
+        user_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> int:
+        return await (conn or self._pool).fetchval(
+            f"SELECT count(*) FROM {_TABLE} "
+            f"WHERE taken_by = $1 AND status = $2::order_status",
+            user_id,
+            OrderStatus.TAKEN.value,
+        )
+
+    async def claim_for_take(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        taken_price: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> Order | None:
+        row = await (conn or self._pool).fetchrow(
+            f"UPDATE {_TABLE} SET "
+            f"status = $3, "
+            f"taken_by = $2, "
+            f"taken_at = NOW(), "
+            f"taken_price = $4, "
+            f"updated_at = NOW() "
+            f"WHERE id = $1 AND status = ANY($5::order_status[]) "
+            f"RETURNING {_SELECT_COLUMNS}",
+            order_id,
+            user_id,
+            OrderStatus.TAKEN.value,
+            taken_price,
+            list(_ACTIVE_FANOUT_STATUSES),
+        )
+        if row is None:
+            return None
+        return Order.from_row(row)
+
+    async def complete(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> Order | None:
+        return await self._resolve(
+            order_id=order_id,
+            user_id=user_id,
+            status=OrderStatus.COMPLETED,
+            conn=conn,
+        )
+
+    async def cancel(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> Order | None:
+        return await self._resolve(
+            order_id=order_id,
+            user_id=user_id,
+            status=OrderStatus.CANCELLED,
+            conn=conn,
+        )
+
+    async def _resolve(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        status: OrderStatus,
+        conn: asyncpg.Connection | None = None,
+    ) -> Order | None:
+        row = await (conn or self._pool).fetchrow(
+            f"UPDATE {_TABLE} SET "
+            f"status = $3, "
+            f"closed_at = NOW(), "
+            f"updated_at = NOW() "
+            f"WHERE id = $1 AND taken_by = $2 AND status = $4::order_status "
+            f"RETURNING {_SELECT_COLUMNS}",
+            order_id,
+            user_id,
+            status.value,
+            OrderStatus.TAKEN.value,
+        )
+        if row is None:
+            return None
+        return Order.from_row(row)
