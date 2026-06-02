@@ -73,3 +73,4 @@ def _env_positive_int(varname: str, *, default: int) -> int:
 SCHEDULER_INTERVAL_SECONDS = _env_positive_int("SCHEDULER_INTERVAL_SECONDS", default=30)
 OFFER_TTL_SECONDS = _env_positive_int("OFFER_TTL_SECONDS", default=30)
 RATING_SPEED_WINDOW = _env_positive_int("RATING_SPEED_WINDOW", default=3)
+MAX_ORDERS_IN_WORK = _env_positive_int("MAX_ORDERS_IN_WORK", default=3)

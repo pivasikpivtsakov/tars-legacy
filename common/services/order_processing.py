@@ -5,6 +5,7 @@ from enum import StrEnum
 
 import asyncpg
 
+from common.environment import MAX_ORDERS_IN_WORK
 from common.models.orders import Order
 from common.models.user_profiles import CandidateRow, UserProfile
 from common.packages import PACKAGE_UNIT_COUNT
@@ -17,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 _PACKAGE_SIZES_DESC: tuple[int, ...] = tuple(sorted(PACKAGE_UNIT_COUNT, reverse=True))
 _PRICE_TOLERANCE = 0.01
-_MAX_IN_WORK = 3
-
 
 @dataclass(frozen=True, slots=True)
 class PackageDecomposition:
@@ -195,7 +194,7 @@ class OrderLifecycle:
                         user_id,
                     )
                     in_work = await self._orders.count_in_work(user_id=user_id, conn=conn)
-                    if in_work >= _MAX_IN_WORK:
+                    if in_work >= MAX_ORDERS_IN_WORK:
                         raise _TakeAbortError(TakeStatus.LIMIT_REACHED)
                     order = await self._orders.get(order_id=order_id, conn=conn)
                     if order is None or order.amount is None:
