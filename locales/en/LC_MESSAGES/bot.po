@@ -115,6 +115,9 @@ msgstr "<b>New order</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPric
 msgid "order.btn_take"
 msgstr "Take"
 
+msgid "order.expired"
+msgstr "<i>Expired</i>"
+
 msgid "order.taken"
 msgstr "<b>Order in progress</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPUBG ID: <code>{pubg_id}</code>"
 

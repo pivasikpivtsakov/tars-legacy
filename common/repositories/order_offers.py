@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 
 import asyncpg
@@ -52,23 +52,69 @@ class OrderOfferRepository:
             user_id,
         )
 
+    async def _resolve_offer(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        status: OrderOfferStatus,
+        conn: asyncpg.Connection | None = None,
+    ) -> int | None:
+        return await (conn or self._pool).fetchval(
+            f"UPDATE {_TABLE} SET "
+            f"status = $3::order_offer_status, "
+            f"resolved_at = NOW() "
+            f"WHERE order_id = $1 AND user_id = $2 "
+            f"AND status = $4::order_offer_status "
+            f"RETURNING user_id",
+            order_id,
+            user_id,
+            status.value,
+            OrderOfferStatus.OFFERED.value,
+        )
+
     async def mark_taken(
         self,
         *,
         order_id: int,
         user_id: int,
         conn: asyncpg.Connection | None = None,
-    ) -> None:
-        await (conn or self._pool).execute(
-            f"UPDATE {_TABLE} SET "
-            f"status = $3::order_offer_status, "
-            f"resolved_at = NOW() "
-            f"WHERE order_id = $1 AND user_id = $2 "
-            f"AND status = $4::order_offer_status",
+    ) -> int | None:
+        return await self._resolve_offer(
+            order_id=order_id,
+            user_id=user_id,
+            status=OrderOfferStatus.TAKEN,
+            conn=conn,
+        )
+
+    async def expire_one(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> int | None:
+        return await self._resolve_offer(
+            order_id=order_id,
+            user_id=user_id,
+            status=OrderOfferStatus.EXPIRED,
+            conn=conn,
+        )
+
+    async def has_active_offer(
+        self,
+        *,
+        order_id: int,
+        ttl_seconds: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> bool:
+        return await (conn or self._pool).fetchval(
+            f"SELECT EXISTS(SELECT 1 FROM {_TABLE} "
+            f"WHERE order_id = $1 AND status = $2::order_offer_status "
+            f"AND offered_at + $3::interval > NOW())",
             order_id,
-            user_id,
-            OrderOfferStatus.TAKEN.value,
             OrderOfferStatus.OFFERED.value,
+            timedelta(seconds=ttl_seconds),
         )
 
     async def expire_offered(

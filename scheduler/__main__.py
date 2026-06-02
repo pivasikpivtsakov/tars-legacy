@@ -30,7 +30,7 @@ async def main() -> None:
             job__order_fanout,
             "interval",
             seconds=SCHEDULER_INTERVAL_SECONDS,
-            kwargs={"bot": bot, "pool": pool, "redis": redis},
+            kwargs={"bot": bot, "pool": pool, "redis": redis, "scheduler": scheduler},
             id="order_fanout",
         )
 

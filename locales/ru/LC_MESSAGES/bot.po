@@ -115,6 +115,9 @@ msgstr "<b>Новый заказ</b>\nID: <code>{order_id}</code>\nUC: <b>{amoun
 msgid "order.btn_take"
 msgstr "Взять"
 
+msgid "order.expired"
+msgstr "<i>Истекло</i>"
+
 msgid "order.taken"
 msgstr "<b>Заказ в работе</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPUBG ID: <code>{pubg_id}</code>"
 

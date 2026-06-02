@@ -22,6 +22,7 @@ def _candidate(
     speed_seconds: int | None = 10,
     refusal_rate: float = 0.0,
     complete: int = 0,
+    with_codes: bool = False,
 ) -> RankedCandidate:
     return RankedCandidate(
         user_id=user_id,
@@ -29,6 +30,7 @@ def _candidate(
         speed_seconds=speed_seconds,
         refusal_rate=refusal_rate,
         complete=complete,
+        with_codes=with_codes,
     )
 
 
@@ -99,7 +101,7 @@ def test_cheapest_price_bucket(
     expected_bucket: list[int],
 ) -> None:
     rows = [
-        CandidateRow(user_id=index, price_60=price)
+        CandidateRow(user_id=index, price_60=price, with_codes=False)
         for index, price in enumerate(prices)
     ]
     bucket = _cheapest_price_bucket(rows)
@@ -147,10 +149,10 @@ def test_ranking_is_total_order_on_quality_ties() -> None:
 def test_select_candidates_only_fetches_cheapest_bucket() -> None:
     profiles = _FakeProfiles(
         rows=[
-            CandidateRow(user_id=1, price_60=100),
-            CandidateRow(user_id=2, price_60=101),
-            CandidateRow(user_id=3, price_60=102),
-            CandidateRow(user_id=4, price_60=200),
+            CandidateRow(user_id=1, price_60=100, with_codes=False),
+            CandidateRow(user_id=2, price_60=101, with_codes=True),
+            CandidateRow(user_id=3, price_60=102, with_codes=False),
+            CandidateRow(user_id=4, price_60=200, with_codes=False),
         ],
     )
     rating = _FakeRating(
@@ -166,6 +168,7 @@ def test_select_candidates_only_fetches_cheapest_bucket() -> None:
     assert profiles.requested_packages == (60,)
     assert rating.requested_user_ids == [1, 2]
     assert [c.user_id for c in result] == [2, 1]
+    assert [c.with_codes for c in result] == [True, False]
 
 
 def test_select_candidates_empty_skips_rating_lookup() -> None:
@@ -182,8 +185,8 @@ def test_select_candidates_empty_skips_rating_lookup() -> None:
 def test_select_candidates_excludes_user_ids() -> None:
     profiles = _FakeProfiles(
         rows=[
-            CandidateRow(user_id=1, price_60=100),
-            CandidateRow(user_id=2, price_60=100),
+            CandidateRow(user_id=1, price_60=100, with_codes=False),
+            CandidateRow(user_id=2, price_60=100, with_codes=False),
         ],
     )
     rating = _FakeRating(

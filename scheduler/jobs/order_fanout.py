@@ -4,6 +4,7 @@ from datetime import datetime
 
 import asyncpg
 from aiogram import Bot
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from redis.asyncio import Redis
 
 from common.environment import RATING_SPEED_WINDOW
@@ -24,6 +25,7 @@ async def fan_out_active_orders(
     offers: OrderOfferRepository,
     order_manager: OrderManager,
     rating: RatingRepository,
+    scheduler: AsyncIOScheduler,
 ) -> None:
     active_orders = await orders.list_active_for_fanout()
     # todo: разбить на чанки итд?
@@ -36,13 +38,20 @@ async def fan_out_active_orders(
                 offers=offers,
                 order_manager=order_manager,
                 rating=rating,
+                scheduler=scheduler,
             )
             for order in active_orders
         ),
     )
 
 
-async def job__order_fanout(*, bot: Bot, pool: asyncpg.Pool, redis: Redis) -> None:
+async def job__order_fanout(
+    *,
+    bot: Bot,
+    pool: asyncpg.Pool,
+    redis: Redis,
+    scheduler: AsyncIOScheduler,
+) -> None:
     start_time = datetime.now()
     logger.info(f"order fanout started timestamp={start_time}")
 
@@ -60,6 +69,7 @@ async def job__order_fanout(*, bot: Bot, pool: asyncpg.Pool, redis: Redis) -> No
         offers=offers,
         order_manager=order_manager,
         rating=rating,
+        scheduler=scheduler,
     )
 
     end_time = datetime.now()

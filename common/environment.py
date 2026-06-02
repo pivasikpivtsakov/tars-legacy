@@ -73,6 +73,17 @@ SCHEDULER_INTERVAL_SECONDS = int(
     or "30"
 )
 
+OFFER_TTL_SECONDS = int(
+    env_get(
+        "OFFER_TTL_SECONDS",
+        default="30",
+        validation_rule=_is_positive_integer,
+        warning_message="OFFER_TTL_SECONDS must be a positive integer",
+        raise_if_failed=False,
+    )
+    or "30"
+)
+
 RATING_SPEED_WINDOW = int(
     env_get(
         "RATING_SPEED_WINDOW",

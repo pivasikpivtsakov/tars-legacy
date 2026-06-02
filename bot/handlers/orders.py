@@ -1,5 +1,4 @@
 import contextlib
-from typing import Any
 
 from aiogram import Router
 from aiogram.exceptions import TelegramBadRequest
@@ -13,19 +12,12 @@ from common.keyboards.orders import (
     TakeOrderCB,
     working_inline_kb,
 )
+from common.rendering.orders import render_taken_text
 from common.repositories.orders import Order
 from common.repositories.user_profiles import UserProfile
 from common.services.order_processing import OrderLifecycle, TakeStatus
 
 router = Router(name="orders")
-
-
-def _format_codes(codes: Any) -> str:
-    if isinstance(codes, list):
-        joined = ", ".join(str(code) for code in codes)
-    else:
-        joined = str(codes)
-    return _("order.codes_line").format(codes=joined)
 
 
 async def _render_taken(
@@ -34,13 +26,11 @@ async def _render_taken(
     order: Order,
     profile: UserProfile,
 ) -> None:
-    text = _("order.taken").format(
-        order_id=order.id,
-        amount=order.amount,
-        pubg_id=order.pubg_id,
+    text = render_taken_text(
+        order=order,
+        with_codes=profile.with_codes,
+        gettext=_,
     )
-    if profile.with_codes and order.codes:
-        text = f"{text}\n{_format_codes(order.codes)}"
     with contextlib.suppress(TelegramBadRequest):
         await callback.message.edit_text(
             text,

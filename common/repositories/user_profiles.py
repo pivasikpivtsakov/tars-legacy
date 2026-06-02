@@ -62,6 +62,7 @@ def selected_packages(profile: UserProfile | None) -> set[int]:
 class CandidateRow:
     user_id: int
     price_60: int
+    with_codes: bool
 
 
 class UserProfileRepository:
@@ -107,7 +108,7 @@ class UserProfileRepository:
             value=status.value,
         )
 
-    async def create_or_update(  # noqa: PLR0913
+    async def create_or_update(
         self,
         *,
         user_id: int,
@@ -191,7 +192,7 @@ class UserProfileRepository:
         required_packages: Sequence[int],
     ) -> list[CandidateRow]:
         rows = await self._pool.fetch(
-            "SELECT user_id, price_60 "
+            "SELECT user_id, price_60, with_codes "
             f"FROM {_TABLE} "
             "WHERE is_online = TRUE "
             "AND status = $1 "
@@ -205,6 +206,7 @@ class UserProfileRepository:
             CandidateRow(
                 user_id=row["user_id"],
                 price_60=row["price_60"],
+                with_codes=row["with_codes"],
             )
             for row in rows
         ]

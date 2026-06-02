@@ -36,6 +36,7 @@ class RankedCandidate:
     speed_seconds: int | None
     refusal_rate: float
     complete: int
+    with_codes: bool
 
 
 class OrderAmountError(ValueError):
@@ -153,10 +154,16 @@ class OrderManager:
                         not_taken=user_stats.not_taken,
                     ),
                     complete=user_stats.complete,
+                    with_codes=row.with_codes,
                 ),
             )
         candidates.sort(key=_ranking_key)
         return candidates
+
+
+class _TakeAbortError(Exception):
+    def __init__(self, status: TakeStatus) -> None:
+        self.status = status
 
 
 class OrderLifecycle:
@@ -184,35 +191,41 @@ class OrderLifecycle:
     ) -> TakeResult:
         if profile.price_60 is None:
             return TakeResult(status=TakeStatus.UNAVAILABLE)
-        async with self._pool.acquire() as conn, conn.transaction():
-            await conn.execute(
-                "SELECT 1 FROM user_profiles WHERE user_id = $1 FOR UPDATE",
-                user_id,
-            )
-            in_work = await self._orders.count_in_work(user_id=user_id, conn=conn)
-            if in_work >= _MAX_IN_WORK:
-                return TakeResult(status=TakeStatus.LIMIT_REACHED)
-            order = await self._orders.get(order_id=order_id, conn=conn)
-            if order is None or order.amount is None:
-                return TakeResult(status=TakeStatus.UNAVAILABLE)
-            taken_price = profile.price_60 * decompose_amount(order.amount).total_units
-            claimed = await self._orders.claim_for_take(
-                order_id=order_id,
-                user_id=user_id,
-                taken_price=taken_price,
-                conn=conn,
-            )
-            if claimed is None:
-                return TakeResult(status=TakeStatus.UNAVAILABLE)
-            await self._offers.mark_taken(
-                order_id=order_id,
-                user_id=user_id,
-                conn=conn,
-            )
-            expired_user_ids = await self._offers.expire_offered(
-                order_id=order_id,
-                conn=conn,
-            )
+        async with self._pool.acquire() as conn:
+            try:
+                async with conn.transaction():
+                    await conn.execute(
+                        "SELECT 1 FROM user_profiles WHERE user_id = $1 FOR UPDATE",
+                        user_id,
+                    )
+                    in_work = await self._orders.count_in_work(user_id=user_id, conn=conn)
+                    if in_work >= _MAX_IN_WORK:
+                        raise _TakeAbortError(TakeStatus.LIMIT_REACHED)
+                    order = await self._orders.get(order_id=order_id, conn=conn)
+                    if order is None or order.amount is None:
+                        raise _TakeAbortError(TakeStatus.UNAVAILABLE)
+                    claimed_offer = await self._offers.mark_taken(
+                        order_id=order_id,
+                        user_id=user_id,
+                        conn=conn,
+                    )
+                    if claimed_offer is None:
+                        raise _TakeAbortError(TakeStatus.UNAVAILABLE)
+                    taken_price = profile.price_60 * decompose_amount(order.amount).total_units
+                    claimed = await self._orders.claim_for_take(
+                        order_id=order_id,
+                        user_id=user_id,
+                        taken_price=taken_price,
+                        conn=conn,
+                    )
+                    if claimed is None:
+                        raise _TakeAbortError(TakeStatus.UNAVAILABLE)
+                    expired_user_ids = await self._offers.expire_offered(
+                        order_id=order_id,
+                        conn=conn,
+                    )
+            except _TakeAbortError as abort:
+                return TakeResult(status=abort.status)
         await self._rating.record_not_taken(user_ids=expired_user_ids)
         return TakeResult(status=TakeStatus.OK, order=claimed)
 
