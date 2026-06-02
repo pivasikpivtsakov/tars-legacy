@@ -1,16 +1,9 @@
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from datetime import datetime
 
 from redis.asyncio import Redis
 
-
-@dataclass(frozen=True, slots=True)
-class RatingStats:
-    speed_seconds: int | None
-    complete: int
-    incomplete: int
-    not_taken: int
+from common.models.rating import RatingStats
 
 
 def _speed_key(user_id: int) -> str:

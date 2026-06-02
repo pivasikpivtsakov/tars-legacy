@@ -2,11 +2,9 @@ import asyncio
 import contextlib
 import logging
 
-from aiogram import Bot
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from common.bot import create_bot
 from common.db import create_pool
 from common.environment import SCHEDULER_INTERVAL_SECONDS, TELEGRAM_BOT_TOKEN
 from common.logging_config import setup_logging
@@ -21,10 +19,7 @@ async def main() -> None:
 
     async with create_pool() as pool:
         redis = create_redis()
-        bot = Bot(
-            token=TELEGRAM_BOT_TOKEN,
-            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        )
+        bot = create_bot(token=TELEGRAM_BOT_TOKEN)
         scheduler = AsyncIOScheduler(job_defaults={"coalesce": True, "max_instances": 1})
         scheduler.add_job(
             job__order_fanout,

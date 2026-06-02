@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from aiogram import Bot
@@ -7,12 +8,13 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from common.environment import OFFER_TTL_SECONDS
 from common.i18n import build_i18n
 from common.keyboards.orders import take_inline_kb
+from common.models.orders import Order
 from common.rendering.orders import render_offer_text
 from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import Order, OrderRepository
+from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
+from common.services.offer_expiry import schedule_offer_expiry
 from common.services.order_processing import OrderManager, forward_to_third_party
-from scheduler.jobs.offer_expiry import schedule_offer_expiry
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +80,30 @@ async def offer_order_to_next_user(
             expired_text=f"{offer_text}\n{_('order.expired')}",
         )
     await orders.mark_offering(order_id=order.id)
+
+
+async def fan_out_active_orders(
+    *,
+    bot: Bot,
+    orders: OrderRepository,
+    offers: OrderOfferRepository,
+    order_manager: OrderManager,
+    rating: RatingRepository,
+    scheduler: AsyncIOScheduler,
+) -> None:
+    active_orders = await orders.list_active_for_fanout()
+    # todo: разбить на чанки итд?
+    await asyncio.gather(
+        *(
+            offer_order_to_next_user(
+                order=order,
+                bot=bot,
+                orders=orders,
+                offers=offers,
+                order_manager=order_manager,
+                rating=rating,
+                scheduler=scheduler,
+            )
+            for order in active_orders
+        ),
+    )

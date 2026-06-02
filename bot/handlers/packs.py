@@ -10,11 +10,8 @@ from bot.handlers.menu import require_complete_profile
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.packs import packages_editor_kb
 from bot.keyboards.start import OpenZoneCB, StartZone
-from common.repositories.user_profiles import (
-    UserProfile,
-    UserProfileRepository,
-    selected_packages,
-)
+from common.models.user_profiles import UserProfile
+from common.repositories.user_profiles import UserProfileRepository
 
 router = Router(name="packs")
 
@@ -28,6 +25,12 @@ def _editor_kb(selected: Iterable[int]) -> InlineKeyboardMarkup:
         selected=selected,
         back_text=_("start.btn_back"),
     )
+
+
+def selected_packages(profile: UserProfile | None) -> set[int]:
+    if profile is None or profile.packages is None:
+        return set()
+    return set(profile.packages)
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.PACKS))

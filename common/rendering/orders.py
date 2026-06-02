@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from common.repositories.orders import Order
+from common.models.orders import Order
 
 
 def append_codes_line(

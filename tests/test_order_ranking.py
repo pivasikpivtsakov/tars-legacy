@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from common.repositories.orders import Order, OrderStatus
-from common.repositories.rating import RatingStats
-from common.repositories.user_profiles import CandidateRow
+from common.models.orders import Order, OrderStatus
+from common.models.rating import RatingStats
+from common.models.user_profiles import CandidateRow
 from common.services.order_processing import (
     OrderManager,
     RankedCandidate,

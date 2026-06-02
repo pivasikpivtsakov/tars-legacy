@@ -1,8 +1,8 @@
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.keyboards.start import StartZone, welcome_kb
-from common.repositories.user_profiles import UserProfile
+from bot.keyboards.start import StartZone, back_kb, welcome_kb
+from common.models.user_profiles import UserProfile
 
 
 def _is_profile_complete(profile: UserProfile | None) -> bool:
@@ -56,3 +56,11 @@ async def require_complete_profile(
         await callback.answer(_("start.profile_required"), show_alert=True)
         return None
     return profile
+
+
+async def show_back_panel(*, callback: CallbackQuery, text: str) -> None:
+    await callback.message.edit_text(
+        text,
+        reply_markup=back_kb(back_text=_("start.btn_back")),
+    )
+    await callback.answer()

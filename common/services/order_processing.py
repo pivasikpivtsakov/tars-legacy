@@ -5,15 +5,13 @@ from enum import StrEnum
 
 import asyncpg
 
+from common.models.orders import Order
+from common.models.user_profiles import CandidateRow, UserProfile
 from common.packages import PACKAGE_UNIT_COUNT
 from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import Order, OrderRepository
+from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
-from common.repositories.user_profiles import (
-    CandidateRow,
-    UserProfile,
-    UserProfileRepository,
-)
+from common.repositories.user_profiles import UserProfileRepository
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +22,6 @@ _MAX_IN_WORK = 3
 
 @dataclass(frozen=True, slots=True)
 class PackageDecomposition:
-    parts: tuple[int, ...]
     unique_parts: tuple[int, ...]
     total_units: int
 
@@ -68,7 +65,6 @@ def decompose_amount(amount: int) -> PackageDecomposition:
         msg = f"cannot decompose amount={amount} into available packages"
         raise OrderAmountError(msg)
     return PackageDecomposition(
-        parts=tuple(parts),
         unique_parts=tuple(sorted(set(parts))),
         total_units=sum(PACKAGE_UNIT_COUNT[p] for p in parts),
     )

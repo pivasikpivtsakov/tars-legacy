@@ -16,7 +16,8 @@ from bot.keyboards.registration import (
     works_alone_kb,
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
-from common.repositories.user_profiles import UserProfile, UserProfileRepository
+from common.models.user_profiles import UserProfile
+from common.repositories.user_profiles import UserProfileRepository
 
 router = Router(name="registration")
 
@@ -37,10 +38,10 @@ class Registration(StatesGroup):
 
 def _parse_msk_time(raw: str) -> time | None:
     try:
-        parsed = datetime.strptime(raw.strip(), _TIME_FORMAT).time()
+        parsed = datetime.strptime(raw.strip(), _TIME_FORMAT).replace(tzinfo=MSK_TZ)
     except ValueError:
         return None
-    return parsed.replace(tzinfo=MSK_TZ)
+    return parsed.timetz()
 
 
 def _parse_price(raw: str) -> int | None:

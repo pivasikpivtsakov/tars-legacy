@@ -1,7 +1,8 @@
 import asyncio
 import logging
 
-from bot.app import build_bot, build_dispatcher
+from bot.app import build_dispatcher
+from common.bot import create_bot
 from common.db import create_pool
 from common.environment import ADMIN_USER_IDS, REDIS_URL, TELEGRAM_BOT_TOKEN
 from common.logging_config import setup_logging
@@ -15,7 +16,7 @@ async def main() -> None:
 
     async with create_pool() as pool:
         redis = create_redis()
-        bot = build_bot(token=TELEGRAM_BOT_TOKEN)
+        bot = create_bot(token=TELEGRAM_BOT_TOKEN)
         dispatcher = build_dispatcher(
             pool=pool,
             redis=redis,

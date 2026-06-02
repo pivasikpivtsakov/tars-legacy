@@ -12,9 +12,9 @@ from common.keyboards.orders import (
     TakeOrderCB,
     working_inline_kb,
 )
+from common.models.orders import Order
+from common.models.user_profiles import UserProfile
 from common.rendering.orders import render_taken_text
-from common.repositories.orders import Order
-from common.repositories.user_profiles import UserProfile
 from common.services.order_processing import OrderLifecycle, TakeStatus
 
 router = Router(name="orders")

@@ -14,7 +14,7 @@ def env_get(
         default: str | None = None,
         validation_rule: Callable[[str], bool] | None = None,
         warning_message: str | None = None,
-        raise_if_failed=True,
+        raise_if_failed: bool = True,
 ) -> str | None:
     varvalue = os.environ.get(varname, default)
     if not varvalue:
@@ -58,39 +58,18 @@ ADMIN_USER_IDS = _parse_admin_ids(
 )
 
 
-def _is_positive_integer(value: str) -> bool:
-    return value.isdigit() and int(value) > 0
-
-
-SCHEDULER_INTERVAL_SECONDS = int(
-    env_get(
-        "SCHEDULER_INTERVAL_SECONDS",
-        default="30",
-        validation_rule=_is_positive_integer,
-        warning_message="SCHEDULER_INTERVAL_SECONDS must be a positive integer",
-        raise_if_failed=False,
+def _env_positive_int(varname: str, *, default: int) -> int:
+    return int(
+        env_get(
+            varname,
+            default=str(default),
+            validation_rule=lambda val: val.isdigit() and int(val) > 0,
+            warning_message=f"{varname} must be a positive integer",
+            raise_if_failed=True,
+        )
     )
-    or "30"
-)
 
-OFFER_TTL_SECONDS = int(
-    env_get(
-        "OFFER_TTL_SECONDS",
-        default="30",
-        validation_rule=_is_positive_integer,
-        warning_message="OFFER_TTL_SECONDS must be a positive integer",
-        raise_if_failed=False,
-    )
-    or "30"
-)
 
-RATING_SPEED_WINDOW = int(
-    env_get(
-        "RATING_SPEED_WINDOW",
-        default="3",
-        validation_rule=_is_positive_integer,
-        warning_message="RATING_SPEED_WINDOW must be a positive integer",
-        raise_if_failed=False,
-    )
-    or "3"
-)
+SCHEDULER_INTERVAL_SECONDS = _env_positive_int("SCHEDULER_INTERVAL_SECONDS", default=30)
+OFFER_TTL_SECONDS = _env_positive_int("OFFER_TTL_SECONDS", default=30)
+RATING_SPEED_WINDOW = _env_positive_int("RATING_SPEED_WINDOW", default=3)

@@ -2,9 +2,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import asyncpg
-from aiogram import BaseMiddleware, Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram import BaseMiddleware, Dispatcher
 from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import TelegramObject, User
@@ -32,13 +30,6 @@ class _ProfileMiddleware(BaseMiddleware):
         profiles: UserProfileRepository = data["profiles"]
         data["profile"] = await profiles.get(user_id=user.id)
         return await handler(event, data)
-
-
-def build_bot(token: str) -> Bot:
-    return Bot(
-        token=token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
 
 
 def build_dispatcher(

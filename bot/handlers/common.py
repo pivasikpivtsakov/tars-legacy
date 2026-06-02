@@ -4,14 +4,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import render_menu, require_complete_profile
+from bot.handlers.menu import render_menu, require_complete_profile, show_back_panel
 from bot.handlers.registration import begin_registration
-from bot.keyboards.start import BackCB, OpenZoneCB, StartZone, back_kb
-from common.repositories.rating import RatingRepository, RatingStats
-from common.repositories.user_profiles import (
-    UserProfile,
-    UserProfileRepository,
-)
+from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
+from common.models.rating import RatingStats
+from common.models.user_profiles import UserProfile
+from common.repositories.rating import RatingRepository
+from common.repositories.user_profiles import UserProfileRepository
 
 router = Router(name="start")
 
@@ -69,11 +68,7 @@ async def open_priority(
         rate_strict=rate_strict,
         rate_full=rate_full,
     )
-    await callback.message.edit_text(
-        text,
-        reply_markup=back_kb(back_text=_("start.btn_back")),
-    )
-    await callback.answer()
+    await show_back_panel(callback=callback, text=text)
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.BALANCE))
@@ -82,11 +77,10 @@ async def open_balance(
     profile: UserProfile | None,
 ) -> None:
     balance = profile.balance if profile is not None else 0
-    await callback.message.edit_text(
-        _("start.balance").format(balance=balance),
-        reply_markup=back_kb(back_text=_("start.btn_back")),
+    await show_back_panel(
+        callback=callback,
+        text=_("start.balance").format(balance=balance),
     )
-    await callback.answer()
 
 
 @router.callback_query(BackCB.filter())

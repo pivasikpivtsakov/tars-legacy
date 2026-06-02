@@ -4,7 +4,7 @@ import random
 import sys
 
 from aiogram import Router
-from aiogram.filters import BaseFilter, Command, CommandObject
+from aiogram.filters import BaseFilter, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.i18n import I18n

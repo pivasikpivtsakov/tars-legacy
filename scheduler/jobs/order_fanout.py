@@ -1,6 +1,5 @@
-import asyncio
 import logging
-from datetime import datetime
+import time
 
 import asyncpg
 from aiogram import Bot
@@ -12,37 +11,10 @@ from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.order_fanout import fan_out_active_orders
 from common.services.order_processing import OrderManager
-from scheduler.services.order_fanout import offer_order_to_next_user
 
 logger = logging.getLogger(__name__)
-
-
-async def fan_out_active_orders(
-    *,
-    bot: Bot,
-    orders: OrderRepository,
-    offers: OrderOfferRepository,
-    order_manager: OrderManager,
-    rating: RatingRepository,
-    scheduler: AsyncIOScheduler,
-) -> None:
-    active_orders = await orders.list_active_for_fanout()
-    # todo: разбить на чанки итд?
-    await asyncio.gather(
-        *(
-            offer_order_to_next_user(
-                order=order,
-                bot=bot,
-                orders=orders,
-                offers=offers,
-                order_manager=order_manager,
-                rating=rating,
-                scheduler=scheduler,
-            )
-            for order in active_orders
-        ),
-    )
 
 
 async def job__order_fanout(
@@ -52,8 +24,8 @@ async def job__order_fanout(
     redis: Redis,
     scheduler: AsyncIOScheduler,
 ) -> None:
-    start_time = datetime.now()
-    logger.info(f"order fanout started timestamp={start_time}")
+    started = time.perf_counter()
+    logger.info("order fanout started")
 
     orders = OrderRepository(pool=pool)
     offers = OrderOfferRepository(pool=pool)
@@ -72,6 +44,4 @@ async def job__order_fanout(
         scheduler=scheduler,
     )
 
-    end_time = datetime.now()
-    elapsed_time = end_time - start_time
-    logger.info(f"order fanout completed timestamp={end_time} elapsed_time={elapsed_time}")
+    logger.info("order fanout completed elapsed=%.3fs", time.perf_counter() - started)
