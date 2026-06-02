@@ -1,15 +1,16 @@
 import logging
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from functools import cmp_to_key
 
 import asyncpg
 
 from common.packages import PACKAGE_UNIT_COUNT
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import Order, OrderRepository
+from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import (
+    CandidateRow,
     UserProfile,
     UserProfileRepository,
 )
@@ -34,6 +35,7 @@ class RankedCandidate:
     full_price: int
     speed_seconds: int | None
     refusal_rate: float
+    complete: int
 
 
 class OrderAmountError(ValueError):
@@ -75,9 +77,9 @@ async def forward_to_third_party(*, order: Order) -> None:
     logger.info("third-party hand-off requested order_id=%s", order.id)
 
 
-def _refusal_rate(*, completed: int, cancelled: int, not_picked: int) -> float:
-    failures = cancelled + not_picked
-    total = completed + failures
+def _refusal_rate(*, complete: int, incomplete: int, not_taken: int) -> float:
+    failures = incomplete + not_taken
+    total = complete + failures
     if total == 0:
         return 0.0
     return failures / total
@@ -87,26 +89,34 @@ def _speed_rank(seconds: int | None) -> float:
     return float("inf") if seconds is None else float(seconds)
 
 
-def _price_close(a: int, b: int) -> bool:
-    return abs(a - b) <= _PRICE_TOLERANCE * min(a, b)
+def _cheapest_price_bucket(rows: Sequence[CandidateRow]) -> list[CandidateRow]:
+    # Everyone within _PRICE_TOLERANCE of the cheapest price is mutually
+    # price-equivalent, so the winner can only come from this bucket: ranking it
+    # alone avoids loading ratings for providers that price already rules out.
+    min_price = min(row.price_60 for row in rows)
+    threshold = min_price * (1 + _PRICE_TOLERANCE)
+    return [row for row in rows if row.price_60 <= threshold]
 
 
-def _compare_candidates(a: RankedCandidate, b: RankedCandidate) -> int:
-    if not _price_close(a.full_price, b.full_price):
-        return -1 if a.full_price < b.full_price else 1
-    a_speed, b_speed = _speed_rank(a.speed_seconds), _speed_rank(b.speed_seconds)
-    if a_speed != b_speed:
-        return -1 if a_speed < b_speed else 1
-    if a.refusal_rate != b.refusal_rate:
-        return -1 if a.refusal_rate < b.refusal_rate else 1
-    if a.user_id != b.user_id:
-        return -1 if a.user_id < b.user_id else 1
-    return 0
+def _ranking_key(candidate: RankedCandidate) -> tuple[float, float, int, int, int]:
+    return (
+        _speed_rank(candidate.speed_seconds),
+        candidate.refusal_rate,
+        -candidate.complete,
+        candidate.full_price,
+        candidate.user_id,
+    )
 
 
 class OrderManager:
-    def __init__(self, *, profiles: UserProfileRepository) -> None:
+    def __init__(
+        self,
+        *,
+        profiles: UserProfileRepository,
+        rating: RatingRepository,
+    ) -> None:
         self._profiles = profiles
+        self._rating = rating
 
     async def select_candidates(
         self,
@@ -122,21 +132,30 @@ class OrderManager:
             required_packages=decomposition.unique_parts,
         )
         excluded = set(exclude_user_ids)
-        candidates = [
-            RankedCandidate(
-                user_id=row.user_id,
-                full_price=row.price_60 * decomposition.total_units,
-                speed_seconds=row.speed_seconds,
-                refusal_rate=_refusal_rate(
-                    completed=row.completed,
-                    cancelled=row.cancelled,
-                    not_picked=row.not_picked,
+        eligible = [row for row in rows if row.user_id not in excluded]
+        if not eligible:
+            return []
+        bucket = _cheapest_price_bucket(eligible)
+        stats = await self._rating.get_many(
+            user_ids=[row.user_id for row in bucket],
+        )
+        candidates: list[RankedCandidate] = []
+        for row in bucket:
+            user_stats = stats[row.user_id]
+            candidates.append(
+                RankedCandidate(
+                    user_id=row.user_id,
+                    full_price=row.price_60 * decomposition.total_units,
+                    speed_seconds=user_stats.speed_seconds,
+                    refusal_rate=_refusal_rate(
+                        complete=user_stats.complete,
+                        incomplete=user_stats.incomplete,
+                        not_taken=user_stats.not_taken,
+                    ),
+                    complete=user_stats.complete,
                 ),
             )
-            for row in rows
-            if row.user_id not in excluded
-        ]
-        candidates.sort(key=cmp_to_key(_compare_candidates))
+        candidates.sort(key=_ranking_key)
         return candidates
 
 
@@ -148,11 +167,13 @@ class OrderLifecycle:
         orders: OrderRepository,
         offers: OrderOfferRepository,
         profiles: UserProfileRepository,
+        rating: RatingRepository,
     ) -> None:
         self._pool = pool
         self._orders = orders
         self._offers = offers
         self._profiles = profiles
+        self._rating = rating
 
     async def take(
         self,
@@ -188,8 +209,12 @@ class OrderLifecycle:
                 user_id=user_id,
                 conn=conn,
             )
-            await self._offers.expire_offered(order_id=order_id, conn=conn)
-            return TakeResult(status=TakeStatus.OK, order=claimed)
+            expired_user_ids = await self._offers.expire_offered(
+                order_id=order_id,
+                conn=conn,
+            )
+        await self._rating.record_not_taken(user_ids=expired_user_ids)
+        return TakeResult(status=TakeStatus.OK, order=claimed)
 
     async def complete(self, *, order_id: int, user_id: int) -> Order | None:
         async with self._pool.acquire() as conn, conn.transaction():
@@ -206,11 +231,18 @@ class OrderLifecycle:
                     amount=order.taken_price,
                     conn=conn,
                 )
-            return order
+        if order.taken_at is not None and order.closed_at is not None:
+            await self._rating.record_completion(
+                user_id=user_id,
+                taken_at=order.taken_at,
+                closed_at=order.closed_at,
+            )
+        return order
 
     async def cancel(self, *, order_id: int, user_id: int) -> Order | None:
         order = await self._orders.cancel(order_id=order_id, user_id=user_id)
         if order is None:
             return None
+        await self._rating.record_cancellation(user_id=user_id)
         await forward_to_third_party(order=order)
         return order

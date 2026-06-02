@@ -9,11 +9,14 @@ from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import TelegramObject, User
 from aiogram.utils.i18n import FSMI18nMiddleware
+from redis.asyncio import Redis
 
 from bot.handlers import admin, common, fallback, orders, packs, registration, withdraw
+from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
+from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.order_processing import OrderLifecycle, OrderManager
 
@@ -41,6 +44,7 @@ def build_bot(token: str) -> Bot:
 def build_dispatcher(
     *,
     pool: asyncpg.Pool,
+    redis: Redis,
     redis_url: str,
     admin_ids: frozenset[int],
 ) -> Dispatcher:
@@ -52,14 +56,17 @@ def build_dispatcher(
     profiles = UserProfileRepository(pool=pool)
     orders_repo = OrderRepository(pool=pool)
     offers_repo = OrderOfferRepository(pool=pool)
+    rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
     dispatcher["profiles"] = profiles
     dispatcher["orders"] = orders_repo
-    dispatcher["order_manager"] = OrderManager(profiles=profiles)
+    dispatcher["rating"] = rating
+    dispatcher["order_manager"] = OrderManager(profiles=profiles, rating=rating)
     dispatcher["order_lifecycle"] = OrderLifecycle(
         pool=pool,
         orders=orders_repo,
         offers=offers_repo,
         profiles=profiles,
+        rating=rating,
     )
     dispatcher["admin_ids"] = admin_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))

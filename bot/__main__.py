@@ -5,6 +5,7 @@ from bot.app import build_bot, build_dispatcher
 from common.db import create_pool
 from common.environment import ADMIN_USER_IDS, REDIS_URL, TELEGRAM_BOT_TOKEN
 from common.logging_config import setup_logging
+from common.redis import create_redis
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +14,11 @@ async def main() -> None:
     setup_logging()
 
     async with create_pool() as pool:
+        redis = create_redis()
         bot = build_bot(token=TELEGRAM_BOT_TOKEN)
         dispatcher = build_dispatcher(
             pool=pool,
+            redis=redis,
             redis_url=REDIS_URL,
             admin_ids=ADMIN_USER_IDS,
         )
@@ -26,6 +29,7 @@ async def main() -> None:
         finally:
             await bot.session.close()
             await dispatcher.storage.close()
+            await redis.aclose()
 
 
 if __name__ == "__main__":

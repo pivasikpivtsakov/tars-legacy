@@ -7,8 +7,8 @@ from aiogram.utils.i18n import gettext as _
 from bot.handlers.menu import render_menu, require_complete_profile
 from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone, back_kb
+from common.repositories.rating import RatingRepository, RatingStats
 from common.repositories.user_profiles import (
-    RankingStats,
     UserProfile,
     UserProfileRepository,
 )
@@ -45,21 +45,21 @@ async def open_online(
     await render_menu(target=callback, profile=profile)
 
 
-def _completion_rates(stats: RankingStats) -> tuple[int, int]:
-    strict_total = stats.completed + stats.cancelled
-    full_total = strict_total + stats.not_picked
-    strict = round(stats.completed / strict_total * 100) if strict_total else 0
-    full = round(stats.completed / full_total * 100) if full_total else 0
+def _completion_rates(stats: RatingStats) -> tuple[int, int]:
+    strict_total = stats.complete + stats.incomplete
+    full_total = strict_total + stats.not_taken
+    strict = round(stats.complete / strict_total * 100) if strict_total else 0
+    full = round(stats.complete / full_total * 100) if full_total else 0
     return strict, full
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.PRIORITY))
 async def open_priority(
     callback: CallbackQuery,
-    profiles: UserProfileRepository,
+    rating: RatingRepository,
     profile: UserProfile | None,
 ) -> None:
-    stats = await profiles.ranking_stats(user_id=callback.from_user.id)
+    stats = await rating.get(user_id=callback.from_user.id)
     rate_strict, rate_full = _completion_rates(stats)
     price = profile.price_60 if profile is not None and profile.price_60 is not None else 0
     speed = stats.speed_seconds if stats.speed_seconds is not None else "-"

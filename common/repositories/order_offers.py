@@ -76,13 +76,15 @@ class OrderOfferRepository:
         *,
         order_id: int,
         conn: asyncpg.Connection | None = None,
-    ) -> None:
-        await (conn or self._pool).execute(
+    ) -> list[int]:
+        rows = await (conn or self._pool).fetch(
             f"UPDATE {_TABLE} SET "
             f"status = $2::order_offer_status, "
             f"resolved_at = NOW() "
-            f"WHERE order_id = $1 AND status = $3::order_offer_status",
+            f"WHERE order_id = $1 AND status = $3::order_offer_status "
+            f"RETURNING user_id",
             order_id,
             OrderOfferStatus.EXPIRED.value,
             OrderOfferStatus.OFFERED.value,
         )
+        return [row["user_id"] for row in rows]

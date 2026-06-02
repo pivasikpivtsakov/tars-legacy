@@ -10,6 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from common.db import create_pool
 from common.environment import SCHEDULER_INTERVAL_SECONDS, TELEGRAM_BOT_TOKEN
 from common.logging_config import setup_logging
+from common.redis import create_redis
 from scheduler.jobs.order_fanout import job__order_fanout
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ async def main() -> None:
     setup_logging()
 
     async with create_pool() as pool:
+        redis = create_redis()
         bot = Bot(
             token=TELEGRAM_BOT_TOKEN,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -28,7 +30,7 @@ async def main() -> None:
             job__order_fanout,
             "interval",
             seconds=SCHEDULER_INTERVAL_SECONDS,
-            kwargs={"bot": bot, "pool": pool},
+            kwargs={"bot": bot, "pool": pool, "redis": redis},
             id="order_fanout",
         )
 
@@ -39,6 +41,7 @@ async def main() -> None:
         finally:
             scheduler.shutdown(wait=False)
             await bot.session.close()
+            await redis.aclose()
 
 
 if __name__ == "__main__":

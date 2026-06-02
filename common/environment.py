@@ -57,13 +57,29 @@ ADMIN_USER_IDS = _parse_admin_ids(
     env_get("ADMIN_USER_IDS", default="", raise_if_failed=False),
 )
 
+
+def _is_positive_integer(value: str) -> bool:
+    return value.isdigit() and int(value) > 0
+
+
 SCHEDULER_INTERVAL_SECONDS = int(
     env_get(
         "SCHEDULER_INTERVAL_SECONDS",
         default="30",
-        validation_rule=lambda v: v.isdigit() and int(v) > 0,
+        validation_rule=_is_positive_integer,
         warning_message="SCHEDULER_INTERVAL_SECONDS must be a positive integer",
         raise_if_failed=False,
     )
     or "30"
+)
+
+RATING_SPEED_WINDOW = int(
+    env_get(
+        "RATING_SPEED_WINDOW",
+        default="3",
+        validation_rule=_is_positive_integer,
+        warning_message="RATING_SPEED_WINDOW must be a positive integer",
+        raise_if_failed=False,
+    )
+    or "3"
 )

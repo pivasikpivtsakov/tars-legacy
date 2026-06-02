@@ -7,6 +7,7 @@ from common.i18n import build_i18n
 from common.keyboards.orders import take_inline_kb
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import Order, OrderRepository
+from common.repositories.rating import RatingRepository
 from common.services.order_processing import OrderManager, forward_to_third_party
 
 logger = logging.getLogger(__name__)
@@ -15,13 +16,14 @@ _i18n = build_i18n()
 _ = _i18n.gettext
 
 
-async def offer_order_to_next_user(
+async def offer_order_to_next_user(  # noqa: PLR0913
     *,
     order: Order,
     bot: Bot,
     orders: OrderRepository,
     offers: OrderOfferRepository,
     order_manager: OrderManager,
+    rating: RatingRepository,
 ) -> None:
     already_offered_user_ids = await offers.offered_user_ids(order_id=order.id)
     ranked_candidates = await order_manager.select_candidates(
@@ -30,7 +32,9 @@ async def offer_order_to_next_user(
     )
     if not ranked_candidates:
         await orders.mark_no_takers(order_id=order.id)
-        await offers.expire_offered(order_id=order.id)
+        expired_user_ids = await offers.expire_offered(order_id=order.id)
+        # todo: надо ли здесь записывать не взятых? разве мы не записали их раньше?
+        await rating.record_not_taken(user_ids=expired_user_ids)
         await forward_to_third_party(order=order)
         return
     next_recipient = ranked_candidates[0]
