@@ -59,7 +59,7 @@ async def take_order(
         return
     result = await order_lifecycle.take(
         order_id=callback_data.order_id,
-        user_id=callback.from_user.id,
+        user_id=profile.id,
         profile=profile,
     )
     if result.status is TakeStatus.LIMIT_REACHED:
@@ -77,10 +77,14 @@ async def ready_order(
     callback: CallbackQuery,
     callback_data: ReadyOrderCB,
     order_lifecycle: OrderLifecycle,
+    profile: UserProfile | None,
 ) -> None:
+    if profile is None:
+        await callback.answer(_("order.unavailable"), show_alert=True)
+        return
     order = await order_lifecycle.complete(
         order_id=callback_data.order_id,
-        user_id=callback.from_user.id,
+        user_id=profile.id,
     )
     if order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
@@ -94,10 +98,14 @@ async def cancel_order(
     callback: CallbackQuery,
     callback_data: CancelOrderCB,
     order_lifecycle: OrderLifecycle,
+    profile: UserProfile | None,
 ) -> None:
+    if profile is None:
+        await callback.answer(_("order.unavailable"), show_alert=True)
+        return
     order = await order_lifecycle.cancel(
         order_id=callback_data.order_id,
-        user_id=callback.from_user.id,
+        user_id=profile.id,
     )
     if order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)

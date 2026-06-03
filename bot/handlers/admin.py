@@ -63,8 +63,10 @@ async def cmd_full_restart(
     profiles: UserProfileRepository,
     online_price_index: OnlinePriceIndex,
 ) -> None:
-    await profiles.delete(user_id=message.from_user.id)
-    await online_price_index.remove(user_id=message.from_user.id)
+    profile = await profiles.get_by_tg_id(tg_id=message.from_user.id)
+    if profile is not None:
+        await online_price_index.remove(user_id=profile.id)
+        await profiles.delete(profile_id=profile.id)
     await state.clear()
     await message.answer("profile and FSM state wiped")
 

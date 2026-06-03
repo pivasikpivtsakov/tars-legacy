@@ -36,9 +36,10 @@ async def open_online(
     online_price_index: OnlinePriceIndex,
     profile: UserProfile | None,
 ) -> None:
-    if (await require_complete_profile(callback=callback, profile=profile)) is None:
+    complete_profile = await require_complete_profile(callback=callback, profile=profile)
+    if complete_profile is None:
         return
-    profile = await profiles.toggle_is_online_and_get(user_id=callback.from_user.id)
+    profile = await profiles.toggle_is_online_and_get(profile_id=complete_profile.id)
     await online_price_index.sync(profile=profile)
     alert = (
         _("start.online_now_on") if profile.is_online else _("start.online_now_off")
@@ -61,7 +62,11 @@ async def open_priority(
     rating: RatingRepository,
     profile: UserProfile | None,
 ) -> None:
-    stats = await rating.get(user_id=callback.from_user.id)
+    stats = (
+        await rating.get(user_id=profile.id)
+        if profile is not None
+        else RatingStats(speed_seconds=None, complete=0, incomplete=0, not_taken=0)
+    )
     rate_strict, rate_full = _completion_rates(stats)
     price = profile.price_60 if profile is not None and profile.price_60 is not None else 0
     speed = stats.speed_seconds if stats.speed_seconds is not None else "-"

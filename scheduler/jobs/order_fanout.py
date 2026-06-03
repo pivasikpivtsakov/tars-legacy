@@ -11,6 +11,7 @@ from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
+from common.repositories.user_profiles import UserProfileRepository
 from common.services.order_fanout import fan_out_active_orders
 from common.services.order_processing import OrderManager
 
@@ -29,6 +30,7 @@ async def job__order_fanout(
 
     orders = OrderRepository(pool=pool)
     offers = OrderOfferRepository(pool=pool)
+    profiles = UserProfileRepository(pool=pool)
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
     order_manager = OrderManager(
         online_price_index=OnlinePriceIndex(redis=redis),
@@ -39,6 +41,7 @@ async def job__order_fanout(
         bot=bot,
         orders=orders,
         offers=offers,
+        profiles=profiles,
         order_manager=order_manager,
         rating=rating,
         scheduler=scheduler,

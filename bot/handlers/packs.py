@@ -58,7 +58,10 @@ async def toggle_pack(
     online_price_index: OnlinePriceIndex,
     profile: UserProfile | None,
 ) -> None:
-    selected = selected_packages(profile)
+    complete_profile = await require_complete_profile(callback=callback, profile=profile)
+    if complete_profile is None:
+        return
+    selected = selected_packages(complete_profile)
     if callback_data.value in selected:
         if len(selected) == 1:
             await callback.answer(
@@ -70,7 +73,7 @@ async def toggle_pack(
     else:
         selected.add(callback_data.value)
     updated = await profiles.set_packages(
-        user_id=callback.from_user.id,
+        profile_id=complete_profile.id,
         packages=sorted(selected),
     )
     await online_price_index.sync(profile=updated)

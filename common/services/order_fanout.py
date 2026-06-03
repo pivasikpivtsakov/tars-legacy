@@ -13,6 +13,7 @@ from common.rendering.orders import render_offer_text
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
+from common.repositories.user_profiles import UserProfileRepository
 from common.services.offer_expiry import schedule_offer_expiry
 from common.services.order_processing import OrderManager, forward_to_third_party
 
@@ -28,6 +29,7 @@ async def offer_order_to_next_user(
     bot: Bot,
     orders: OrderRepository,
     offers: OrderOfferRepository,
+    profiles: UserProfileRepository,
     order_manager: OrderManager,
     rating: RatingRepository,
     scheduler: AsyncIOScheduler,
@@ -46,40 +48,49 @@ async def offer_order_to_next_user(
         await rating.record_not_taken(user_ids=expired_user_ids)
         await forward_to_third_party(order=order)
         return
-    
+
     next_recipient = ranked_candidates[0]
     await offers.record_offer(order_id=order.id, user_id=next_recipient.user_id)
+    tg_id = await profiles.get_tg_id(profile_id=next_recipient.user_id)
     offer_text = render_offer_text(
         order=order,
         full_price=next_recipient.full_price,
         gettext=_,
     )
-    try:
-        sent = await bot.send_message(
-            chat_id=next_recipient.user_id,
-            text=offer_text,
-            reply_markup=take_inline_kb(
-                order_id=order.id,
-                take_text=_("order.btn_take"),
-            ),
-        )
-    except TelegramAPIError:
-        logger.exception(
-            "failed to deliver offer order_id=%s user_id=%s",
+    if tg_id is None:
+        logger.warning(
+            "cannot resolve tg_id order_id=%s user_id=%s",
             order.id,
             next_recipient.user_id,
         )
     else:
-        schedule_offer_expiry(
-            scheduler=scheduler,
-            bot=bot,
-            offers=offers,
-            rating=rating,
-            order_id=order.id,
-            user_id=next_recipient.user_id,
-            message_id=sent.message_id,
-            expired_text=f"{offer_text}\n{_('order.expired')}",
-        )
+        try:
+            sent = await bot.send_message(
+                chat_id=tg_id,
+                text=offer_text,
+                reply_markup=take_inline_kb(
+                    order_id=order.id,
+                    take_text=_("order.btn_take"),
+                ),
+            )
+        except TelegramAPIError:
+            logger.exception(
+                "failed to deliver offer order_id=%s user_id=%s",
+                order.id,
+                next_recipient.user_id,
+            )
+        else:
+            schedule_offer_expiry(
+                scheduler=scheduler,
+                bot=bot,
+                offers=offers,
+                rating=rating,
+                order_id=order.id,
+                user_id=next_recipient.user_id,
+                chat_id=tg_id,
+                message_id=sent.message_id,
+                expired_text=f"{offer_text}\n{_('order.expired')}",
+            )
     await orders.mark_offering(order_id=order.id)
 
 
@@ -88,6 +99,7 @@ async def fan_out_active_orders(
     bot: Bot,
     orders: OrderRepository,
     offers: OrderOfferRepository,
+    profiles: UserProfileRepository,
     order_manager: OrderManager,
     rating: RatingRepository,
     scheduler: AsyncIOScheduler,
@@ -101,6 +113,7 @@ async def fan_out_active_orders(
                 bot=bot,
                 orders=orders,
                 offers=offers,
+                profiles=profiles,
                 order_manager=order_manager,
                 rating=rating,
                 scheduler=scheduler,

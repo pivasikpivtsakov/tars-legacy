@@ -30,7 +30,7 @@ class OnlinePriceIndex:
         )
         price = profile.price_60 if eligible else None
         target_sizes = set(profile.packages or ()) if eligible else set()
-        member = str(profile.user_id)
+        member = str(profile.id)
         pipe = self._redis.pipeline(transaction=True)
         for size in PACKAGE_SIZES:
             if price is not None and size in target_sizes:

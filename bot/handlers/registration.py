@@ -244,7 +244,7 @@ async def process_work_end(
         await message.answer(_("registration.work_end_before_start"))
         return
     profile = await profiles.create_or_update(
-        user_id=message.from_user.id,
+        tg_id=message.from_user.id,
         works_alone=data["works_alone"],
         packages=data["packages"],
         price_60=data["price_60"],

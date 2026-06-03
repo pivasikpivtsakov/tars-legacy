@@ -42,6 +42,7 @@ def schedule_offer_expiry(
     rating: RatingRepository,
     order_id: int,
     user_id: int,
+    chat_id: int,
     message_id: int,
     expired_text: str,
 ) -> None:
@@ -55,7 +56,7 @@ def schedule_offer_expiry(
             "rating": rating,
             "order_id": order_id,
             "user_id": user_id,
-            "chat_id": user_id,
+            "chat_id": chat_id,
             "message_id": message_id,
             "expired_text": expired_text,
         },

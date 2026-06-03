@@ -188,7 +188,7 @@ class OrderLifecycle:
             try:
                 async with conn.transaction():
                     await conn.execute(
-                        "SELECT 1 FROM user_profiles WHERE user_id = $1 FOR UPDATE",
+                        "SELECT 1 FROM user_profiles WHERE id = $1 FOR UPDATE",
                         user_id,
                     )
                     in_work = await self._orders.count_in_work(user_id=user_id, conn=conn)
@@ -233,7 +233,7 @@ class OrderLifecycle:
                 return None
             if order.taken_price is not None:
                 await self._profiles.credit_balance(
-                    user_id=user_id,
+                    profile_id=user_id,
                     amount=order.taken_price,
                     conn=conn,
                 )

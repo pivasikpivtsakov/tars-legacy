@@ -29,7 +29,7 @@ class _ProfileMiddleware(BaseMiddleware):
     ) -> Any:
         user: User = data["event_from_user"]
         profiles: UserProfileRepository = data["profiles"]
-        data["profile"] = await profiles.get(user_id=user.id)
+        data["profile"] = await profiles.get_by_tg_id(tg_id=user.id)
         return await handler(event, data)
 
 
