@@ -50,7 +50,6 @@ async def offer_order_to_next_user(
     offer_text = render_offer_text(
         order=order,
         full_price=next_recipient.full_price,
-        with_codes=next_recipient.with_codes,
         gettext=_,
     )
     try:

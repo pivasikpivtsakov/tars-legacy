@@ -121,8 +121,11 @@ msgstr "<i>Истекло</i>"
 msgid "order.taken"
 msgstr "<b>Заказ в работе</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPUBG ID: <code>{pubg_id}</code>"
 
+msgid "order.codes_header"
+msgstr "Коды:"
+
 msgid "order.codes_line"
-msgstr "Коды: <code>{codes}</code>"
+msgstr "{key}: <code>{value}</code>"
 
 msgid "order.btn_ready"
 msgstr "Готово"

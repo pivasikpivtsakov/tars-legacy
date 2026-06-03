@@ -121,8 +121,11 @@ msgstr "<i>Expired</i>"
 msgid "order.taken"
 msgstr "<b>Order in progress</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPUBG ID: <code>{pubg_id}</code>"
 
+msgid "order.codes_header"
+msgstr "Codes:"
+
 msgid "order.codes_line"
-msgstr "Codes: <code>{codes}</code>"
+msgstr "{key}: <code>{value}</code>"
 
 msgid "order.btn_ready"
 msgstr "Ready"
