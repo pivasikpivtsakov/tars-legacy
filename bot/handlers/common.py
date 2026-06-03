@@ -9,6 +9,7 @@ from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
+from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 
@@ -32,11 +33,13 @@ async def cmd_start(
 async def open_online(
     callback: CallbackQuery,
     profiles: UserProfileRepository,
+    online_price_index: OnlinePriceIndex,
     profile: UserProfile | None,
 ) -> None:
     if (await require_complete_profile(callback=callback, profile=profile)) is None:
         return
     profile = await profiles.toggle_is_online_and_get(user_id=callback.from_user.id)
+    await online_price_index.sync(profile=profile)
     alert = (
         _("start.online_now_on") if profile.is_online else _("start.online_now_off")
     )

@@ -7,10 +7,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from redis.asyncio import Redis
 
 from common.environment import RATING_SPEED_WINDOW
+from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
-from common.repositories.user_profiles import UserProfileRepository
 from common.services.order_fanout import fan_out_active_orders
 from common.services.order_processing import OrderManager
 
@@ -31,7 +31,7 @@ async def job__order_fanout(
     offers = OrderOfferRepository(pool=pool)
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
     order_manager = OrderManager(
-        profiles=UserProfileRepository(pool=pool),
+        online_price_index=OnlinePriceIndex(redis=redis),
         rating=rating,
     )
 

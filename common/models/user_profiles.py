@@ -41,10 +41,3 @@ class UserProfile:
             status=UserProfileStatus(row["status"]),
             balance=row["balance"],
         )
-
-
-@dataclass(frozen=True, slots=True)
-class CandidateRow:
-    user_id: int
-    price_60: int
-    with_codes: bool

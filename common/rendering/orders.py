@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 
 from common.models.orders import Order
 

@@ -3,7 +3,7 @@ from datetime import time
 
 import asyncpg
 
-from common.models.user_profiles import CandidateRow, UserProfile, UserProfileStatus
+from common.models.user_profiles import UserProfile, UserProfileStatus
 
 _TABLE = "user_profiles"
 
@@ -23,22 +23,27 @@ class UserProfileRepository:
         user_id: int,
         column: str,
         value: object,
-    ) -> None:
-        await self._pool.execute(
+    ) -> UserProfile:
+        row = await self._pool.fetchrow(
             f"INSERT INTO {_TABLE} (user_id, {column}) VALUES ($1, $2) "
             f"ON CONFLICT (user_id) DO UPDATE "
-            f"SET {column} = EXCLUDED.{column}, updated_at = NOW()",
+            f"SET {column} = EXCLUDED.{column}, updated_at = NOW() "
+            f"RETURNING {_SELECT_COLUMNS}",
             user_id,
             value,
         )
+        if row is None:
+            msg = f"failed to upsert {column} for {_TABLE} user_id={user_id}"
+            raise LookupError(msg)
+        return UserProfile.from_row(row)
 
     async def set_packages(
         self,
         *,
         user_id: int,
         packages: Sequence[int],
-    ) -> None:
-        await self._upsert_field(
+    ) -> UserProfile:
+        return await self._upsert_field(
             user_id=user_id,
             column="packages",
             value=list(packages),
@@ -49,8 +54,8 @@ class UserProfileRepository:
         *,
         user_id: int,
         status: UserProfileStatus,
-    ) -> None:
-        await self._upsert_field(
+    ) -> UserProfile:
+        return await self._upsert_field(
             user_id=user_id,
             column="status",
             value=status.value,
@@ -134,27 +139,14 @@ class UserProfileRepository:
             amount,
         )
 
-    async def list_online_with_packages(
-        self,
-        *,
-        required_packages: Sequence[int],
-    ) -> list[CandidateRow]:
+    async def list_rankable(self) -> list[UserProfile]:
         rows = await self._pool.fetch(
-            "SELECT user_id, price_60, with_codes "
-            f"FROM {_TABLE} "
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
             "WHERE is_online = TRUE "
             "AND status = $1 "
             "AND price_60 IS NOT NULL "
-            "AND packages @> $2::INTEGER[] "
-            "ORDER BY price_60 ASC, user_id ASC",
+            "AND packages IS NOT NULL "
+            "AND cardinality(packages) > 0",
             UserProfileStatus.ACTIVE.value,
-            list(required_packages),
         )
-        return [
-            CandidateRow(
-                user_id=row["user_id"],
-                price_60=row["price_60"],
-                with_codes=row["with_codes"],
-            )
-            for row in rows
-        ]
+        return [UserProfile.from_row(row) for row in rows]

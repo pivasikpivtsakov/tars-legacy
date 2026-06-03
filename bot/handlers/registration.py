@@ -17,6 +17,7 @@ from bot.keyboards.registration import (
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.models.user_profiles import UserProfile
+from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 
 router = Router(name="registration")
@@ -226,6 +227,7 @@ async def process_work_end(
     message: Message,
     state: FSMContext,
     profiles: UserProfileRepository,
+    online_price_index: OnlinePriceIndex,
 ) -> None:
     parsed = _parse_msk_time(message.text)
     if parsed is None:
@@ -250,6 +252,7 @@ async def process_work_end(
         work_start=work_start,
         work_end=parsed,
     )
+    await online_price_index.sync(profile=profile)
     await state.set_state(Registration.finished_filling)
     await message.answer(_render_summary(profile))
     await render_menu(target=message, profile=profile)

@@ -7,8 +7,9 @@ import asyncpg
 
 from common.environment import MAX_ORDERS_IN_WORK
 from common.models.orders import Order
-from common.models.user_profiles import CandidateRow, UserProfile
+from common.models.user_profiles import UserProfile
 from common.packages import PACKAGE_UNIT_COUNT
+from common.repositories.online_price_index import OnlinePriceIndex, PricedCandidate
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
@@ -32,7 +33,6 @@ class RankedCandidate:
     speed_seconds: int | None
     refusal_rate: float
     complete: int
-    with_codes: bool
 
 
 class OrderAmountError(ValueError):
@@ -85,7 +85,7 @@ def _speed_rank(seconds: int | None) -> float:
     return float("inf") if seconds is None else float(seconds)
 
 
-def _cheapest_price_bucket(rows: Sequence[CandidateRow]) -> list[CandidateRow]:
+def _cheapest_price_bucket(rows: Sequence[PricedCandidate]) -> list[PricedCandidate]:
     # Everyone within _PRICE_TOLERANCE of the cheapest price is mutually
     # price-equivalent, so the winner can only come from this bucket: ranking it
     # alone avoids loading ratings for providers that price already rules out.
@@ -108,10 +108,10 @@ class OrderManager:
     def __init__(
         self,
         *,
-        profiles: UserProfileRepository,
+        online_price_index: OnlinePriceIndex,
         rating: RatingRepository,
     ) -> None:
-        self._profiles = profiles
+        self._online_price_index = online_price_index
         self._rating = rating
 
     async def select_candidates(
@@ -124,14 +124,13 @@ class OrderManager:
             msg = f"order id={order.id} has no amount"
             raise OrderAmountError(msg)
         decomposition = decompose_amount(order.amount)
-        rows = await self._profiles.list_online_with_packages(
+        rows = await self._online_price_index.get_cheapest_candidates(
             required_packages=decomposition.unique_parts,
+            exclude_user_ids=exclude_user_ids,
         )
-        excluded = set(exclude_user_ids)
-        eligible = [row for row in rows if row.user_id not in excluded]
-        if not eligible:
+        if not rows:
             return []
-        bucket = _cheapest_price_bucket(eligible)
+        bucket = _cheapest_price_bucket(rows)
         stats = await self._rating.get_many(
             user_ids=[row.user_id for row in bucket],
         )
@@ -149,7 +148,6 @@ class OrderManager:
                         not_taken=user_stats.not_taken,
                     ),
                     complete=user_stats.complete,
-                    with_codes=row.with_codes,
                 ),
             )
         candidates.sort(key=_ranking_key)

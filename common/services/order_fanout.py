@@ -39,12 +39,14 @@ async def offer_order_to_next_user(
         order=order,
         exclude_user_ids=already_offered_user_ids,
     )
+
     if not ranked_candidates:
         await orders.mark_no_takers(order_id=order.id)
         expired_user_ids = await offers.expire_offered(order_id=order.id)
         await rating.record_not_taken(user_ids=expired_user_ids)
         await forward_to_third_party(order=order)
         return
+    
     next_recipient = ranked_candidates[0]
     await offers.record_offer(order_id=order.id, user_id=next_recipient.user_id)
     offer_text = render_offer_text(

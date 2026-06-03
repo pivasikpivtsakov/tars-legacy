@@ -10,6 +10,7 @@ from aiogram.types import Message
 from aiogram.utils.i18n import I18n
 
 from common.i18n import DOMAIN, LOCALES_DIR
+from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
 
@@ -60,8 +61,10 @@ async def cmd_full_restart(
     message: Message,
     state: FSMContext,
     profiles: UserProfileRepository,
+    online_price_index: OnlinePriceIndex,
 ) -> None:
     await profiles.delete(user_id=message.from_user.id)
+    await online_price_index.remove(user_id=message.from_user.id)
     await state.clear()
     await message.answer("profile and FSM state wiped")
 

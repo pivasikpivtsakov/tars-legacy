@@ -11,6 +11,7 @@ from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.packs import packages_editor_kb
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.models.user_profiles import UserProfile
+from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 
 router = Router(name="packs")
@@ -54,6 +55,7 @@ async def toggle_pack(
     callback: CallbackQuery,
     callback_data: PackageToggleCB,
     profiles: UserProfileRepository,
+    online_price_index: OnlinePriceIndex,
     profile: UserProfile | None,
 ) -> None:
     selected = selected_packages(profile)
@@ -67,9 +69,10 @@ async def toggle_pack(
         selected.remove(callback_data.value)
     else:
         selected.add(callback_data.value)
-    await profiles.set_packages(
+    updated = await profiles.set_packages(
         user_id=callback.from_user.id,
         packages=sorted(selected),
     )
+    await online_price_index.sync(profile=updated)
     await callback.message.edit_reply_markup(reply_markup=_editor_kb(selected))
     await callback.answer()

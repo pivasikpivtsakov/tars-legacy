@@ -1,12 +1,12 @@
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import UTC, datetime
 
 import pytest
 
 from common.models.orders import Order, OrderStatus
 from common.models.rating import RatingStats
-from common.models.user_profiles import CandidateRow
+from common.repositories.online_price_index import PricedCandidate
 from common.services.order_processing import (
     OrderManager,
     RankedCandidate,
@@ -22,7 +22,6 @@ def _candidate(
     speed_seconds: int | None = 10,
     refusal_rate: float = 0.0,
     complete: int = 0,
-    with_codes: bool = False,
 ) -> RankedCandidate:
     return RankedCandidate(
         user_id=user_id,
@@ -30,7 +29,6 @@ def _candidate(
         speed_seconds=speed_seconds,
         refusal_rate=refusal_rate,
         complete=complete,
-        with_codes=with_codes,
     )
 
 
@@ -59,18 +57,22 @@ def _make_order(*, amount: int) -> Order:
     )
 
 
-class _FakeProfiles:
-    def __init__(self, *, rows: Sequence[CandidateRow]) -> None:
-        self._rows = list(rows)
+class _FakeOnlinePriceIndex:
+    def __init__(self, *, rows: Sequence[PricedCandidate]) -> None:
+        self._rows = sorted(rows, key=lambda row: (row.price_60, row.user_id))
         self.requested_packages: Sequence[int] | None = None
+        self.requested_exclude: set[int] | None = None
 
-    async def list_online_with_packages(
+    async def get_cheapest_candidates(
         self,
         *,
         required_packages: Sequence[int],
-    ) -> list[CandidateRow]:
+        exclude_user_ids: Collection[int] = (),
+    ) -> list[PricedCandidate]:
         self.requested_packages = required_packages
-        return list(self._rows)
+        excluded = set(exclude_user_ids)
+        self.requested_exclude = excluded
+        return [row for row in self._rows if row.user_id not in excluded]
 
 
 class _FakeRating:
@@ -101,7 +103,7 @@ def test_cheapest_price_bucket(
     expected_bucket: list[int],
 ) -> None:
     rows = [
-        CandidateRow(user_id=index, price_60=price, with_codes=False)
+        PricedCandidate(user_id=index, price_60=price)
         for index, price in enumerate(prices)
     ]
     bucket = _cheapest_price_bucket(rows)
@@ -147,12 +149,12 @@ def test_ranking_is_total_order_on_quality_ties() -> None:
 
 
 def test_select_candidates_only_fetches_cheapest_bucket() -> None:
-    profiles = _FakeProfiles(
+    online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            CandidateRow(user_id=1, price_60=100, with_codes=False),
-            CandidateRow(user_id=2, price_60=101, with_codes=True),
-            CandidateRow(user_id=3, price_60=102, with_codes=False),
-            CandidateRow(user_id=4, price_60=200, with_codes=False),
+            PricedCandidate(user_id=1, price_60=100),
+            PricedCandidate(user_id=2, price_60=101),
+            PricedCandidate(user_id=3, price_60=102),
+            PricedCandidate(user_id=4, price_60=200),
         ],
     )
     rating = _FakeRating(
@@ -161,20 +163,19 @@ def test_select_candidates_only_fetches_cheapest_bucket() -> None:
             2: RatingStats(speed_seconds=10, complete=1, incomplete=0, not_taken=0),
         },
     )
-    manager = OrderManager(profiles=profiles, rating=rating)
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
 
     result = asyncio.run(manager.select_candidates(order=_make_order(amount=60)))
 
-    assert profiles.requested_packages == (60,)
+    assert online_price_index.requested_packages == (60,)
     assert rating.requested_user_ids == [1, 2]
     assert [c.user_id for c in result] == [2, 1]
-    assert [c.with_codes for c in result] == [True, False]
 
 
 def test_select_candidates_empty_skips_rating_lookup() -> None:
-    profiles = _FakeProfiles(rows=[])
+    online_price_index = _FakeOnlinePriceIndex(rows=[])
     rating = _FakeRating(stats={})
-    manager = OrderManager(profiles=profiles, rating=rating)
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
 
     result = asyncio.run(manager.select_candidates(order=_make_order(amount=60)))
 
@@ -183,10 +184,10 @@ def test_select_candidates_empty_skips_rating_lookup() -> None:
 
 
 def test_select_candidates_excludes_user_ids() -> None:
-    profiles = _FakeProfiles(
+    online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            CandidateRow(user_id=1, price_60=100, with_codes=False),
-            CandidateRow(user_id=2, price_60=100, with_codes=False),
+            PricedCandidate(user_id=1, price_60=100),
+            PricedCandidate(user_id=2, price_60=100),
         ],
     )
     rating = _FakeRating(
@@ -194,7 +195,7 @@ def test_select_candidates_excludes_user_ids() -> None:
             2: RatingStats(speed_seconds=10, complete=0, incomplete=0, not_taken=0),
         },
     )
-    manager = OrderManager(profiles=profiles, rating=rating)
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
 
     result = asyncio.run(
         manager.select_candidates(
@@ -203,5 +204,6 @@ def test_select_candidates_excludes_user_ids() -> None:
         ),
     )
 
+    assert online_price_index.requested_exclude == {1}
     assert rating.requested_user_ids == [2]
     assert [c.user_id for c in result] == [2]

@@ -12,11 +12,12 @@ from redis.asyncio import Redis
 from bot.handlers import admin, common, fallback, orders, packs, registration, withdraw
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
+from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.order_processing import OrderLifecycle, OrderManager
+from common.services.order_processing import OrderLifecycle
 
 
 class _ProfileMiddleware(BaseMiddleware):
@@ -48,10 +49,11 @@ def build_dispatcher(
     orders_repo = OrderRepository(pool=pool)
     offers_repo = OrderOfferRepository(pool=pool)
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
+    online_price_index = OnlinePriceIndex(redis=redis)
     dispatcher["profiles"] = profiles
     dispatcher["orders"] = orders_repo
     dispatcher["rating"] = rating
-    dispatcher["order_manager"] = OrderManager(profiles=profiles, rating=rating)
+    dispatcher["online_price_index"] = online_price_index
     dispatcher["order_lifecycle"] = OrderLifecycle(
         pool=pool,
         orders=orders_repo,
