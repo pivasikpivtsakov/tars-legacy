@@ -18,6 +18,15 @@ class OrderOfferRepository:
         )
         return {row["user_id"] for row in rows}
 
+    async def offered_counts_by_user(self) -> dict[int, int]:
+        rows = await self._pool.fetch(
+            f"SELECT user_id, count(*) AS cnt FROM {_TABLE} "
+            f"WHERE status = $1::order_offer_status "
+            f"GROUP BY user_id",
+            OrderOfferStatus.OFFERED.value,
+        )
+        return {row["user_id"]: row["cnt"] for row in rows}
+
     async def record_offer(self, *, order_id: int, user_id: int) -> None:
         await self._pool.execute(
             f"INSERT INTO {_TABLE} (order_id, user_id) VALUES ($1, $2) "

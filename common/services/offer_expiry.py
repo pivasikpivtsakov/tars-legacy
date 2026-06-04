@@ -7,6 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from common.environment import OFFER_TTL_SECONDS
 from common.repositories.order_offers import OrderOfferRepository
+from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 
 
@@ -15,6 +16,7 @@ async def expire_order_offer(
     bot: Bot,
     offers: OrderOfferRepository,
     rating: RatingRepository,
+    pending: PendingOrdersRepository,
     order_id: int,
     user_id: int,
     chat_id: int,
@@ -25,6 +27,7 @@ async def expire_order_offer(
     if expired_offer is None:
         return
     await rating.record_not_taken(user_ids=[user_id])
+    await pending.release(user_id=user_id)
     with contextlib.suppress(TelegramAPIError):
         await bot.edit_message_text(
             text=expired_text,
@@ -40,6 +43,7 @@ def schedule_offer_expiry(
     bot: Bot,
     offers: OrderOfferRepository,
     rating: RatingRepository,
+    pending: PendingOrdersRepository,
     order_id: int,
     user_id: int,
     chat_id: int,
@@ -54,6 +58,7 @@ def schedule_offer_expiry(
             "bot": bot,
             "offers": offers,
             "rating": rating,
+            "pending": pending,
             "order_id": order_id,
             "user_id": user_id,
             "chat_id": chat_id,

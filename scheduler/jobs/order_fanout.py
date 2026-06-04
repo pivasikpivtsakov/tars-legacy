@@ -10,6 +10,7 @@ from common.environment import RATING_SPEED_WINDOW
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
+from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.order_fanout import fan_out_active_orders
@@ -32,6 +33,7 @@ async def job__order_fanout(
     offers = OrderOfferRepository(pool=pool)
     profiles = UserProfileRepository(pool=pool)
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
+    pending = PendingOrdersRepository(redis=redis)
     order_manager = OrderManager(
         online_price_index=OnlinePriceIndex(redis=redis),
         rating=rating,
@@ -44,6 +46,7 @@ async def job__order_fanout(
         profiles=profiles,
         order_manager=order_manager,
         rating=rating,
+        pending=pending,
         scheduler=scheduler,
     )
 

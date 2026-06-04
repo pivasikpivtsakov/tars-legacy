@@ -15,6 +15,7 @@ from common.i18n import build_i18n
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
+from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.order_processing import OrderLifecycle
@@ -50,6 +51,7 @@ def build_dispatcher(
     offers_repo = OrderOfferRepository(pool=pool)
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
     online_price_index = OnlinePriceIndex(redis=redis)
+    pending = PendingOrdersRepository(redis=redis)
     dispatcher["profiles"] = profiles
     dispatcher["orders"] = orders_repo
     dispatcher["rating"] = rating
@@ -60,6 +62,7 @@ def build_dispatcher(
         offers=offers_repo,
         profiles=profiles,
         rating=rating,
+        pending=pending,
     )
     dispatcher["admin_ids"] = admin_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))

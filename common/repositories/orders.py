@@ -85,6 +85,15 @@ class OrderRepository:
             return None
         return Order.from_row(row)
 
+    async def taken_counts_by_user(self) -> dict[int, int]:
+        rows = await self._pool.fetch(
+            f"SELECT taken_by, count(*) AS cnt FROM {_TABLE} "
+            f"WHERE status = $1::order_status AND taken_by IS NOT NULL "
+            f"GROUP BY taken_by",
+            OrderStatus.TAKEN.value,
+        )
+        return {row["taken_by"]: row["cnt"] for row in rows}
+
     async def count_in_work(
         self,
         *,

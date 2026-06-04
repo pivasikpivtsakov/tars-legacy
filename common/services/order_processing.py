@@ -5,13 +5,14 @@ from enum import StrEnum
 
 import asyncpg
 
-from common.environment import MAX_ORDERS_IN_WORK
+from common.environment import MAX_ORDERS_PENDING
 from common.models.orders import Order
 from common.models.user_profiles import UserProfile
 from common.packages import PACKAGE_UNIT_COUNT
 from common.repositories.online_price_index import OnlinePriceIndex, PricedCandidate
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
+from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 
@@ -168,12 +169,14 @@ class OrderLifecycle:
         offers: OrderOfferRepository,
         profiles: UserProfileRepository,
         rating: RatingRepository,
+        pending: PendingOrdersRepository,
     ) -> None:
         self._pool = pool
         self._orders = orders
         self._offers = offers
         self._profiles = profiles
         self._rating = rating
+        self._pending = pending
 
     async def take(
         self,
@@ -192,7 +195,7 @@ class OrderLifecycle:
                         user_id,
                     )
                     in_work = await self._orders.count_in_work(user_id=user_id, conn=conn)
-                    if in_work >= MAX_ORDERS_IN_WORK:
+                    if in_work >= MAX_ORDERS_PENDING:
                         raise _TakeAbortError(TakeStatus.LIMIT_REACHED)
                     order = await self._orders.get(order_id=order_id, conn=conn)
                     if order is None or order.amount is None:
@@ -220,6 +223,7 @@ class OrderLifecycle:
             except _TakeAbortError as abort:
                 return TakeResult(status=abort.status)
         await self._rating.record_not_taken(user_ids=expired_user_ids)
+        await self._pending.release_many(user_ids=expired_user_ids)
         return TakeResult(status=TakeStatus.OK, order=claimed)
 
     async def complete(self, *, order_id: int, user_id: int) -> Order | None:
@@ -243,6 +247,7 @@ class OrderLifecycle:
                 taken_at=order.taken_at,
                 closed_at=order.closed_at,
             )
+        await self._pending.release(user_id=user_id)
         return order
 
     async def cancel(self, *, order_id: int, user_id: int) -> Order | None:
@@ -251,4 +256,5 @@ class OrderLifecycle:
             return None
         await self._rating.record_cancellation(user_id=user_id)
         await forward_to_third_party(order=order)
+        await self._pending.release(user_id=user_id)
         return order
