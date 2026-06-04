@@ -44,6 +44,7 @@ class TakeStatus(StrEnum):
     OK = "ok"
     UNAVAILABLE = "unavailable"
     LIMIT_REACHED = "limit_reached"
+    OFFLINE = "offline"
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,10 +191,12 @@ class OrderLifecycle:
         async with self._pool.acquire() as conn:
             try:
                 async with conn.transaction():
-                    await conn.execute(
-                        "SELECT 1 FROM user_profiles WHERE id = $1 FOR UPDATE",
+                    is_online = await conn.fetchval(
+                        "SELECT is_online FROM user_profiles WHERE id = $1 FOR UPDATE",
                         user_id,
                     )
+                    if not is_online:
+                        raise _TakeAbortError(TakeStatus.OFFLINE)
                     in_work = await self._orders.count_in_work(user_id=user_id, conn=conn)
                     if in_work >= MAX_ORDERS_PENDING:
                         raise _TakeAbortError(TakeStatus.LIMIT_REACHED)

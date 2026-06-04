@@ -62,6 +62,9 @@ async def take_order(
         user_id=profile.id,
         profile=profile,
     )
+    if result.status is TakeStatus.OFFLINE:
+        await callback.answer(_("order.offline"), show_alert=True)
+        return
     if result.status is TakeStatus.LIMIT_REACHED:
         await callback.answer(_("order.limit_reached"), show_alert=True)
         return

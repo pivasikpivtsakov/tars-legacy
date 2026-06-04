@@ -153,3 +153,6 @@ msgstr "This order is no longer available."
 
 msgid "order.limit_reached"
 msgstr "You already have 3 orders in progress."
+
+msgid "order.offline"
+msgstr "You're offline. Go online to take orders."

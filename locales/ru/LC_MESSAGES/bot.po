@@ -153,3 +153,6 @@ msgstr "Этот заказ уже недоступен."
 
 msgid "order.limit_reached"
 msgstr "У тебя уже 3 заказа в работе."
+
+msgid "order.offline"
+msgstr "Ты оффлайн. Перейди в онлайн, чтобы брать заказы."
