@@ -1,11 +1,12 @@
 import asyncio
 import logging
+from itertools import batched
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from common.environment import MAX_ORDERS_PENDING, OFFER_TTL_SECONDS
+from common.environment import FANOUT_CHUNK_SIZE, MAX_ORDERS_PENDING, OFFER_TTL_SECONDS
 from common.i18n import build_i18n
 from common.keyboards.orders import take_inline_kb
 from common.models.orders import Order
@@ -140,20 +141,20 @@ async def fan_out_active_orders(
     scheduler: AsyncIOScheduler,
 ) -> None:
     active_orders = await orders.list_active_for_fanout()
-    # todo: разбить на чанки итд?
-    await asyncio.gather(
-        *(
-            offer_order_to_next_user(
-                order=order,
-                bot=bot,
-                orders=orders,
-                offers=offers,
-                profiles=profiles,
-                order_manager=order_manager,
-                rating=rating,
-                pending=pending,
-                scheduler=scheduler,
-            )
-            for order in active_orders
-        ),
-    )
+    for chunk in batched(active_orders, FANOUT_CHUNK_SIZE):
+        await asyncio.gather(
+            *(
+                offer_order_to_next_user(
+                    order=order,
+                    bot=bot,
+                    orders=orders,
+                    offers=offers,
+                    profiles=profiles,
+                    order_manager=order_manager,
+                    rating=rating,
+                    pending=pending,
+                    scheduler=scheduler,
+                )
+                for order in chunk
+            ),
+        )
