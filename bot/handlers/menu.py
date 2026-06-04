@@ -2,25 +2,12 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
 
 from bot.keyboards.start import StartZone, back_kb, welcome_kb
-from common.models.user_profiles import UserProfile
+from common.models.user_profiles import UserProfile, UserProfileStatus
 
 
-def _is_profile_complete(profile: UserProfile | None) -> bool:
-    if profile is None:
-        return False
-    return (
-        profile.works_alone is not None
-        and profile.packages is not None
-        and profile.price_60 is not None
-        and profile.work_start is not None
-        and profile.work_end is not None
-    )
-
-
-def _menu_kb(profile: UserProfile | None) -> InlineKeyboardMarkup:
-    is_online = profile.is_online if profile is not None else False
+def _full_menu_kb(profile: UserProfile) -> InlineKeyboardMarkup:
     online_text = (
-        _("start.btn_online_off") if is_online else _("start.btn_online_on")
+        _("start.btn_online_off") if profile.is_online else _("start.btn_online_on")
     )
     return welcome_kb(
         buttons={
@@ -34,28 +21,31 @@ def _menu_kb(profile: UserProfile | None) -> InlineKeyboardMarkup:
     )
 
 
+def _register_only_kb() -> InlineKeyboardMarkup:
+    return welcome_kb(buttons={StartZone.REGISTER: _("start.btn_register")})
+
+
+def _menu_view(
+    profile: UserProfile | None,
+) -> tuple[str, InlineKeyboardMarkup | None]:
+    if profile is not None and profile.status is UserProfileStatus.ACTIVE:
+        return _("start.welcome"), _full_menu_kb(profile)
+    if profile is not None and profile.status is UserProfileStatus.BANNED:
+        return _("start.banned"), None
+    text = _("start.on_moderation") if profile is not None else _("start.welcome")
+    return text, _register_only_kb()
+
+
 async def render_menu(
     *,
     target: Message | CallbackQuery,
     profile: UserProfile | None,
 ) -> None:
-    text = _("start.welcome")
-    kb = _menu_kb(profile)
+    text, kb = _menu_view(profile)
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(text, reply_markup=kb)
         return
     await target.answer(text, reply_markup=kb)
-
-
-async def require_complete_profile(
-    *,
-    callback: CallbackQuery,
-    profile: UserProfile | None,
-) -> UserProfile | None:
-    if not _is_profile_complete(profile):
-        await callback.answer(_("start.profile_required"), show_alert=True)
-        return None
-    return profile
 
 
 async def show_back_panel(*, callback: CallbackQuery, text: str) -> None:

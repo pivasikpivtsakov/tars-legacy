@@ -12,6 +12,8 @@ _SELECT_COLUMNS = (
     "work_start, work_end, is_online, with_codes, status, balance"
 )
 
+_MODERATION_RESET = "status = 'inactive', is_online = FALSE"
+
 
 class UserProfileRepository:
     def __init__(self, *, pool: asyncpg.Pool) -> None:
@@ -23,9 +25,11 @@ class UserProfileRepository:
         profile_id: int,
         column: str,
         value: object,
+        reset_moderation: bool = False,
     ) -> UserProfile:
+        extra = f", {_MODERATION_RESET}" if reset_moderation else ""
         row = await self._pool.fetchrow(
-            f"UPDATE {_TABLE} SET {column} = $2, updated_at = NOW() "
+            f"UPDATE {_TABLE} SET {column} = $2{extra}, updated_at = NOW() "
             f"WHERE id = $1 RETURNING {_SELECT_COLUMNS}",
             profile_id,
             value,
@@ -45,6 +49,7 @@ class UserProfileRepository:
             profile_id=profile_id,
             column="packages",
             value=list(packages),
+            reset_moderation=True,
         )
 
     async def set_status(
@@ -58,6 +63,19 @@ class UserProfileRepository:
             column="status",
             value=status.value,
         )
+
+    async def approve(self, *, profile_id: int, with_codes: bool) -> UserProfile:
+        row = await self._pool.fetchrow(
+            f"UPDATE {_TABLE} SET status = $2, with_codes = $3, updated_at = NOW() "
+            f"WHERE id = $1 RETURNING {_SELECT_COLUMNS}",
+            profile_id,
+            UserProfileStatus.ACTIVE.value,
+            with_codes,
+        )
+        if row is None:
+            msg = f"no {_TABLE} row to approve for id={profile_id}"
+            raise LookupError(msg)
+        return UserProfile.from_row(row)
 
     async def create_or_update(
         self,
@@ -82,6 +100,7 @@ class UserProfileRepository:
             f"withdrawal_method = EXCLUDED.withdrawal_method, "
             f"work_start = EXCLUDED.work_start, "
             f"work_end = EXCLUDED.work_end, "
+            f"{_MODERATION_RESET}, "
             f"updated_at = NOW() "
             f"RETURNING {_SELECT_COLUMNS}",
             tg_id,

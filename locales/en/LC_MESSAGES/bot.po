@@ -49,6 +49,15 @@ msgstr "Your balance: {balance}"
 msgid "start.profile_required"
 msgstr "Finish registration first."
 
+msgid "start.on_moderation"
+msgstr "Your profile is on moderation. Please wait for an admin to review it. You can edit your profile below."
+
+msgid "start.banned"
+msgstr "Your account has been blocked."
+
+msgid "start.action_needs_active"
+msgstr "Your profile is on moderation. Please wait for approval."
+
 msgid "withdraw.placeholder"
 msgstr "Withdrawal flow is not wired yet. Tap Back to return."
 

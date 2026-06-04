@@ -49,6 +49,15 @@ msgstr "Твой баланс: {balance}"
 msgid "start.profile_required"
 msgstr "Сначала заверши регистрацию."
 
+msgid "start.on_moderation"
+msgstr "Твой профиль на модерации. Дождись проверки администратором. Профиль можно изменить ниже."
+
+msgid "start.banned"
+msgstr "Твой аккаунт заблокирован."
+
+msgid "start.action_needs_active"
+msgstr "Твой профиль на модерации. Дождись подтверждения."
+
 msgid "withdraw.placeholder"
 msgstr "Вывод средств пока не подключён. Нажми «Назад», чтобы вернуться."
 

@@ -4,7 +4,7 @@ import random
 import sys
 
 from aiogram import Router
-from aiogram.filters import BaseFilter, Command
+from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.i18n import I18n
@@ -69,6 +69,33 @@ async def cmd_full_restart(
         await profiles.delete(profile_id=profile.id)
     await state.clear()
     await message.answer("profile and FSM state wiped")
+
+
+@router.message(Command("approve", prefix="#"), _is_admin)
+async def cmd_approve(
+    message: Message,
+    command: CommandObject,
+    profiles: UserProfileRepository,
+) -> None:
+    args = (command.args or "").split()
+    if not args:
+        await message.answer("usage: #approve <tg_id> [codes]")
+        return
+    try:
+        tg_id = int(args[0])
+    except ValueError:
+        await message.answer("tg_id must be an integer")
+        return
+    with_codes = len(args) > 1 and args[1].casefold() in {"codes", "1", "true", "yes"}
+    profile = await profiles.get_by_tg_id(tg_id=tg_id)
+    if profile is None:
+        await message.answer(f"no profile for tg_id={tg_id}")
+        return
+    updated = await profiles.approve(profile_id=profile.id, with_codes=with_codes)
+    await message.answer(
+        f"approved tg_id={tg_id}: status={updated.status.value}, "
+        f"with_codes={updated.with_codes}",
+    )
 
 
 @router.message(Command("create_order", prefix="#"), _is_admin)

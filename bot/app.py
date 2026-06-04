@@ -1,15 +1,12 @@
-from collections.abc import Awaitable, Callable
-from typing import Any
-
 import asyncpg
-from aiogram import BaseMiddleware, Dispatcher
+from aiogram import Dispatcher
 from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.types import TelegramObject, User
 from aiogram.utils.i18n import FSMI18nMiddleware
 from redis.asyncio import Redis
 
 from bot.handlers import admin, common, fallback, orders, packs, registration, withdraw
+from bot.middlewares.profile import ProfileMiddleware
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
 from common.repositories.online_price_index import OnlinePriceIndex
@@ -19,19 +16,6 @@ from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.order_processing import OrderLifecycle
-
-
-class _ProfileMiddleware(BaseMiddleware):
-    async def __call__(
-        self,
-        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
-        data: dict[str, Any],
-    ) -> Any:
-        user: User = data["event_from_user"]
-        profiles: UserProfileRepository = data["profiles"]
-        data["profile"] = await profiles.get_by_tg_id(tg_id=user.id)
-        return await handler(event, data)
 
 
 def build_dispatcher(
@@ -67,7 +51,7 @@ def build_dispatcher(
     dispatcher["admin_ids"] = admin_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
 
-    profile_middleware = _ProfileMiddleware()
+    profile_middleware = ProfileMiddleware(profiles=profiles)
     for router in (common.router, withdraw.router, packs.router, orders.router):
         router.message.middleware(profile_middleware)
         router.callback_query.middleware(profile_middleware)

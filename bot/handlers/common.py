@@ -4,9 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import render_menu, require_complete_profile, show_back_panel
+from bot.handlers.menu import render_menu, show_back_panel
 from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
+from bot.middlewares.profile import require_active_profile
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
@@ -30,16 +31,14 @@ async def cmd_start(
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.ONLINE))
+@require_active_profile
 async def open_online(
     callback: CallbackQuery,
     profiles: UserProfileRepository,
     online_price_index: OnlinePriceIndex,
-    profile: UserProfile | None,
+    profile: UserProfile,
 ) -> None:
-    complete_profile = await require_complete_profile(callback=callback, profile=profile)
-    if complete_profile is None:
-        return
-    profile = await profiles.toggle_is_online_and_get(profile_id=complete_profile.id)
+    profile = await profiles.toggle_is_online_and_get(profile_id=profile.id)
     await online_price_index.sync(profile=profile)
     alert = (
         _("start.online_now_on") if profile.is_online else _("start.online_now_off")
