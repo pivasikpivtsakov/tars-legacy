@@ -1,13 +1,13 @@
 from datetime import datetime, time, timedelta, timezone
 
 from aiogram import Bot, F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import menu_button_markup, render_menu
+from bot.handlers.menu import MenuButtonFilter, menu_button_markup, render_menu
 from bot.handlers.moderation import MODERATOR_NOT_ORDER_TAKER
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.registration import (
@@ -149,6 +149,22 @@ async def cmd_restart(message: Message, state: FSMContext) -> None:
         return
     await state.clear()
     await message.answer(_("registration.restarted"))
+
+
+_ACTIVE_REGISTRATION_STATES = (
+    Registration.works_alone,
+    Registration.packages,
+    Registration.price_60,
+    Registration.withdrawal_method,
+    Registration.work_start,
+    Registration.work_end,
+)
+
+
+@router.message(StateFilter(*_ACTIVE_REGISTRATION_STATES), Command("menu"))
+@router.message(StateFilter(*_ACTIVE_REGISTRATION_STATES), MenuButtonFilter())
+async def block_menu_during_registration(message: Message) -> None:
+    await message.answer(_("start.profile_required"))
 
 
 @router.callback_query(Registration.works_alone, WorksAloneCB.filter())

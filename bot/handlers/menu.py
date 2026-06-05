@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Bot, Router
 from aiogram.filters import BaseFilter, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
@@ -59,6 +59,16 @@ async def render_menu(
         await target.message.edit_text(text, reply_markup=kb)
         return
     await target.answer(text, reply_markup=kb)
+
+
+async def send_menu(
+    *,
+    bot: Bot,
+    chat_id: int,
+    profile: UserProfile | None,
+) -> None:
+    text, kb = _menu_view(profile)
+    await bot.send_message(chat_id=chat_id, text=text, reply_markup=kb)
 
 
 async def show_back_panel(*, callback: CallbackQuery, text: str) -> None:

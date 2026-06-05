@@ -61,6 +61,9 @@ msgstr "Your profile is on moderation. Please wait for an admin to review it. Yo
 msgid "start.banned"
 msgstr "Your account has been blocked."
 
+msgid "start.approved"
+msgstr "You're approved! Welcome aboard."
+
 msgid "start.action_needs_active"
 msgstr "Your profile is on moderation. Please wait for approval."
 

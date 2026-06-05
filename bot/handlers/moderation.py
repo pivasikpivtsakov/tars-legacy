@@ -1,11 +1,16 @@
 import contextlib
 
-from aiogram import Router
-from aiogram.exceptions import TelegramBadRequest
+from aiogram import Bot, Router
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import BaseFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import CallbackQuery, User
+from aiogram.utils.i18n import gettext as _
 
+from bot.handlers.menu import send_menu
 from common.keyboards.moderation import ModApproveCB, ModDenyCB
+from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import is_moderator
 
@@ -50,22 +55,40 @@ async def _annotate(*, callback: CallbackQuery, note: str) -> None:
         await callback.message.edit_text(text, reply_markup=None)
 
 
+async def _notify_approved(*, bot: Bot, profile: UserProfile) -> None:
+    with contextlib.suppress(TelegramAPIError):
+        await bot.send_message(chat_id=profile.tg_id, text=_("start.approved"))
+        await send_menu(bot=bot, chat_id=profile.tg_id, profile=profile)
+
+
+async def _clear_user_state(*, storage: BaseStorage, bot: Bot, tg_id: int) -> None:
+    key = StorageKey(bot_id=bot.id, chat_id=tg_id, user_id=tg_id)
+    await FSMContext(storage=storage, key=key).clear()
+
+
 @router.callback_query(ModApproveCB.filter(), _is_moderator)
 async def approve_user(
     callback: CallbackQuery,
     callback_data: ModApproveCB,
+    bot: Bot,
     profiles: UserProfileRepository,
+    fsm_storage: BaseStorage,
 ) -> None:
     try:
-        await profiles.approve(profile_id=callback_data.profile_id, with_codes=False)
+        profile = await profiles.approve(
+            profile_id=callback_data.profile_id,
+            with_codes=False,
+        )
     except LookupError:
         await callback.answer("user not found", show_alert=True)
         return
+    await _clear_user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
     await _annotate(
         callback=callback,
         note=f"#approved by {_moderator_label(callback.from_user)}",
     )
     await callback.answer()
+    await _notify_approved(bot=bot, profile=profile)
 
 
 @router.callback_query(ModDenyCB.filter(), _is_moderator)

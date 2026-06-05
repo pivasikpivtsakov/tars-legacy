@@ -61,6 +61,9 @@ msgstr "Твой профиль на модерации. Дождись пров
 msgid "start.banned"
 msgstr "Твой аккаунт заблокирован."
 
+msgid "start.approved"
+msgstr "Тебя одобрили! Добро пожаловать."
+
 msgid "start.action_needs_active"
 msgstr "Твой профиль на модерации. Дождись подтверждения."
 
