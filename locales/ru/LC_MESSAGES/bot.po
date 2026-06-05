@@ -34,6 +34,12 @@ msgstr "Регистрация / изменить профиль"
 msgid "start.btn_back"
 msgstr "Назад"
 
+msgid "start.btn_menu"
+msgstr "☰ Меню"
+
+msgid "start.menu_hint"
+msgstr "Нажми кнопку «☰ Меню» внизу, чтобы открыть меню в любой момент."
+
 msgid "start.online_now_on"
 msgstr "Ты теперь онлайн."
 

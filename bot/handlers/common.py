@@ -4,7 +4,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import render_menu, show_back_panel
+from bot.handlers.menu import (
+    install_menu_button,
+    open_menu,
+    render_menu,
+    show_back_panel,
+)
 from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
@@ -27,6 +32,7 @@ async def cmd_start(
     if profile is None:
         await begin_registration(message=message, state=state)
         return
+    await install_menu_button(message=message)
     await render_menu(target=message, profile=profile)
 
 
@@ -96,6 +102,5 @@ async def back_to_welcome(
     state: FSMContext,
     profile: UserProfile | None,
 ) -> None:
-    await state.clear()
-    await render_menu(target=callback, profile=profile)
+    await open_menu(target=callback, state=state, profile=profile)
     await callback.answer()

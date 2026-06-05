@@ -34,6 +34,12 @@ msgstr "Register / edit profile"
 msgid "start.btn_back"
 msgstr "Back"
 
+msgid "start.btn_menu"
+msgstr "☰ Menu"
+
+msgid "start.menu_hint"
+msgstr "Tap the ☰ Menu button below to reopen the menu anytime."
+
 msgid "start.online_now_on"
 msgstr "You are now online."
 

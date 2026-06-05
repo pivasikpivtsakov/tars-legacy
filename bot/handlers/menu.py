@@ -1,8 +1,21 @@
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram import Router
+from aiogram.filters import BaseFilter, Command
+from aiogram.fsm.context import FSMContext
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardMarkup,
+)
+from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
-from bot.keyboards.start import StartZone, back_kb, welcome_kb
+from bot.keyboards.start import StartZone, back_kb, reply_menu_kb, welcome_kb
 from common.models.user_profiles import UserProfile, UserProfileStatus
+
+router = Router(name="menu")
+
+_MENU_BUTTON_KEY = "start.btn_menu"
 
 
 def _full_menu_kb(profile: UserProfile) -> InlineKeyboardMarkup:
@@ -54,3 +67,52 @@ async def show_back_panel(*, callback: CallbackQuery, text: str) -> None:
         reply_markup=back_kb(back_text=_("start.btn_back")),
     )
     await callback.answer()
+
+
+class MenuButtonFilter(BaseFilter):
+    async def __call__(self, message: Message) -> bool:
+        if message.text is None:
+            return False
+        i18n = I18n.get_current(no_error=True)
+        if i18n is None:
+            return False
+        return message.text in {
+            i18n.gettext(_MENU_BUTTON_KEY, locale=locale)
+            for locale in i18n.available_locales
+        }
+
+
+def menu_button_markup() -> ReplyKeyboardMarkup:
+    return reply_menu_kb(menu_text=_(_MENU_BUTTON_KEY))
+
+
+async def install_menu_button(*, message: Message) -> None:
+    await message.answer(_("start.menu_hint"), reply_markup=menu_button_markup())
+
+
+async def open_menu(
+    *,
+    target: Message | CallbackQuery,
+    state: FSMContext,
+    profile: UserProfile | None,
+) -> None:
+    await state.clear()
+    await render_menu(target=target, profile=profile)
+
+
+@router.message(Command("menu"))
+async def cmd_menu(
+    message: Message,
+    state: FSMContext,
+    profile: UserProfile | None,
+) -> None:
+    await open_menu(target=message, state=state, profile=profile)
+
+
+@router.message(MenuButtonFilter())
+async def on_menu_button(
+    message: Message,
+    state: FSMContext,
+    profile: UserProfile | None,
+) -> None:
+    await open_menu(target=message, state=state, profile=profile)

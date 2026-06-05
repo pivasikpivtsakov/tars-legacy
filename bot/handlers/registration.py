@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import render_menu
+from bot.handlers.menu import menu_button_markup, render_menu
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.registration import (
     PackagesDoneCB,
@@ -254,7 +254,7 @@ async def process_work_end(
     )
     await online_price_index.sync(profile=profile)
     await state.set_state(Registration.finished_filling)
-    await message.answer(_render_summary(profile))
+    await message.answer(_render_summary(profile), reply_markup=menu_button_markup())
     await render_menu(target=message, profile=profile)
 
 

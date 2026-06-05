@@ -5,7 +5,16 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.utils.i18n import FSMI18nMiddleware
 from redis.asyncio import Redis
 
-from bot.handlers import admin, common, fallback, orders, packs, registration, withdraw
+from bot.handlers import (
+    admin,
+    common,
+    fallback,
+    menu,
+    orders,
+    packs,
+    registration,
+    withdraw,
+)
 from bot.middlewares.profile import ProfileMiddleware
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
@@ -52,7 +61,13 @@ def build_dispatcher(
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
 
     profile_middleware = ProfileMiddleware(profiles=profiles)
-    for router in (common.router, withdraw.router, packs.router, orders.router):
+    for router in (
+        common.router,
+        withdraw.router,
+        packs.router,
+        orders.router,
+        menu.router,
+    ):
         router.message.middleware(profile_middleware)
         router.callback_query.middleware(profile_middleware)
 
@@ -62,6 +77,7 @@ def build_dispatcher(
     dispatcher.include_router(packs.router)
     dispatcher.include_router(orders.router)
     dispatcher.include_router(registration.router)
+    dispatcher.include_router(menu.router)
     dispatcher.include_router(fallback.router)
 
     return dispatcher

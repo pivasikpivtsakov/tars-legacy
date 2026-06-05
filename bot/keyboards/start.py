@@ -2,7 +2,12 @@ from collections.abc import Mapping
 from enum import StrEnum
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+)
 
 
 class StartZone(StrEnum):
@@ -45,4 +50,12 @@ def back_kb(*, back_text: str) -> InlineKeyboardMarkup:
                 ),
             ],
         ],
+    )
+
+
+def reply_menu_kb(*, menu_text: str) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=menu_text)]],
+        resize_keyboard=True,
+        is_persistent=True,
     )
