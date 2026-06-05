@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Collection
 from itertools import batched
 
 from aiogram import Bot
@@ -36,13 +37,14 @@ async def offer_order_to_next_user(
     rating: RatingRepository,
     pending: PendingOrdersRepository,
     scheduler: AsyncIOScheduler,
+    excluded_user_ids: Collection[int] = (),
 ) -> None:
     if await offers.has_active_offer(order_id=order.id, ttl_seconds=OFFER_TTL_SECONDS):
         return
     already_offered_user_ids = await offers.offered_user_ids(order_id=order.id)
     ranked_candidates = await order_manager.select_candidates(
         order=order,
-        exclude_user_ids=already_offered_user_ids,
+        exclude_user_ids={*already_offered_user_ids, *excluded_user_ids},
     )
 
     if not ranked_candidates:
@@ -139,9 +141,10 @@ async def fan_out_active_orders(
     rating: RatingRepository,
     pending: PendingOrdersRepository,
     scheduler: AsyncIOScheduler,
+    excluded_user_ids: Collection[int] = (),
 ) -> None:
     active_orders = await orders.list_active_for_fanout()
-    for chunk in batched(active_orders, FANOUT_CHUNK_SIZE):
+    for chunk in batched(active_orders, FANOUT_CHUNK_SIZE, strict=False):
         await asyncio.gather(
             *(
                 offer_order_to_next_user(
@@ -154,6 +157,7 @@ async def fan_out_active_orders(
                     rating=rating,
                     pending=pending,
                     scheduler=scheduler,
+                    excluded_user_ids=excluded_user_ids,
                 )
                 for order in chunk
             ),

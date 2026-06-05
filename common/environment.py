@@ -47,14 +47,18 @@ TELEGRAM_BOT_TOKEN = env_get(
 )
 
 
-def _parse_admin_ids(value: str | None) -> frozenset[int]:
+def _parse_id_set(value: str | None) -> frozenset[int]:
     if not value:
         return frozenset()
     return frozenset(int(part) for part in value.split(",") if part.strip())
 
 
-ADMIN_USER_IDS = _parse_admin_ids(
+ADMIN_USER_IDS = _parse_id_set(
     env_get("ADMIN_USER_IDS", default="", raise_if_failed=False),
+)
+
+MODERATOR_USER_IDS = _parse_id_set(
+    env_get("MODERATOR_USER_IDS", default="", raise_if_failed=False),
 )
 
 

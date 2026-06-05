@@ -1,6 +1,6 @@
 from datetime import datetime, time, timedelta, timezone
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -8,6 +8,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
 from bot.handlers.menu import menu_button_markup, render_menu
+from bot.handlers.moderation import MODERATOR_NOT_ORDER_TAKER
 from bot.keyboards._packages import PackageToggleCB
 from bot.keyboards.registration import (
     PackagesDoneCB,
@@ -19,6 +20,7 @@ from bot.keyboards.start import OpenZoneCB, StartZone
 from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.moderation import deactivate_and_notify, is_moderator
 
 router = Router(name="registration")
 
@@ -103,12 +105,36 @@ async def begin_registration(*, message: Message, state: FSMContext) -> None:
 
 
 @router.message(Command("register"))
-async def cmd_register(message: Message, state: FSMContext) -> None:
+async def cmd_register(
+    message: Message,
+    state: FSMContext,
+    moderator_ids: frozenset[int],
+    profiles: UserProfileRepository,
+) -> None:
+    if await is_moderator(
+        profiles=profiles,
+        moderator_ids=moderator_ids,
+        tg_id=message.from_user.id,
+    ):
+        await message.answer(MODERATOR_NOT_ORDER_TAKER)
+        return
     await begin_registration(message=message, state=state)
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.REGISTER))
-async def open_register(callback: CallbackQuery, state: FSMContext) -> None:
+async def open_register(
+    callback: CallbackQuery,
+    state: FSMContext,
+    moderator_ids: frozenset[int],
+    profiles: UserProfileRepository,
+) -> None:
+    if await is_moderator(
+        profiles=profiles,
+        moderator_ids=moderator_ids,
+        tg_id=callback.from_user.id,
+    ):
+        await callback.answer(MODERATOR_NOT_ORDER_TAKER, show_alert=True)
+        return
     await callback.message.edit_reply_markup(reply_markup=None)
     await begin_registration(message=callback.message, state=state)
     await callback.answer()
@@ -226,8 +252,10 @@ async def process_work_start(
 async def process_work_end(
     message: Message,
     state: FSMContext,
+    bot: Bot,
     profiles: UserProfileRepository,
     online_price_index: OnlinePriceIndex,
+    moderator_ids: frozenset[int],
 ) -> None:
     parsed = _parse_msk_time(message.text)
     if parsed is None:
@@ -252,7 +280,13 @@ async def process_work_end(
         work_start=work_start,
         work_end=parsed,
     )
-    await online_price_index.sync(profile=profile)
+    await deactivate_and_notify(
+        bot=bot,
+        moderator_ids=moderator_ids,
+        profiles=profiles,
+        online_price_index=online_price_index,
+        profile=profile,
+    )
     await state.set_state(Registration.finished_filling)
     await message.answer(_render_summary(profile), reply_markup=menu_button_markup())
     await render_menu(target=message, profile=profile)

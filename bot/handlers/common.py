@@ -10,6 +10,7 @@ from bot.handlers.menu import (
     render_menu,
     show_back_panel,
 )
+from bot.handlers.moderation import MODERATOR_PANEL_TEXT
 from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
@@ -27,8 +28,12 @@ async def cmd_start(
     message: Message,
     state: FSMContext,
     profile: UserProfile | None,
+    moderator_ids: frozenset[int],
 ) -> None:
     await state.clear()
+    if profile is not None and profile.id in moderator_ids:
+        await message.answer(MODERATOR_PANEL_TEXT)
+        return
     if profile is None:
         await begin_registration(message=message, state=state)
         return

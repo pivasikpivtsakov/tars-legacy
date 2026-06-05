@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
@@ -13,6 +13,7 @@ from bot.middlewares.profile import require_active_profile, require_complete_pro
 from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.moderation import deactivate_and_notify
 
 router = Router(name="packs")
 
@@ -54,9 +55,11 @@ async def open_packs(
 async def toggle_pack(
     callback: CallbackQuery,
     callback_data: PackageToggleCB,
+    bot: Bot,
     profiles: UserProfileRepository,
     online_price_index: OnlinePriceIndex,
     profile: UserProfile,
+    moderator_ids: frozenset[int],
 ) -> None:
     selected = selected_packages(profile)
     if callback_data.value in selected:
@@ -73,6 +76,12 @@ async def toggle_pack(
         profile_id=profile.id,
         packages=sorted(selected),
     )
-    await online_price_index.sync(profile=updated)
+    await deactivate_and_notify(
+        bot=bot,
+        moderator_ids=moderator_ids,
+        profiles=profiles,
+        online_price_index=online_price_index,
+        profile=updated,
+    )
     await callback.message.edit_reply_markup(reply_markup=_editor_kb(selected))
     await callback.answer()

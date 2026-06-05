@@ -10,6 +10,7 @@ from bot.handlers import (
     common,
     fallback,
     menu,
+    moderation,
     orders,
     packs,
     registration,
@@ -33,6 +34,7 @@ def build_dispatcher(
     redis: Redis,
     redis_url: str,
     admin_ids: frozenset[int],
+    moderator_ids: frozenset[int],
 ) -> Dispatcher:
     storage = RedisStorage.from_url(
         redis_url,
@@ -58,6 +60,7 @@ def build_dispatcher(
         pending=pending,
     )
     dispatcher["admin_ids"] = admin_ids
+    dispatcher["moderator_ids"] = moderator_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
 
     profile_middleware = ProfileMiddleware(profiles=profiles)
@@ -72,6 +75,7 @@ def build_dispatcher(
         router.callback_query.middleware(profile_middleware)
 
     dispatcher.include_router(admin.router)
+    dispatcher.include_router(moderation.router)
     dispatcher.include_router(common.router)
     dispatcher.include_router(withdraw.router)
     dispatcher.include_router(packs.router)

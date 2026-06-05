@@ -6,7 +6,7 @@ from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from redis.asyncio import Redis
 
-from common.environment import RATING_SPEED_WINDOW
+from common.environment import MODERATOR_USER_IDS, RATING_SPEED_WINDOW
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
@@ -48,6 +48,7 @@ async def job__order_fanout(
         rating=rating,
         pending=pending,
         scheduler=scheduler,
+        excluded_user_ids=MODERATOR_USER_IDS,
     )
 
     logger.info("order fanout completed elapsed=%.3fs", time.perf_counter() - started)

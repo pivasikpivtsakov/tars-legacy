@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import time
 
 import asyncpg
@@ -63,6 +63,17 @@ class UserProfileRepository:
             column="status",
             value=status.value,
         )
+
+    async def deactivate(self, *, profile_id: int) -> UserProfile:
+        row = await self._pool.fetchrow(
+            f"UPDATE {_TABLE} SET {_MODERATION_RESET}, updated_at = NOW() "
+            f"WHERE id = $1 RETURNING {_SELECT_COLUMNS}",
+            profile_id,
+        )
+        if row is None:
+            msg = f"no {_TABLE} row to deactivate for id={profile_id}"
+            raise LookupError(msg)
+        return UserProfile.from_row(row)
 
     async def approve(self, *, profile_id: int, with_codes: bool) -> UserProfile:
         row = await self._pool.fetchrow(
@@ -147,6 +158,15 @@ class UserProfileRepository:
             f"SELECT tg_id FROM {_TABLE} WHERE id = $1",
             profile_id,
         )
+
+    async def get_tg_ids(self, *, profile_ids: Collection[int]) -> dict[int, int]:
+        if not profile_ids:
+            return {}
+        rows = await self._pool.fetch(
+            f"SELECT id, tg_id FROM {_TABLE} WHERE id = ANY($1)",
+            list(profile_ids),
+        )
+        return {row["id"]: row["tg_id"] for row in rows}
 
     async def credit_balance(
         self,
