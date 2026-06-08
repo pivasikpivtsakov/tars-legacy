@@ -31,6 +31,12 @@ services:
     ports:
       - "${REDIS_PORT:-6379}:6379"
 
+#env_file:
+#      - .env
+# todo: limits cpu/mem
+# logging
+# restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:

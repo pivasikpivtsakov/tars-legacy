@@ -29,6 +29,7 @@ def _is_profile_complete(profile: UserProfile | None) -> bool:
         profile.works_alone is not None
         and profile.packages is not None
         and profile.price_60 is not None
+        and profile.withdrawal_method is not None
         and profile.work_start is not None
         and profile.work_end is not None
     )

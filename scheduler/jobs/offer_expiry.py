@@ -1,4 +1,6 @@
 import contextlib
+import logging
+import time
 from datetime import UTC, datetime, timedelta
 
 from aiogram import Bot
@@ -10,8 +12,10 @@ from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 
+logger = logging.getLogger(__name__)
 
-async def expire_order_offer(
+
+async def job__offer_expiry(
     *,
     bot: Bot,
     offers: OrderOfferRepository,
@@ -23,18 +27,27 @@ async def expire_order_offer(
     message_id: int,
     expired_text: str,
 ) -> None:
+    started = time.perf_counter()
+    logger.info("offer expiry started order_id=%s user_id=%s", order_id, user_id)
+
     expired_offer = await offers.expire_one(order_id=order_id, user_id=user_id)
-    if expired_offer is None:
-        return
-    await rating.record_not_taken(user_ids=[user_id])
-    await pending.release(user_id=user_id)
-    with contextlib.suppress(TelegramAPIError):
-        await bot.edit_message_text(
-            text=expired_text,
-            chat_id=chat_id,
-            message_id=message_id,
-            reply_markup=None,
-        )
+    if expired_offer is not None:
+        await rating.record_not_taken(user_ids=[user_id])
+        await pending.release(user_id=user_id)
+        with contextlib.suppress(TelegramAPIError):
+            await bot.edit_message_text(
+                text=expired_text,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=None,
+            )
+
+    logger.info(
+        "offer expiry completed order_id=%s user_id=%s elapsed=%.3fs",
+        order_id,
+        user_id,
+        time.perf_counter() - started,
+    )
 
 
 def schedule_offer_expiry(
@@ -51,7 +64,7 @@ def schedule_offer_expiry(
     expired_text: str,
 ) -> None:
     scheduler.add_job(
-        expire_order_offer,
+        job__offer_expiry,
         trigger="date",
         run_date=datetime.now(UTC) + timedelta(seconds=OFFER_TTL_SECONDS),
         kwargs={

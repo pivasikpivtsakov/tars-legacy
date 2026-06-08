@@ -1,12 +1,9 @@
 from aiogram import Bot, F, Router
-from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot.forms import fields
-from bot.forms.menu import open_menu
-from bot.forms.states import EDIT_FIELD_STATES, ProfileEdit
-from bot.handlers.menu import MenuButtonFilter
+from bot.forms.states import ProfileEdit
 from bot.handlers.moderation import MODERATOR_NOT_ORDER_TAKER
 from bot.keyboards.profile import (
     EditFieldCB,
@@ -16,7 +13,7 @@ from bot.keyboards.profile import (
     WorksAloneCB,
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
-from bot.middlewares.profile import require_complete_profile
+from bot.middlewares.profile import require_active_profile
 from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
@@ -25,7 +22,7 @@ router = Router(name="editing")
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.REGISTER))
-@require_complete_profile
+@require_active_profile
 async def open_edit(
     callback: CallbackQuery,
     state: FSMContext,
@@ -38,16 +35,6 @@ async def open_edit(
     await fields.load_profile_into_state(state=state, profile=profile)
     await fields.show_edit_menu(target=callback, state=state)
     await callback.answer()
-
-
-@router.message(StateFilter(ProfileEdit.menu, *EDIT_FIELD_STATES), Command("menu"))
-@router.message(StateFilter(ProfileEdit.menu, *EDIT_FIELD_STATES), MenuButtonFilter())
-async def escape_to_menu(
-    message: Message,
-    state: FSMContext,
-    profile: UserProfile | None,
-) -> None:
-    await open_menu(target=message, state=state, profile=profile)
 
 
 @router.callback_query(ProfileEdit.menu, EditFieldCB.filter())

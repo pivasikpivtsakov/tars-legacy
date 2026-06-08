@@ -7,6 +7,7 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms import fields
 from bot.forms.menu import (
     install_menu_button,
+    menu_available,
     open_menu,
     render_menu,
     show_back_panel,
@@ -37,7 +38,8 @@ async def cmd_start(
     if profile is None:
         await fields.begin_registration(message=message, state=state)
         return
-    await install_menu_button(message=message)
+    if menu_available(profile):
+        await install_menu_button(message=message)
     await render_menu(target=message, state=state, profile=profile)
 
 

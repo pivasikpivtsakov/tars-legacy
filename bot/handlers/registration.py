@@ -1,13 +1,10 @@
 from aiogram import Bot, F, Router
-from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms import fields
-from bot.forms.states import REGISTRATION_INPUT_STATES, Registration
-from bot.handlers.menu import MenuButtonFilter
-from bot.handlers.moderation import MODERATOR_NOT_ORDER_TAKER
+from bot.forms.states import Registration
 from bot.keyboards.profile import (
     PackagesDoneCB,
     PackageToggleCB,
@@ -16,32 +13,8 @@ from bot.keyboards.profile import (
 )
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.moderation import is_moderator
 
 router = Router(name="registration")
-
-
-@router.message(Command("register"))
-async def cmd_register(
-    message: Message,
-    state: FSMContext,
-    moderator_ids: frozenset[int],
-    profiles: UserProfileRepository,
-) -> None:
-    if await is_moderator(
-        profiles=profiles,
-        moderator_ids=moderator_ids,
-        tg_id=message.from_user.id,
-    ):
-        await message.answer(MODERATOR_NOT_ORDER_TAKER)
-        return
-    await fields.begin_registration(message=message, state=state)
-
-
-@router.message(StateFilter(*REGISTRATION_INPUT_STATES), Command("menu"))
-@router.message(StateFilter(*REGISTRATION_INPUT_STATES), MenuButtonFilter())
-async def block_menu_during_registration(message: Message) -> None:
-    await message.answer(_("start.profile_required"))
 
 
 @router.callback_query(Registration.works_alone, WorksAloneCB.filter())

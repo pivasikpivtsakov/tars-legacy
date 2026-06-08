@@ -22,9 +22,5 @@ def full_menu_kb(profile: UserProfile) -> InlineKeyboardMarkup:
     )
 
 
-def register_only_kb() -> InlineKeyboardMarkup:
-    return welcome_kb(buttons={StartZone.REGISTER: _("start.btn_register")})
-
-
 def menu_button_markup() -> ReplyKeyboardMarkup:
     return reply_menu_kb(menu_text=_(MENU_BUTTON_KEY))

@@ -10,12 +10,12 @@ from bot.handlers import (
     common,
     editing,
     fallback,
-    menu,
     moderation,
     orders,
     registration,
     withdraw,
 )
+from bot.middlewares.menu import MenuMiddleware
 from bot.middlewares.profile import ProfileMiddleware
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
@@ -62,6 +62,7 @@ def build_dispatcher(
     dispatcher["admin_ids"] = admin_ids
     dispatcher["moderator_ids"] = moderator_ids
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
+    dispatcher.message.outer_middleware(MenuMiddleware(profiles=profiles))
 
     profile_middleware = ProfileMiddleware(profiles=profiles)
     for router in (
@@ -69,7 +70,6 @@ def build_dispatcher(
         withdraw.router,
         editing.router,
         orders.router,
-        menu.router,
     ):
         router.message.middleware(profile_middleware)
         router.callback_query.middleware(profile_middleware)
@@ -81,7 +81,6 @@ def build_dispatcher(
     dispatcher.include_router(orders.router)
     dispatcher.include_router(registration.router)
     dispatcher.include_router(editing.router)
-    dispatcher.include_router(menu.router)
     dispatcher.include_router(fallback.router)
 
     return dispatcher

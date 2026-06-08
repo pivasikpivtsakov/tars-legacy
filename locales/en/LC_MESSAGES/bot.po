@@ -53,7 +53,7 @@ msgid "start.profile_required"
 msgstr "Finish registration first."
 
 msgid "start.on_moderation"
-msgstr "Your profile is on moderation. Please wait for an admin to review it. You can edit your profile below."
+msgstr "Your profile is on moderation. Please wait for an admin to review it."
 
 msgid "start.banned"
 msgstr "Your account has been blocked."

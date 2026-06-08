@@ -3,14 +3,23 @@ import contextlib
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardRemove,
+)
 from aiogram.utils.i18n import gettext as _
 
-from bot.keyboards.menu import full_menu_kb, menu_button_markup, register_only_kb
+from bot.keyboards.menu import full_menu_kb, menu_button_markup
 from bot.keyboards.start import back_kb
 from common.models.user_profiles import UserProfile, UserProfileStatus
 
 _MENU_MESSAGE_ID_KEY = "menu_message_id"
+
+
+def menu_available(profile: UserProfile | None) -> bool:
+    return profile is not None and profile.status is UserProfileStatus.ACTIVE
 
 
 async def _remember_menu_message(*, state: FSMContext, message_id: int) -> None:
@@ -31,15 +40,16 @@ async def _delete_remembered_menu(
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
-def menu_view(
+def menu_inline_view(
     profile: UserProfile | None,
 ) -> tuple[str, InlineKeyboardMarkup | None]:
     if profile is not None and profile.status is UserProfileStatus.ACTIVE:
         return _("start.welcome"), full_menu_kb(profile)
     if profile is not None and profile.status is UserProfileStatus.BANNED:
         return _("start.banned"), None
-    text = _("start.on_moderation") if profile is not None else _("start.welcome")
-    return text, register_only_kb()
+    if profile is not None:
+        return _("start.on_moderation"), None
+    return _("start.welcome"), None
 
 
 async def render_menu(
@@ -48,16 +58,23 @@ async def render_menu(
     state: FSMContext,
     profile: UserProfile | None,
 ) -> None:
-    text, kb = menu_view(profile)
-    if isinstance(target, CallbackQuery):
-        await target.message.edit_text(text, reply_markup=kb)
-        await _remember_menu_message(
-            state=state,
-            message_id=target.message.message_id,
-        )
+    text, markup = menu_inline_view(profile)
+    if menu_available(profile):
+        if isinstance(target, CallbackQuery):
+            await target.message.edit_text(text, reply_markup=markup)
+            await _remember_menu_message(
+                state=state,
+                message_id=target.message.message_id,
+            )
+            return
+        sent = await target.answer(text, reply_markup=markup)
+        await _remember_menu_message(state=state, message_id=sent.message_id)
         return
-    sent = await target.answer(text, reply_markup=kb)
-    await _remember_menu_message(state=state, message_id=sent.message_id)
+    message = target.message if isinstance(target, CallbackQuery) else target
+    if isinstance(target, CallbackQuery):
+        with contextlib.suppress(TelegramBadRequest):
+            await target.message.delete()
+    await message.answer(text, reply_markup=ReplyKeyboardRemove())
 
 
 async def send_menu(
@@ -67,8 +84,13 @@ async def send_menu(
     state: FSMContext,
     profile: UserProfile | None,
 ) -> None:
-    text, kb = menu_view(profile)
-    sent = await bot.send_message(chat_id=chat_id, text=text, reply_markup=kb)
+    await bot.send_message(
+        chat_id=chat_id,
+        text=_("start.menu_hint"),
+        reply_markup=menu_button_markup(),
+    )
+    text, markup = menu_inline_view(profile)
+    sent = await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
     await _remember_menu_message(state=state, message_id=sent.message_id)
 
 

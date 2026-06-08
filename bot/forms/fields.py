@@ -9,7 +9,6 @@ from aiogram.utils.i18n import gettext as _
 
 from bot.forms.menu import render_menu
 from bot.forms.states import STATE_BY_FIELD, ProfileEdit, Registration
-from bot.keyboards.menu import menu_button_markup
 from bot.keyboards.profile import (
     ProfileField,
     edit_menu_kb,
@@ -286,10 +285,7 @@ async def finish_registration(
         moderator_ids=moderator_ids,
     )
     await state.set_state(Registration.finished_filling)
-    await message.answer(
-        _summary(_("registration.done"), data),
-        reply_markup=menu_button_markup(),
-    )
+    await message.answer(_summary(_("registration.done"), data))
     await render_menu(target=message, state=state, profile=profile)
 
 

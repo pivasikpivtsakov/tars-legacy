@@ -17,7 +17,7 @@ from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.offer_expiry import schedule_offer_expiry
+from scheduler.jobs.offer_expiry import schedule_offer_expiry
 from common.services.order_processing import OrderManager, forward_to_third_party
 
 logger = logging.getLogger(__name__)
