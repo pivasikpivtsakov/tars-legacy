@@ -2,7 +2,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import show_back_panel
+from bot.forms.menu import show_back_panel
 from bot.keyboards.start import OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 

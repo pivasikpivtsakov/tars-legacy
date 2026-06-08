@@ -39,19 +39,6 @@ class UserProfileRepository:
             raise LookupError(msg)
         return UserProfile.from_row(row)
 
-    async def set_packages(
-        self,
-        *,
-        profile_id: int,
-        packages: Sequence[int],
-    ) -> UserProfile:
-        return await self._update_field(
-            profile_id=profile_id,
-            column="packages",
-            value=list(packages),
-            reset_moderation=True,
-        )
-
     async def set_status(
         self,
         *,

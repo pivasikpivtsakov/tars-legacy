@@ -22,9 +22,6 @@ msgstr "Balance"
 msgid "start.btn_withdraw"
 msgstr "Withdraw"
 
-msgid "start.btn_packs"
-msgstr "Packs / price"
-
 msgid "start.btn_priority"
 msgstr "Priority"
 
@@ -70,9 +67,6 @@ msgstr "Your profile is on moderation. Please wait for approval."
 msgid "withdraw.placeholder"
 msgstr "Withdrawal flow is not wired yet. Tap Back to return."
 
-msgid "packs.title"
-msgstr "Toggle the packages you make, then press Back."
-
 msgid "registration.ask_works_alone"
 msgstr "Do you work alone?"
 
@@ -117,6 +111,36 @@ msgstr "Got it: solo={works_alone}, packages={packages}, price/60={price_60}, wi
 
 msgid "registration.finished_filling"
 msgstr "Registration already finished. Use /start to open the menu."
+
+msgid "edit.title"
+msgstr "Edit your profile, then press Save.\n\nWork alone: {works_alone}\nPackages: {packages}\nPrice/60: {price_60}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
+
+msgid "edit.field_works_alone"
+msgstr "Work alone"
+
+msgid "edit.field_packages"
+msgstr "Packages"
+
+msgid "edit.field_price"
+msgstr "Price / 60"
+
+msgid "edit.field_withdrawal"
+msgstr "Withdrawal method"
+
+msgid "edit.field_work_start"
+msgstr "Work start"
+
+msgid "edit.field_work_end"
+msgstr "Work end"
+
+msgid "edit.btn_save"
+msgstr "Save"
+
+msgid "edit.btn_cancel"
+msgstr "Cancel"
+
+msgid "edit.saved"
+msgstr "Saved. Your profile was sent for moderation."
 
 msgid "unknown"
 msgstr "I don't understand that. Try /start."

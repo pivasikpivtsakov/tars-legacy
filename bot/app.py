@@ -8,11 +8,11 @@ from redis.asyncio import Redis
 from bot.handlers import (
     admin,
     common,
+    editing,
     fallback,
     menu,
     moderation,
     orders,
-    packs,
     registration,
     withdraw,
 )
@@ -67,7 +67,7 @@ def build_dispatcher(
     for router in (
         common.router,
         withdraw.router,
-        packs.router,
+        editing.router,
         orders.router,
         menu.router,
     ):
@@ -78,9 +78,9 @@ def build_dispatcher(
     dispatcher.include_router(moderation.router)
     dispatcher.include_router(common.router)
     dispatcher.include_router(withdraw.router)
-    dispatcher.include_router(packs.router)
     dispatcher.include_router(orders.router)
     dispatcher.include_router(registration.router)
+    dispatcher.include_router(editing.router)
     dispatcher.include_router(menu.router)
     dispatcher.include_router(fallback.router)
 

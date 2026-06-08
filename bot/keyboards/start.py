@@ -14,7 +14,6 @@ class StartZone(StrEnum):
     ONLINE = "online"
     BALANCE = "balance"
     WITHDRAW = "withdraw"
-    PACKS = "packs"
     PRIORITY = "priority"
     REGISTER = "register"
 

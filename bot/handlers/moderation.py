@@ -8,7 +8,7 @@ from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import CallbackQuery, User
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import send_menu
+from bot.forms.menu import send_menu
 from common.keyboards.moderation import ModApproveCB, ModDenyCB
 from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository

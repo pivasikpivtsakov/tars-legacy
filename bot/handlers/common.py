@@ -4,14 +4,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.handlers.menu import (
+from bot.forms import fields
+from bot.forms.menu import (
     install_menu_button,
     open_menu,
     render_menu,
     show_back_panel,
 )
 from bot.handlers.moderation import MODERATOR_PANEL_TEXT
-from bot.handlers.registration import begin_registration
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.rating import RatingStats
@@ -35,7 +35,7 @@ async def cmd_start(
         await message.answer(MODERATOR_PANEL_TEXT)
         return
     if profile is None:
-        await begin_registration(message=message, state=state)
+        await fields.begin_registration(message=message, state=state)
         return
     await install_menu_button(message=message)
     await render_menu(target=message, state=state, profile=profile)
