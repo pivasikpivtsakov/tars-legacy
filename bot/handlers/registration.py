@@ -140,17 +140,6 @@ async def open_register(
     await callback.answer()
 
 
-@router.message(Command("restart"))
-@router.message(F.text.casefold() == "restart")
-async def cmd_restart(message: Message, state: FSMContext) -> None:
-    current = await state.get_state()
-    if current is None:
-        await message.answer(_("registration.nothing_to_restart"))
-        return
-    await state.clear()
-    await message.answer(_("registration.restarted"))
-
-
 _ACTIVE_REGISTRATION_STATES = (
     Registration.works_alone,
     Registration.packages,
@@ -305,7 +294,7 @@ async def process_work_end(
     )
     await state.set_state(Registration.finished_filling)
     await message.answer(_render_summary(profile), reply_markup=menu_button_markup())
-    await render_menu(target=message, profile=profile)
+    await render_menu(target=message, state=state, profile=profile)
 
 
 @router.message(Registration.finished_filling)

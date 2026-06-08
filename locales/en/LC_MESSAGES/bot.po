@@ -115,12 +115,6 @@ msgstr "End time must be later than start time. Please send the end time again."
 msgid "registration.done"
 msgstr "Got it: solo={works_alone}, packages={packages}, price/60={price_60}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
 
-msgid "registration.restarted"
-msgstr "Restarted. Send /register to start again."
-
-msgid "registration.nothing_to_restart"
-msgstr "Nothing to restart."
-
 msgid "registration.finished_filling"
 msgstr "Registration already finished. Use /start to open the menu."
 

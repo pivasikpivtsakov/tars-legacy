@@ -55,15 +55,25 @@ async def _annotate(*, callback: CallbackQuery, note: str) -> None:
         await callback.message.edit_text(text, reply_markup=None)
 
 
-async def _notify_approved(*, bot: Bot, profile: UserProfile) -> None:
+async def _notify_approved(
+    *,
+    bot: Bot,
+    profile: UserProfile,
+    state: FSMContext,
+) -> None:
     with contextlib.suppress(TelegramAPIError):
         await bot.send_message(chat_id=profile.tg_id, text=_("start.approved"))
-        await send_menu(bot=bot, chat_id=profile.tg_id, profile=profile)
+        await send_menu(
+            bot=bot,
+            chat_id=profile.tg_id,
+            state=state,
+            profile=profile,
+        )
 
 
-async def _clear_user_state(*, storage: BaseStorage, bot: Bot, tg_id: int) -> None:
+def _user_state(*, storage: BaseStorage, bot: Bot, tg_id: int) -> FSMContext:
     key = StorageKey(bot_id=bot.id, chat_id=tg_id, user_id=tg_id)
-    await FSMContext(storage=storage, key=key).clear()
+    return FSMContext(storage=storage, key=key)
 
 
 @router.callback_query(ModApproveCB.filter(), _is_moderator)
@@ -82,13 +92,14 @@ async def approve_user(
     except LookupError:
         await callback.answer("user not found", show_alert=True)
         return
-    await _clear_user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
+    user_state = _user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
+    await user_state.clear()
     await _annotate(
         callback=callback,
         note=f"#approved by {_moderator_label(callback.from_user)}",
     )
     await callback.answer()
-    await _notify_approved(bot=bot, profile=profile)
+    await _notify_approved(bot=bot, profile=profile, state=user_state)
 
 
 @router.callback_query(ModDenyCB.filter(), _is_moderator)

@@ -38,13 +38,14 @@ async def cmd_start(
         await begin_registration(message=message, state=state)
         return
     await install_menu_button(message=message)
-    await render_menu(target=message, profile=profile)
+    await render_menu(target=message, state=state, profile=profile)
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.ONLINE))
 @require_active_profile
 async def open_online(
     callback: CallbackQuery,
+    state: FSMContext,
     profiles: UserProfileRepository,
     online_price_index: OnlinePriceIndex,
     profile: UserProfile,
@@ -55,7 +56,7 @@ async def open_online(
         _("start.online_now_on") if profile.is_online else _("start.online_now_off")
     )
     await callback.answer(alert, show_alert=False)
-    await render_menu(target=callback, profile=profile)
+    await render_menu(target=callback, state=state, profile=profile)
 
 
 def _completion_rates(stats: RatingStats) -> tuple[int, int]:
