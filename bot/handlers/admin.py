@@ -10,6 +10,7 @@ from aiogram.types import Message
 from aiogram.utils.i18n import I18n
 
 from common.i18n import DOMAIN, LOCALES_DIR
+from common.repositories.bot_switch import BotSwitchRepository
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
@@ -96,6 +97,18 @@ async def cmd_approve(
         f"approved tg_id={tg_id}: status={updated.status.value}, "
         f"with_codes={updated.with_codes}",
     )
+
+
+@router.message(Command("enable", prefix="#"), _is_admin)
+async def cmd_enable(message: Message, bot_switch: BotSwitchRepository) -> None:
+    await bot_switch.enable()
+    await message.answer("bot enabled")
+
+
+@router.message(Command("disable", prefix="#"), _is_admin)
+async def cmd_disable(message: Message, bot_switch: BotSwitchRepository) -> None:
+    await bot_switch.disable()
+    await message.answer("bot disabled")
 
 
 @router.message(Command("create_order", prefix="#"), _is_admin)

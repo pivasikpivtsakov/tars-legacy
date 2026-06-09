@@ -15,10 +15,12 @@ from bot.handlers import (
     registration,
     withdraw,
 )
+from bot.middlewares.bot_switch import BotSwitchMiddleware
 from bot.middlewares.menu import MenuMiddleware
 from bot.middlewares.profile import ProfileMiddleware
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
+from common.repositories.bot_switch import BotSwitchRepository
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
@@ -47,6 +49,7 @@ def build_dispatcher(
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
     online_price_index = OnlinePriceIndex(redis=redis)
     pending = PendingOrdersRepository(redis=redis)
+    bot_switch = BotSwitchRepository(redis=redis)
     dispatcher["profiles"] = profiles
     dispatcher["orders"] = orders_repo
     dispatcher["rating"] = rating
@@ -61,7 +64,11 @@ def build_dispatcher(
     )
     dispatcher["admin_ids"] = admin_ids
     dispatcher["moderator_ids"] = moderator_ids
+    dispatcher["bot_switch"] = bot_switch
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
+    dispatcher.update.middleware(
+        BotSwitchMiddleware(switch=bot_switch, admin_ids=admin_ids),
+    )
     dispatcher.message.outer_middleware(MenuMiddleware(profiles=profiles))
 
     profile_middleware = ProfileMiddleware(profiles=profiles)

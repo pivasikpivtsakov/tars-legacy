@@ -145,6 +145,9 @@ msgstr "Saved. Your profile was sent for moderation."
 msgid "unknown"
 msgstr "I don't understand that. Try /start."
 
+msgid "service.disabled"
+msgstr "The bot is currently disabled. Please try again later."
+
 msgid "order.offer"
 msgstr "<b>New order</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPrice: <b>{full_price}</b>"
 
