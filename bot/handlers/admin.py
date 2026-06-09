@@ -14,6 +14,7 @@ from common.repositories.bot_switch import BotSwitchRepository
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.dispatch_signal import DispatchSignal
 
 router = Router(name="admin")
 
@@ -112,14 +113,18 @@ async def cmd_disable(message: Message, bot_switch: BotSwitchRepository) -> None
 
 
 @router.message(Command("create_order", prefix="#"), _is_admin)
-async def cmd_create_order(message: Message, orders: OrderRepository) -> None:
+async def cmd_create_order(
+    message: Message,
+    orders: OrderRepository,
+    dispatch_signal: DispatchSignal,
+) -> None:
     # currently fakes! no order source yet
     order = await orders.create(
         original_id=random.randint(1, 1_000_000),
         amount=385,
         pubg_id=random.randint(10_000_000, 9_999_999_999),
     )
+    await dispatch_signal.request()
     await message.answer(
-        f"order id={order.id} created (status={order.status.value}); "
-        f"fanout job will dispatch it",
+        f"order id={order.id} created (status={order.status.value}); dispatching now",
     )

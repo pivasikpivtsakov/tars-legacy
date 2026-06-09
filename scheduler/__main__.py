@@ -18,9 +18,11 @@ from common.environment import (
 )
 from common.logging_config import setup_logging
 from common.redis import create_redis
+from common.services.dispatch_signal import DispatchSignal
 from common.services.order_fanout import init_fanout_context
+from scheduler.dispatch import DispatchRunner
 from scheduler.jobs.offer_expiry import schedule_offer_expiry
-from scheduler.jobs.order_fanout import job__order_fanout
+from scheduler.jobs.order_fanout import dispatch_once, job__order_fanout
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +44,13 @@ async def main() -> None:
             jobstores=jobstores,
             job_defaults={"coalesce": True, "max_instances": 1},
         )
+        runner = DispatchRunner(run=dispatch_once)
         init_fanout_context(
             pool=pool,
             redis=redis,
             bot=bot,
             schedule_expiry=partial(schedule_offer_expiry, scheduler=scheduler),
+            request_dispatch=runner.request,
             excluded_user_ids=MODERATOR_USER_IDS,
         )
         scheduler.add_job(
@@ -58,12 +62,21 @@ async def main() -> None:
             misfire_grace_time=SCHEDULER_INTERVAL_SECONDS,
         )
 
+        signal = DispatchSignal(redis=redis)
+        listener = asyncio.create_task(signal.listen(on_wake=runner.request))
+
         logger.info("starting scheduler")
+        runner.start()
+        runner.request()  # drain any backlog left from downtime immediately
         scheduler.start()
         try:
             await asyncio.Event().wait()
         finally:
             scheduler.shutdown(wait=False)
+            listener.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await listener
+            await runner.stop()
             await bot.session.close()
             await redis.aclose()
 

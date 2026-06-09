@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 import logging
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from itertools import batched
 from typing import Protocol
@@ -19,7 +19,7 @@ from common.environment import (
 )
 from common.i18n import build_i18n
 from common.keyboards.orders import take_inline_kb
-from common.models.orders import Order, OrderStatus
+from common.models.orders import Order
 from common.rendering.orders import render_offer_text
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
@@ -57,6 +57,7 @@ class FanoutContext:
     rating: RatingRepository
     pending: PendingOrdersRepository
     schedule_expiry: ExpiryScheduler
+    request_dispatch: Callable[[], None]
     excluded_user_ids: frozenset[int]
 
 
@@ -70,6 +71,7 @@ def init_fanout_context(
     redis: Redis,
     bot: Bot,
     schedule_expiry: ExpiryScheduler,
+    request_dispatch: Callable[[], None],
     excluded_user_ids: Collection[int],
 ) -> None:
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
@@ -85,6 +87,7 @@ def init_fanout_context(
         rating=rating,
         pending=PendingOrdersRepository(redis=redis),
         schedule_expiry=schedule_expiry,
+        request_dispatch=request_dispatch,
         excluded_user_ids=frozenset(excluded_user_ids),
     )
 
@@ -193,9 +196,8 @@ async def run_offer_expiry(
             message_id=message_id,
             reply_markup=None,
         )
-    order = await ctx.orders.get(order_id=order_id)
-    if order is not None and order.status in (OrderStatus.PENDING, OrderStatus.OFFERING):
-        await offer_order_to_next_user(ctx=ctx, order=order)
+    # Re-offer via the sweep only; offering inline here could double-offer the order.
+    ctx.request_dispatch()
 
 
 async def sweep_and_fan_out(*, ctx: FanoutContext, stale_after_seconds: int) -> None:

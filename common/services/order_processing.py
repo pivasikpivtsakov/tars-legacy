@@ -15,6 +15,7 @@ from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.dispatch_signal import DispatchSignal
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,7 @@ class OrderLifecycle:
         profiles: UserProfileRepository,
         rating: RatingRepository,
         pending: PendingOrdersRepository,
+        dispatch_signal: DispatchSignal,
     ) -> None:
         self._pool = pool
         self._orders = orders
@@ -178,6 +180,7 @@ class OrderLifecycle:
         self._profiles = profiles
         self._rating = rating
         self._pending = pending
+        self._dispatch = dispatch_signal
 
     async def take(
         self,
@@ -251,6 +254,7 @@ class OrderLifecycle:
                 closed_at=order.closed_at,
             )
         await self._pending.release(user_id=user_id)
+        await self._dispatch.request()
         return order
 
     async def cancel(self, *, order_id: int, user_id: int) -> Order | None:
@@ -260,4 +264,5 @@ class OrderLifecycle:
         await self._rating.record_cancellation(user_id=user_id)
         await forward_to_third_party(order=order)
         await self._pending.release(user_id=user_id)
+        await self._dispatch.request()
         return order

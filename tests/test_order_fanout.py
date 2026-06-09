@@ -104,17 +104,11 @@ class _FakePending:
 
 
 class _FakeOrders:
-    def __init__(self, *, get: Order | None = None, due: list[Order] | None = None) -> None:
-        self._get = get
+    def __init__(self, *, due: list[Order] | None = None) -> None:
         self._due = list(due or [])
-        self.get_calls: list[int] = []
         self.due_calls: list[int] = []
         self.mark_no_takers_calls: list[int] = []
         self.mark_offering_calls: list[int] = []
-
-    async def get(self, *, order_id: int) -> Order | None:
-        self.get_calls.append(order_id)
-        return self._get
 
     async def list_due_for_fanout(self, *, stale_after_seconds: int) -> list[Order]:
         self.due_calls.append(stale_after_seconds)
@@ -210,6 +204,7 @@ def _ctx(**overrides: object) -> FanoutContext:
         "rating": _FakeRating(),
         "pending": _FakePending(),
         "schedule_expiry": _FakeScheduleExpiry(),
+        "request_dispatch": lambda: None,
         "excluded_user_ids": frozenset(),
     }
     defaults.update(overrides)
@@ -232,7 +227,14 @@ def test_run_offer_expiry_claim_lost_is_noop() -> None:
     rating = _FakeRating()
     pending = _FakePending()
     bot = _FakeBot()
-    ctx = _ctx(offers=offers, rating=rating, pending=pending, bot=bot)
+    dispatched: list[bool] = []
+    ctx = _ctx(
+        offers=offers,
+        rating=rating,
+        pending=pending,
+        bot=bot,
+        request_dispatch=lambda: dispatched.append(True),
+    )
 
     asyncio.run(
         run_offer_expiry(
@@ -249,16 +251,22 @@ def test_run_offer_expiry_claim_lost_is_noop() -> None:
     assert rating.not_taken == []
     assert pending.released_many == []
     assert bot.edits == []
-    assert offers.has_active_offer_calls == []
+    assert dispatched == []  # nothing freed -> no dispatch kick
 
 
-def test_run_offer_expiry_releases_and_edits_without_hop_when_terminal() -> None:
+def test_run_offer_expiry_releases_and_requests_dispatch() -> None:
     offers = _FakeOffers(expire_one=2)
     rating = _FakeRating()
     pending = _FakePending()
     bot = _FakeBot()
-    orders = _FakeOrders(get=_order(status=OrderStatus.TAKEN))
-    ctx = _ctx(offers=offers, rating=rating, pending=pending, bot=bot, orders=orders)
+    dispatched: list[bool] = []
+    ctx = _ctx(
+        offers=offers,
+        rating=rating,
+        pending=pending,
+        bot=bot,
+        request_dispatch=lambda: dispatched.append(True),
+    )
 
     asyncio.run(
         run_offer_expiry(
@@ -274,30 +282,8 @@ def test_run_offer_expiry_releases_and_edits_without_hop_when_terminal() -> None
     assert rating.not_taken == [[2]]
     assert pending.released_many == [[2]]
     assert bot.edits == [(3, 4, "x")]
-    assert offers.has_active_offer_calls == []  # no hop on a taken order
-
-
-def test_run_offer_expiry_hops_when_order_still_active() -> None:
-    offering = _order(status=OrderStatus.OFFERING)
-    offers = _FakeOffers(expire_one=2, has_active=False, expire_offered=[])
-    orders = _FakeOrders(get=offering)
-    order_manager = _FakeOrderManager()
-    ctx = _ctx(offers=offers, orders=orders, order_manager=order_manager)
-
-    asyncio.run(
-        run_offer_expiry(
-            ctx=ctx,
-            order_id=offering.id,
-            user_id=2,
-            chat_id=3,
-            message_id=4,
-            expired_text="x",
-        ),
-    )
-
-    assert len(offers.has_active_offer_calls) == 1  # hop attempted
-    assert len(order_manager.calls) == 1
-    assert orders.mark_no_takers_calls == [offering.id]  # no candidates -> close out
+    assert dispatched == [True]  # freed slot -> dispatch kicked
+    assert offers.has_active_offer_calls == []  # offering happens only in the sweep
 
 
 def test_sweep_recovers_orphan_then_offers() -> None:
