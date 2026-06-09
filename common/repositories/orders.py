@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 import asyncpg
 
+from common.models.order_offers import OrderOfferStatus
 from common.models.orders import Order, OrderStatus
 
 _TABLE = "orders"
@@ -8,6 +11,11 @@ _ACTIVE_FANOUT_STATUSES: tuple[str, ...] = (
     OrderStatus.PENDING.value,
     OrderStatus.OFFERING.value,
 )
+
+# Inlined literals (not a bound parameter) so the predicate matches the partial
+# index orders_active_fanout_idx; a `= ANY($1)` form can't prove that match at plan
+# time. Values come from the OrderStatus enum, so this is not user input.
+_ACTIVE_FANOUT_STATUS_SQL = ", ".join(f"'{status}'" for status in _ACTIVE_FANOUT_STATUSES)
 
 _SELECT_COLUMNS = (
     "id, original_id, shop_access_key, status, status_reason, amount, pubg_id, "
@@ -40,12 +48,19 @@ class OrderRepository:
             raise LookupError(msg)
         return Order.from_row(row)
 
-    async def list_active_for_fanout(self) -> list[Order]:
+    async def list_due_for_fanout(self, *, stale_after_seconds: int) -> list[Order]:
         rows = await self._pool.fetch(
-            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
-            f"WHERE status = ANY($1::order_status[]) "
-            f"ORDER BY created_at ASC",
-            list(_ACTIVE_FANOUT_STATUSES),
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} o "
+            f"WHERE o.status IN ({_ACTIVE_FANOUT_STATUS_SQL}) "
+            f"AND NOT EXISTS ("
+            f"  SELECT 1 FROM order_offers oo "
+            f"  WHERE oo.order_id = o.id "
+            f"  AND oo.status = $1::order_offer_status "
+            f"  AND oo.offered_at + $2::interval > NOW()"
+            f") "
+            f"ORDER BY o.created_at ASC",
+            OrderOfferStatus.OFFERED.value,
+            timedelta(seconds=stale_after_seconds),
         )
         return [Order.from_row(row) for row in rows]
 

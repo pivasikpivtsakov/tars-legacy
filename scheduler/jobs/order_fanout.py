@@ -1,54 +1,9 @@
-import logging
-import time
-
-import asyncpg
-from aiogram import Bot
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from redis.asyncio import Redis
-
-from common.environment import MODERATOR_USER_IDS, RATING_SPEED_WINDOW
-from common.repositories.online_price_index import OnlinePriceIndex
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.rating import RatingRepository
-from common.repositories.user_profiles import UserProfileRepository
-from common.services.order_fanout import fan_out_active_orders
-from common.services.order_processing import OrderManager
-
-logger = logging.getLogger(__name__)
+from common.environment import OFFER_RECONCILE_GRACE_SECONDS, OFFER_TTL_SECONDS
+from common.services.order_fanout import get_fanout_context, sweep_and_fan_out
 
 
-async def job__order_fanout(
-    *,
-    bot: Bot,
-    pool: asyncpg.Pool,
-    redis: Redis,
-    scheduler: AsyncIOScheduler,
-) -> None:
-    started = time.perf_counter()
-    logger.info("order fanout started")
-
-    orders = OrderRepository(pool=pool)
-    offers = OrderOfferRepository(pool=pool)
-    profiles = UserProfileRepository(pool=pool)
-    rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
-    pending = PendingOrdersRepository(redis=redis)
-    order_manager = OrderManager(
-        online_price_index=OnlinePriceIndex(redis=redis),
-        rating=rating,
+async def job__order_fanout() -> None:
+    await sweep_and_fan_out(
+        ctx=get_fanout_context(),
+        stale_after_seconds=OFFER_TTL_SECONDS + OFFER_RECONCILE_GRACE_SECONDS,
     )
-
-    await fan_out_active_orders(
-        bot=bot,
-        orders=orders,
-        offers=offers,
-        profiles=profiles,
-        order_manager=order_manager,
-        rating=rating,
-        pending=pending,
-        scheduler=scheduler,
-        excluded_user_ids=MODERATOR_USER_IDS,
-    )
-
-    logger.info("order fanout completed elapsed=%.3fs", time.perf_counter() - started)
