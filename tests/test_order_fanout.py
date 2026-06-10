@@ -7,7 +7,6 @@ from common.services import order_fanout
 from common.services.order_fanout import (
     FanoutContext,
     offer_order_to_next_user,
-    run_offer_expiry,
     sweep_and_fan_out,
 )
 from common.services.order_processing import RankedCandidate
@@ -106,12 +105,12 @@ class _FakePending:
 class _FakeOrders:
     def __init__(self, *, due: list[Order] | None = None) -> None:
         self._due = list(due or [])
-        self.due_calls: list[int] = []
+        self.due_calls: list[tuple[int, int]] = []
         self.mark_no_takers_calls: list[int] = []
         self.mark_offering_calls: list[int] = []
 
-    async def list_due_for_fanout(self, *, stale_after_seconds: int) -> list[Order]:
-        self.due_calls.append(stale_after_seconds)
+    async def list_due_for_fanout(self, *, stale_after_seconds: int, limit: int) -> list[Order]:
+        self.due_calls.append((stale_after_seconds, limit))
         return list(self._due)
 
     async def mark_no_takers(self, *, order_id: int) -> None:
@@ -124,7 +123,6 @@ class _FakeOrders:
 class _FakeBot:
     def __init__(self, *, message_id: int = 100) -> None:
         self._message_id = message_id
-        self.edits: list[tuple[int, int, str]] = []
         self.sent: list[int] = []
 
     async def send_message(self, *, chat_id: int, text: str, reply_markup: object) -> object:
@@ -132,17 +130,6 @@ class _FakeBot:
         assert text
         assert reply_markup is not None
         return SimpleNamespace(message_id=self._message_id)
-
-    async def edit_message_text(
-        self,
-        *,
-        text: str,
-        chat_id: int,
-        message_id: int,
-        reply_markup: object,
-    ) -> None:
-        self.edits.append((chat_id, message_id, text))
-        assert reply_markup is None
 
 
 class _FakeProfiles:
@@ -169,12 +156,18 @@ class _FakeOrderManager:
         self.calls.append((order.id, exclude_user_ids))
         return list(self._candidates)
 
+    def begin_sweep(self) -> None:
+        pass
 
-class _FakeScheduleExpiry:
+    def end_sweep(self) -> None:
+        pass
+
+
+class _FakeDeadlines:
     def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
+        self.scheduled: list[dict[str, object]] = []
 
-    def __call__(
+    async def schedule(
         self,
         *,
         order_id: int,
@@ -182,14 +175,16 @@ class _FakeScheduleExpiry:
         chat_id: int,
         message_id: int,
         expired_text: str,
+        deadline_ts: float,
     ) -> None:
-        self.calls.append(
+        self.scheduled.append(
             {
                 "order_id": order_id,
                 "user_id": user_id,
                 "chat_id": chat_id,
                 "message_id": message_id,
                 "expired_text": expired_text,
+                "deadline_ts": deadline_ts,
             },
         )
 
@@ -203,8 +198,7 @@ def _ctx(**overrides: object) -> FanoutContext:
         "order_manager": _FakeOrderManager(),
         "rating": _FakeRating(),
         "pending": _FakePending(),
-        "schedule_expiry": _FakeScheduleExpiry(),
-        "request_dispatch": lambda: None,
+        "deadlines": _FakeDeadlines(),
         "excluded_user_ids": frozenset(),
     }
     defaults.update(overrides)
@@ -222,70 +216,6 @@ def test_release_not_taken_is_noop_on_empty() -> None:
     assert pending.released_many == []
 
 
-def test_run_offer_expiry_claim_lost_is_noop() -> None:
-    offers = _FakeOffers(expire_one=None)
-    rating = _FakeRating()
-    pending = _FakePending()
-    bot = _FakeBot()
-    dispatched: list[bool] = []
-    ctx = _ctx(
-        offers=offers,
-        rating=rating,
-        pending=pending,
-        bot=bot,
-        request_dispatch=lambda: dispatched.append(True),
-    )
-
-    asyncio.run(
-        run_offer_expiry(
-            ctx=ctx,
-            order_id=1,
-            user_id=2,
-            chat_id=3,
-            message_id=4,
-            expired_text="x",
-        ),
-    )
-
-    assert offers.expire_one_calls == [(1, 2)]
-    assert rating.not_taken == []
-    assert pending.released_many == []
-    assert bot.edits == []
-    assert dispatched == []  # nothing freed -> no dispatch kick
-
-
-def test_run_offer_expiry_releases_and_requests_dispatch() -> None:
-    offers = _FakeOffers(expire_one=2)
-    rating = _FakeRating()
-    pending = _FakePending()
-    bot = _FakeBot()
-    dispatched: list[bool] = []
-    ctx = _ctx(
-        offers=offers,
-        rating=rating,
-        pending=pending,
-        bot=bot,
-        request_dispatch=lambda: dispatched.append(True),
-    )
-
-    asyncio.run(
-        run_offer_expiry(
-            ctx=ctx,
-            order_id=1,
-            user_id=2,
-            chat_id=3,
-            message_id=4,
-            expired_text="x",
-        ),
-    )
-
-    assert rating.not_taken == [[2]]
-    assert pending.released_many == [[2]]
-    assert bot.edits == [(3, 4, "x")]
-    assert dispatched == [True]  # freed slot -> dispatch kicked
-    assert offers.has_active_offer_calls == []  # offering happens only in the sweep
-
-
 def test_sweep_recovers_orphan_then_offers() -> None:
     order = _order(status=OrderStatus.OFFERING, order_id=5)
     offers = _FakeOffers(expire_offered=[9], has_active=False)
@@ -294,9 +224,9 @@ def test_sweep_recovers_orphan_then_offers() -> None:
     pending = _FakePending()
     ctx = _ctx(offers=offers, orders=orders, rating=rating, pending=pending)
 
-    asyncio.run(sweep_and_fan_out(ctx=ctx, stale_after_seconds=45))
+    asyncio.run(sweep_and_fan_out(ctx=ctx, stale_after_seconds=45, limit=100))
 
-    assert orders.due_calls == [45]
+    assert orders.due_calls == [(45, 100)]
     assert offers.expire_offered_calls == [5, 5]  # recovery cleanup + no-candidates branch
     assert rating.not_taken == [[9]]  # orphan released once
     assert pending.released_many == [[9]]
@@ -313,7 +243,7 @@ def _candidate(*, user_id: int) -> RankedCandidate:
     )
 
 
-def test_offer_order_to_next_user_offers_and_schedules() -> None:
+def test_offer_order_to_next_user_offers_and_records_deadline() -> None:
     order_id, user_id, chat_id, message_id = 7, 42, 9001, 555
     offers = _FakeOffers(has_active=False)
     pending = _FakePending(reserve=True)
@@ -321,7 +251,7 @@ def test_offer_order_to_next_user_offers_and_schedules() -> None:
     bot = _FakeBot(message_id=message_id)
     profiles = _FakeProfiles(tg_id=chat_id)
     order_manager = _FakeOrderManager(candidates=[_candidate(user_id=user_id)])
-    schedule = _FakeScheduleExpiry()
+    deadlines = _FakeDeadlines()
     ctx = _ctx(
         offers=offers,
         pending=pending,
@@ -329,7 +259,7 @@ def test_offer_order_to_next_user_offers_and_schedules() -> None:
         bot=bot,
         profiles=profiles,
         order_manager=order_manager,
-        schedule_expiry=schedule,
+        deadlines=deadlines,
     )
 
     order = _order(status=OrderStatus.PENDING, order_id=order_id)
@@ -340,16 +270,14 @@ def test_offer_order_to_next_user_offers_and_schedules() -> None:
     assert profiles.get_tg_id_calls == [user_id]
     assert bot.sent == [chat_id]
     assert orders.mark_offering_calls == [order_id]
-    assert schedule.calls == [
-        {
-            "order_id": order_id,
-            "user_id": user_id,
-            "chat_id": chat_id,
-            "message_id": message_id,
-            "expired_text": schedule.calls[0]["expired_text"],
-        },
-    ]
-    assert schedule.calls[0]["expired_text"]  # rendered, non-empty
+    assert len(deadlines.scheduled) == 1
+    recorded = deadlines.scheduled[0]
+    assert recorded["order_id"] == order_id
+    assert recorded["user_id"] == user_id
+    assert recorded["chat_id"] == chat_id
+    assert recorded["message_id"] == message_id
+    assert recorded["expired_text"]  # rendered, non-empty
+    assert recorded["deadline_ts"] > 0
 
 
 def test_offer_order_rolls_back_when_tg_id_missing() -> None:
@@ -359,14 +287,14 @@ def test_offer_order_rolls_back_when_tg_id_missing() -> None:
     orders = _FakeOrders()
     profiles = _FakeProfiles(tg_id=None)
     order_manager = _FakeOrderManager(candidates=[_candidate(user_id=user_id)])
-    schedule = _FakeScheduleExpiry()
+    deadlines = _FakeDeadlines()
     ctx = _ctx(
         offers=offers,
         pending=pending,
         orders=orders,
         profiles=profiles,
         order_manager=order_manager,
-        schedule_expiry=schedule,
+        deadlines=deadlines,
     )
 
     order = _order(status=OrderStatus.PENDING, order_id=order_id)
@@ -375,5 +303,5 @@ def test_offer_order_rolls_back_when_tg_id_missing() -> None:
     assert offers.record_offer_calls == [(order_id, user_id)]
     assert offers.expire_one_calls == [(order_id, user_id)]  # rollback expired the offer
     assert pending.released == [user_id]  # rollback freed the reservation
-    assert schedule.calls == []  # no expiry scheduled
+    assert deadlines.scheduled == []  # no deadline recorded
     assert orders.mark_offering_calls == []  # never marked offering

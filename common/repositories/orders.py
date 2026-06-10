@@ -48,7 +48,7 @@ class OrderRepository:
             raise LookupError(msg)
         return Order.from_row(row)
 
-    async def list_due_for_fanout(self, *, stale_after_seconds: int) -> list[Order]:
+    async def list_due_for_fanout(self, *, stale_after_seconds: int, limit: int) -> list[Order]:
         rows = await self._pool.fetch(
             f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} o "
             f"WHERE o.status IN ({_ACTIVE_FANOUT_STATUS_SQL}) "
@@ -58,9 +58,11 @@ class OrderRepository:
             f"  AND oo.status = $1::order_offer_status "
             f"  AND oo.offered_at + $2::interval > NOW()"
             f") "
-            f"ORDER BY o.created_at ASC",
+            f"ORDER BY o.created_at ASC "
+            f"LIMIT $3",
             OrderOfferStatus.OFFERED.value,
             timedelta(seconds=stale_after_seconds),
+            limit,
         )
         return [Order.from_row(row) for row in rows]
 

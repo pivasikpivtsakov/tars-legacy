@@ -74,19 +74,14 @@ def _env_positive_int(varname: str, *, default: int) -> int:
     )
 
 
-SCHEDULER_INTERVAL_SECONDS = _env_positive_int("SCHEDULER_INTERVAL_SECONDS", default=30)
+# How often the dispatcher sweeps with no wake signal (backstop for missed wakes).
+DISPATCH_BACKSTOP_SECONDS = _env_positive_int("DISPATCH_BACKSTOP_SECONDS", default=30)
+# Max orders pulled from the backlog per sweep (bounds per-sweep cost).
+DISPATCH_BATCH_LIMIT = _env_positive_int("DISPATCH_BATCH_LIMIT", default=100)
+# How often the timekeeper polls the offer-deadline queue for due expiries.
+OFFER_EXPIRY_POLL_SECONDS = _env_positive_int("OFFER_EXPIRY_POLL_SECONDS", default=1)
 OFFER_TTL_SECONDS = _env_positive_int("OFFER_TTL_SECONDS", default=30)
 RATING_SPEED_WINDOW = _env_positive_int("RATING_SPEED_WINDOW", default=3)
 MAX_ORDERS_PENDING = _env_positive_int("MAX_ORDERS_PENDING", default=3)
 FANOUT_CHUNK_SIZE = _env_positive_int("FANOUT_CHUNK_SIZE", default=20)
 OFFER_RECONCILE_GRACE_SECONDS = _env_positive_int("OFFER_RECONCILE_GRACE_SECONDS", default=15)
-OFFER_EXPIRY_MISFIRE_GRACE_SECONDS = _env_positive_int(
-    "OFFER_EXPIRY_MISFIRE_GRACE_SECONDS",
-    default=86_400,
-)
-
-REDIS_JOBSTORE_KEY_PREFIX = env_get(
-    "REDIS_JOBSTORE_KEY_PREFIX",
-    default="order_job:apscheduler",
-    raise_if_failed=False,
-)

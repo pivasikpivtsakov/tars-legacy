@@ -49,7 +49,7 @@ class PendingOrdersRepository:
             return
         pipe = self._redis.pipeline(transaction=False)
         for user_id, count in counts.items():
-            pipe.set(_key(user_id), count)
+            await pipe.set(_key(user_id), count)
         await pipe.execute()
 
     async def reset(self) -> None:

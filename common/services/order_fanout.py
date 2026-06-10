@@ -1,10 +1,9 @@
 import asyncio
-import contextlib
 import logging
-from collections.abc import Callable, Collection
+import time
+from collections.abc import Collection
 from dataclasses import dataclass
 from itertools import batched
-from typing import Protocol
 
 import asyncpg
 from aiogram import Bot
@@ -21,6 +20,7 @@ from common.i18n import build_i18n
 from common.keyboards.orders import take_inline_kb
 from common.models.orders import Order
 from common.rendering.orders import render_offer_text
+from common.repositories.offer_deadlines import OfferDeadlineQueue
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
@@ -35,18 +35,6 @@ _i18n = build_i18n()
 _ = _i18n.gettext
 
 
-class ExpiryScheduler(Protocol):
-    def __call__(
-        self,
-        *,
-        order_id: int,
-        user_id: int,
-        chat_id: int,
-        message_id: int,
-        expired_text: str,
-    ) -> None: ...
-
-
 @dataclass(frozen=True, slots=True)
 class FanoutContext:
     bot: Bot
@@ -56,26 +44,19 @@ class FanoutContext:
     order_manager: OrderManager
     rating: RatingRepository
     pending: PendingOrdersRepository
-    schedule_expiry: ExpiryScheduler
-    request_dispatch: Callable[[], None]
+    deadlines: OfferDeadlineQueue
     excluded_user_ids: frozenset[int]
 
 
-class _FanoutRuntime:
-    context: FanoutContext | None = None
-
-
-def init_fanout_context(
+def build_fanout_context(
     *,
     pool: asyncpg.Pool,
     redis: Redis,
     bot: Bot,
-    schedule_expiry: ExpiryScheduler,
-    request_dispatch: Callable[[], None],
     excluded_user_ids: Collection[int],
-) -> None:
+) -> FanoutContext:
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
-    _FanoutRuntime.context = FanoutContext(
+    return FanoutContext(
         bot=bot,
         orders=OrderRepository(pool=pool),
         offers=OrderOfferRepository(pool=pool),
@@ -86,17 +67,9 @@ def init_fanout_context(
         ),
         rating=rating,
         pending=PendingOrdersRepository(redis=redis),
-        schedule_expiry=schedule_expiry,
-        request_dispatch=request_dispatch,
+        deadlines=OfferDeadlineQueue(redis=redis),
         excluded_user_ids=frozenset(excluded_user_ids),
     )
-
-
-def get_fanout_context() -> FanoutContext:
-    if _FanoutRuntime.context is None:
-        msg = "fanout context is not initialized"
-        raise RuntimeError(msg)
-    return _FanoutRuntime.context
 
 
 async def offer_order_to_next_user(*, ctx: FanoutContext, order: Order) -> None:
@@ -155,12 +128,13 @@ async def offer_order_to_next_user(*, ctx: FanoutContext, order: Order) -> None:
         )
         await _rollback_offer(ctx=ctx, order_id=order.id, user_id=next_recipient.user_id)
         return
-    ctx.schedule_expiry(
+    await ctx.deadlines.schedule(
         order_id=order.id,
         user_id=next_recipient.user_id,
         chat_id=tg_id,
         message_id=sent.message_id,
         expired_text=f"{offer_text}\n{_('order.expired')}",
+        deadline_ts=time.time() + OFFER_TTL_SECONDS,
     )
     await ctx.orders.mark_offering(order_id=order.id)
 
@@ -177,35 +151,19 @@ async def _release_not_taken(*, ctx: FanoutContext, user_ids: list[int]) -> None
     await ctx.pending.release_many(user_ids=user_ids)
 
 
-async def run_offer_expiry(
-    *,
-    ctx: FanoutContext,
-    order_id: int,
-    user_id: int,
-    chat_id: int,
-    message_id: int,
-    expired_text: str,
-) -> None:
-    if await ctx.offers.expire_one(order_id=order_id, user_id=user_id) is None:
-        return
-    await _release_not_taken(ctx=ctx, user_ids=[user_id])
-    with contextlib.suppress(TelegramAPIError):
-        await ctx.bot.edit_message_text(
-            text=expired_text,
-            chat_id=chat_id,
-            message_id=message_id,
-            reply_markup=None,
-        )
-    # Re-offer via the sweep only; offering inline here could double-offer the order.
-    ctx.request_dispatch()
-
-
-async def sweep_and_fan_out(*, ctx: FanoutContext, stale_after_seconds: int) -> None:
-    due_orders = await ctx.orders.list_due_for_fanout(stale_after_seconds=stale_after_seconds)
-    for chunk in batched(due_orders, FANOUT_CHUNK_SIZE, strict=False):
-        await asyncio.gather(
-            *(_recover_and_offer(ctx=ctx, order=order) for order in chunk),
-        )
+async def sweep_and_fan_out(*, ctx: FanoutContext, stale_after_seconds: int, limit: int) -> None:
+    due_orders = await ctx.orders.list_due_for_fanout(
+        stale_after_seconds=stale_after_seconds,
+        limit=limit,
+    )
+    ctx.order_manager.begin_sweep()
+    try:
+        for chunk in batched(due_orders, FANOUT_CHUNK_SIZE, strict=False):
+            await asyncio.gather(
+                *(_recover_and_offer(ctx=ctx, order=order) for order in chunk),
+            )
+    finally:
+        ctx.order_manager.end_sweep()
 
 
 async def _recover_and_offer(*, ctx: FanoutContext, order: Order) -> None:

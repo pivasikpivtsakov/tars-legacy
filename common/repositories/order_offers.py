@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import timedelta
 
 import asyncpg
@@ -117,3 +118,27 @@ class OrderOfferRepository:
             OrderOfferStatus.OFFERED.value,
         )
         return [row["user_id"] for row in rows]
+
+    async def expire_many(
+        self,
+        *,
+        offers: Sequence[tuple[int, int]],
+    ) -> list[tuple[int, int]]:
+        if not offers:
+            return []
+        order_ids = [order_id for order_id, _ in offers]
+        user_ids = [user_id for _, user_id in offers]
+        rows = await self._pool.fetch(
+            f"UPDATE {_TABLE} AS oo "
+            f"SET status = $3::order_offer_status, resolved_at = NOW() "
+            f"FROM unnest($1::int[], $2::bigint[]) AS due(order_id, user_id) "
+            f"WHERE oo.order_id = due.order_id "
+            f"AND oo.user_id = due.user_id "
+            f"AND oo.status = $4::order_offer_status "
+            f"RETURNING oo.order_id, oo.user_id",
+            order_ids,
+            user_ids,
+            OrderOfferStatus.EXPIRED.value,
+            OrderOfferStatus.OFFERED.value,
+        )
+        return [(row["order_id"], row["user_id"]) for row in rows]

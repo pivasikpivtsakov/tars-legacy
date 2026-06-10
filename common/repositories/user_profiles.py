@@ -155,6 +155,12 @@ class UserProfileRepository:
         )
         return {row["id"]: row["tg_id"] for row in rows}
 
+    async def lock_is_online(self, *, profile_id: int, conn: asyncpg.Connection) -> bool | None:
+        return await conn.fetchval(
+            f"SELECT is_online FROM {_TABLE} WHERE id = $1 FOR UPDATE",
+            profile_id,
+        )
+
     async def credit_balance(
         self,
         *,

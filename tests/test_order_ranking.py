@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 import pytest
@@ -61,18 +61,14 @@ class _FakeOnlinePriceIndex:
     def __init__(self, *, rows: Sequence[PricedCandidate]) -> None:
         self._rows = sorted(rows, key=lambda row: (row.price_60, row.user_id))
         self.requested_packages: Sequence[int] | None = None
-        self.requested_exclude: set[int] | None = None
 
     async def get_cheapest_candidates(
         self,
         *,
         required_packages: Sequence[int],
-        exclude_user_ids: Collection[int] = (),
     ) -> list[PricedCandidate]:
         self.requested_packages = required_packages
-        excluded = set(exclude_user_ids)
-        self.requested_exclude = excluded
-        return [row for row in self._rows if row.user_id not in excluded]
+        return list(self._rows)
 
 
 class _FakeRating:
@@ -204,6 +200,5 @@ def test_select_candidates_excludes_user_ids() -> None:
         ),
     )
 
-    assert online_price_index.requested_exclude == {1}
     assert rating.requested_user_ids == [2]
     assert [c.user_id for c in result] == [2]

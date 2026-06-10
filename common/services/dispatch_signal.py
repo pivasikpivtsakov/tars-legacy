@@ -1,16 +1,25 @@
-import asyncio
 import contextlib
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator
 
 from redis.asyncio import Redis
+from redis.asyncio.client import PubSub
 from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
 
 _WAKE_CHANNEL = "orders:dispatch:wake"
 _WAKE_PAYLOAD = "1"
-_RECONNECT_DELAY_SECONDS = 1.0
+
+
+class WakeStream:
+    def __init__(self, *, pubsub: PubSub) -> None:
+        self._pubsub = pubsub
+
+    async def wait(self, *, timeout_seconds: float) -> None:
+        # Returns when a wake arrives or the timeout elapses; the caller sweeps
+        # either way, so a missed publish degrades to backstop latency, not a stall.
+        await self._pubsub.get_message(ignore_subscribe_messages=True, timeout=timeout_seconds)
 
 
 class DispatchSignal:
@@ -23,19 +32,12 @@ class DispatchSignal:
         except RedisError:
             logger.warning("failed to publish dispatch wake", exc_info=True)
 
-    async def listen(self, *, on_wake: Callable[[], None]) -> None:
-        while True:
-            pubsub = self._redis.pubsub()
-            try:
-                await pubsub.subscribe(_WAKE_CHANNEL)
-                async for message in pubsub.listen():
-                    if message["type"] == "message":
-                        on_wake()
-            except asyncio.CancelledError:
-                raise
-            except RedisError:
-                logger.warning("dispatch wake listener dropped; reconnecting", exc_info=True)
-                await asyncio.sleep(_RECONNECT_DELAY_SECONDS)
-            finally:
-                with contextlib.suppress(RedisError):
-                    await pubsub.aclose()
+    @contextlib.asynccontextmanager
+    async def subscribe(self) -> AsyncIterator[WakeStream]:
+        pubsub = self._redis.pubsub()
+        await pubsub.subscribe(_WAKE_CHANNEL)
+        try:
+            yield WakeStream(pubsub=pubsub)
+        finally:
+            with contextlib.suppress(RedisError):
+                await pubsub.aclose()

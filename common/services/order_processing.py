@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
@@ -107,6 +108,9 @@ def _ranking_key(candidate: RankedCandidate) -> tuple[float, float, int, int, in
     )
 
 
+type _CandidateCache = dict[tuple[int, ...], asyncio.Future[list[PricedCandidate]]]
+
+
 class OrderManager:
     def __init__(
         self,
@@ -116,6 +120,35 @@ class OrderManager:
     ) -> None:
         self._online_price_index = online_price_index
         self._rating = rating
+        self._candidate_cache: _CandidateCache | None = None
+
+    def begin_sweep(self) -> None:
+        self._candidate_cache = {}
+
+    def end_sweep(self) -> None:
+        self._candidate_cache = None
+
+    async def _eligible_candidates(
+        self,
+        *,
+        required_packages: tuple[int, ...],
+    ) -> list[PricedCandidate]:
+        cache = self._candidate_cache
+        if cache is None:
+            return await self._online_price_index.get_cheapest_candidates(
+                required_packages=required_packages,
+            )
+        future = cache.get(required_packages)
+        if future is None:
+            # Register the future before awaiting so concurrent orders sharing a
+            # package-set await one ZINTER instead of each issuing their own.
+            future = asyncio.ensure_future(
+                self._online_price_index.get_cheapest_candidates(
+                    required_packages=required_packages,
+                ),
+            )
+            cache[required_packages] = future
+        return await future
 
     async def select_candidates(
         self,
@@ -127,10 +160,9 @@ class OrderManager:
             msg = f"order id={order.id} has no amount"
             raise OrderAmountError(msg)
         decomposition = decompose_amount(order.amount)
-        rows = await self._online_price_index.get_cheapest_candidates(
-            required_packages=decomposition.unique_parts,
-            exclude_user_ids=exclude_user_ids,
-        )
+        rows = await self._eligible_candidates(required_packages=decomposition.unique_parts)
+        excluded = set(exclude_user_ids)
+        rows = [row for row in rows if row.user_id not in excluded]
         if not rows:
             return []
         bucket = _cheapest_price_bucket(rows)
@@ -194,9 +226,9 @@ class OrderLifecycle:
         async with self._pool.acquire() as conn:
             try:
                 async with conn.transaction():
-                    is_online = await conn.fetchval(
-                        "SELECT is_online FROM user_profiles WHERE id = $1 FOR UPDATE",
-                        user_id,
+                    is_online = await self._profiles.lock_is_online(
+                        profile_id=user_id,
+                        conn=conn,
                     )
                     if not is_online:
                         raise _TakeAbortError(TakeStatus.OFFLINE)

@@ -1,4 +1,4 @@
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from redis.asyncio import Redis
@@ -53,17 +53,12 @@ class OnlinePriceIndex:
         self,
         *,
         required_packages: Sequence[int],
-        exclude_user_ids: Collection[int] = (),
     ) -> list[PricedCandidate]:
         if not required_packages:
             return []
         keys = [_pkg_key(size) for size in required_packages]
         pairs = await self._redis.zinter(keys, aggregate="MIN", withscores=True)
-        excluded = set(exclude_user_ids)
-        candidates: list[PricedCandidate] = []
-        for member, score in pairs:
-            user_id = int(member)
-            if user_id in excluded:
-                continue
-            candidates.append(PricedCandidate(user_id=user_id, price_60=int(score)))
-        return candidates
+        return [
+            PricedCandidate(user_id=int(member), price_60=int(score))
+            for member, score in pairs
+        ]

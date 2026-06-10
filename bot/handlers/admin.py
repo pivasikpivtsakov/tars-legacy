@@ -124,7 +124,7 @@ async def cmd_create_order(
         amount=385,
         pubg_id=random.randint(10_000_000, 9_999_999_999),
     )
-    await dispatch_signal.request()
+    # await dispatch_signal.request()
     await message.answer(
         f"order id={order.id} created (status={order.status.value}); dispatching now",
     )
