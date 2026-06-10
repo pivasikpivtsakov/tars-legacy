@@ -11,11 +11,14 @@ from aiogram.types import (
 
 
 class StartZone(StrEnum):
+    # for everyone
     ONLINE = "online"
     BALANCE = "balance"
     WITHDRAW = "withdraw"
     PRIORITY = "priority"
     REGISTER = "register"
+    # for admins only
+    TOGGLE_BOT_ENABLED = "toggle_bot_enabled"
 
 
 class OpenZoneCB(CallbackData, prefix="zone"):

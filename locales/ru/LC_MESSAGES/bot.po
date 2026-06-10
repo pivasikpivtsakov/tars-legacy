@@ -34,6 +34,12 @@ msgstr "Назад"
 msgid "start.btn_menu"
 msgstr "☰ Меню"
 
+msgid "start.btn_toggle_bot_enabled"
+msgstr "Включить бота"
+
+msgid "start.btn_toggle_bot_disabled"
+msgstr "Отключить бота"
+
 msgid "start.menu_hint"
 msgstr "Нажми кнопку «☰ Меню» внизу, чтобы открыть меню в любой момент."
 

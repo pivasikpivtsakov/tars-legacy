@@ -5,14 +5,14 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, Update, User
 from aiogram.utils.i18n import gettext as _
 
-from common.repositories.bot_switch import BotSwitchRepository
+from common.services.bot_switch import BotSwitchService
 
 
 class BotSwitchMiddleware(BaseMiddleware):
     def __init__(
         self,
         *,
-        switch: BotSwitchRepository,
+        switch: BotSwitchService,
         admin_ids: frozenset[int],
     ) -> None:
         self._switch = switch

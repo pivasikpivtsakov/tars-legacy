@@ -34,6 +34,12 @@ msgstr "Back"
 msgid "start.btn_menu"
 msgstr "☰ Menu"
 
+msgid "start.btn_toggle_bot_enabled"
+msgstr "Enable bot"
+
+msgid "start.btn_toggle_bot_disabled"
+msgstr "Disable bot"
+
 msgid "start.menu_hint"
 msgstr "Tap the ☰ Menu button below to reopen the menu anytime."
 

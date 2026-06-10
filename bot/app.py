@@ -27,6 +27,7 @@ from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.bot_switch import BotSwitchService
 from common.services.dispatch_signal import DispatchSignal
 from common.services.order_processing import OrderLifecycle
 
@@ -50,8 +51,9 @@ def build_dispatcher(
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
     online_price_index = OnlinePriceIndex(redis=redis)
     pending = PendingOrdersRepository(redis=redis)
-    bot_switch = BotSwitchRepository(redis=redis)
     dispatch_signal = DispatchSignal(redis=redis)
+    bot_switch_repo = BotSwitchRepository(redis=redis)
+    bot_switch = BotSwitchService(repo=bot_switch_repo, profiles=profiles)
     dispatcher["profiles"] = profiles
     dispatcher["orders"] = orders_repo
     dispatcher["rating"] = rating

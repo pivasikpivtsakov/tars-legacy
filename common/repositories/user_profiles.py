@@ -186,3 +186,8 @@ class UserProfileRepository:
             UserProfileStatus.ACTIVE.value,
         )
         return [UserProfile.from_row(row) for row in rows]
+
+    async def go_everyone_full_offline(self) -> None:
+        await self._pool.execute(
+            f"UPDATE {_TABLE} SET is_online = FALSE, updated_at = NOW() "
+        )
