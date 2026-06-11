@@ -154,6 +154,12 @@ msgstr "Не понимаю. Попробуй /start."
 msgid "service.disabled"
 msgstr "Бот сейчас отключён. Попробуй позже."
 
+msgid "admin.bot_enabled"
+msgstr "Бот включён."
+
+msgid "admin.bot_disabled"
+msgstr "Бот отключён."
+
 msgid "order.offer"
 msgstr "<b>Новый заказ</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nЦена: <b>{full_price}</b>"
 

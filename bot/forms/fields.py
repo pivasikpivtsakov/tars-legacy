@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.forms.menu import render_menu
+from bot.forms.menu import MenuContext, render_menu
 from bot.forms.states import STATE_BY_FIELD, ProfileEdit, Registration
 from bot.keyboards.profile import (
     ProfileField,
@@ -286,7 +286,7 @@ async def finish_registration(
     )
     await state.set_state(Registration.finished_filling)
     await message.answer(_summary(_("registration.done"), data))
-    await render_menu(target=message, state=state, profile=profile)
+    await render_menu(MenuContext(target=message, state=state, profile=profile))
 
 
 async def load_profile_into_state(
@@ -346,5 +346,5 @@ async def save_edits(
         moderator_ids=moderator_ids,
     )
     await state.clear()
-    await render_menu(target=callback, state=state, profile=updated)
+    await render_menu(MenuContext(target=callback, state=state, profile=updated))
     await callback.answer(_("edit.saved"))

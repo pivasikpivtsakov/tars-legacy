@@ -53,7 +53,11 @@ def build_dispatcher(
     pending = PendingOrdersRepository(redis=redis)
     dispatch_signal = DispatchSignal(redis=redis)
     bot_switch_repo = BotSwitchRepository(redis=redis)
-    bot_switch = BotSwitchService(repo=bot_switch_repo, profiles=profiles)
+    bot_switch = BotSwitchService(
+        repo=bot_switch_repo,
+        profiles=profiles,
+        online_price_index=online_price_index,
+    )
     dispatcher["profiles"] = profiles
     dispatcher["orders"] = orders_repo
     dispatcher["rating"] = rating

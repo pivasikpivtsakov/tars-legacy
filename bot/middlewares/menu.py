@@ -8,7 +8,7 @@ from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms.fields import begin_registration
-from bot.forms.menu import open_menu
+from bot.forms.menu import build_menu_context, open_menu
 from bot.forms.states import REGISTRATION_INPUT_STATES
 from bot.handlers.moderation import MODERATOR_PANEL_TEXT
 from bot.keyboards.menu import MENU_BUTTON_KEY
@@ -68,5 +68,12 @@ class MenuMiddleware(BaseMiddleware):
         if profile is None:
             await begin_registration(message=event, state=state)
             return None
-        await open_menu(target=event, state=state, profile=profile)
+        context = await build_menu_context(
+            target=event,
+            state=state,
+            profile=profile,
+            admin_ids=data["admin_ids"],
+            bot_switch=data["bot_switch"],
+        )
+        await open_menu(context)
         return None

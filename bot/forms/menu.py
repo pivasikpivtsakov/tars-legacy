@@ -1,4 +1,5 @@
 import contextlib
+from dataclasses import dataclass
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -14,12 +15,41 @@ from aiogram.utils.i18n import gettext as _
 from bot.keyboards.menu import full_menu_kb, menu_button_markup
 from bot.keyboards.start import back_kb
 from common.models.user_profiles import UserProfile, UserProfileStatus
+from common.services.bot_switch import BotSwitchService
 
 _MENU_MESSAGE_ID_KEY = "menu_message_id"
 
 
 def menu_available(profile: UserProfile | None) -> bool:
     return profile is not None and profile.status is UserProfileStatus.ACTIVE
+
+
+@dataclass(frozen=True, slots=True)
+class MenuContext:
+    target: Message | CallbackQuery
+    state: FSMContext
+    profile: UserProfile | None
+    for_admin: bool = False
+    bot_enabled: bool = True
+
+
+async def build_menu_context(
+    *,
+    target: Message | CallbackQuery,
+    state: FSMContext,
+    profile: UserProfile | None,
+    admin_ids: frozenset[int],
+    bot_switch: BotSwitchService,
+) -> MenuContext:
+    user = target.from_user
+    for_admin = user is not None and user.id in admin_ids
+    return MenuContext(
+        target=target,
+        state=state,
+        profile=profile,
+        for_admin=for_admin,
+        bot_enabled=await bot_switch.is_enabled() if for_admin else True,
+    )
 
 
 async def _remember_menu_message(*, state: FSMContext, message_id: int) -> None:
@@ -42,9 +72,16 @@ async def _delete_remembered_menu(
 
 def menu_inline_view(
     profile: UserProfile | None,
+    *,
+    for_admin: bool = False,
+    bot_enabled: bool = True,
 ) -> tuple[str, InlineKeyboardMarkup | None]:
     if profile is not None and profile.status is UserProfileStatus.ACTIVE:
-        return _("start.welcome"), full_menu_kb(profile)
+        return _("start.welcome"), full_menu_kb(
+            profile=profile,
+            for_admin=for_admin,
+            bot_enabled=bot_enabled,
+        )
     if profile is not None and profile.status is UserProfileStatus.BANNED:
         return _("start.banned"), None
     if profile is not None:
@@ -52,13 +89,15 @@ def menu_inline_view(
     return _("start.welcome"), None
 
 
-async def render_menu(
-    *,
-    target: Message | CallbackQuery,
-    state: FSMContext,
-    profile: UserProfile | None,
-) -> None:
-    text, markup = menu_inline_view(profile)
+async def render_menu(context: MenuContext) -> None:
+    target = context.target
+    state = context.state
+    profile = context.profile
+    text, markup = menu_inline_view(
+        profile,
+        for_admin=context.for_admin,
+        bot_enabled=context.bot_enabled,
+    )
     if menu_available(profile):
         if isinstance(target, CallbackQuery):
             await target.message.edit_text(text, reply_markup=markup)
@@ -106,17 +145,13 @@ async def install_menu_button(*, message: Message) -> None:
     await message.answer(_("start.menu_hint"), reply_markup=menu_button_markup())
 
 
-async def open_menu(
-    *,
-    target: Message | CallbackQuery,
-    state: FSMContext,
-    profile: UserProfile | None,
-) -> None:
+async def open_menu(context: MenuContext) -> None:
+    target = context.target
     if isinstance(target, Message):
         await _delete_remembered_menu(
             bot=target.bot,
             chat_id=target.chat.id,
-            state=state,
+            state=context.state,
         )
-    await state.clear()
-    await render_menu(target=target, state=state, profile=profile)
+    await context.state.clear()
+    await render_menu(context)

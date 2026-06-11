@@ -3,12 +3,15 @@ import html
 import random
 import sys
 
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import BaseFilter, Command, CommandObject
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import I18n
+from aiogram.utils.i18n import gettext as _
 
+from bot.forms.menu import MenuContext, render_menu
+from bot.keyboards.start import OpenZoneCB, StartZone
 from common.i18n import DOMAIN, LOCALES_DIR
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.orders import OrderRepository
@@ -30,6 +33,18 @@ class _IsAdmin(BaseFilter):
 
 
 _is_admin = _IsAdmin()
+
+
+class _IsAdminCallback(BaseFilter):
+    async def __call__(
+        self,
+        callback: CallbackQuery,
+        admin_ids: frozenset[int],
+    ) -> bool:
+        return callback.from_user.id in admin_ids
+
+
+_is_admin_callback = _IsAdminCallback()
 
 
 @router.message(Command("reload_locales", prefix="#"), _is_admin)
@@ -103,13 +118,38 @@ async def cmd_approve(
 @router.message(Command("enable", prefix="#"), _is_admin)
 async def cmd_enable(message: Message, bot_switch: BotSwitchService) -> None:
     await bot_switch.enable()
-    await message.answer("bot enabled")
+    await message.answer(_("admin.bot_enabled"))
 
 
 @router.message(Command("disable", prefix="#"), _is_admin)
 async def cmd_disable(message: Message, bot_switch: BotSwitchService) -> None:
     await bot_switch.disable()
-    await message.answer("bot disabled")
+    await message.answer(_("admin.bot_disabled"))
+
+
+@router.callback_query(
+    OpenZoneCB.filter(F.value == StartZone.TOGGLE_BOT_ENABLED),
+    _is_admin_callback,
+)
+async def toggle_bot_enabled(
+    callback: CallbackQuery,
+    state: FSMContext,
+    bot_switch: BotSwitchService,
+    profiles: UserProfileRepository,
+) -> None:
+    enabled = await bot_switch.toggle()
+    profile = await profiles.get_by_tg_id(tg_id=callback.from_user.id)
+    text = _("admin.bot_enabled") if enabled else _("admin.bot_disabled")
+    await callback.answer(text, show_alert=False)
+    await render_menu(
+        MenuContext(
+            target=callback,
+            state=state,
+            profile=profile,
+            for_admin=True,
+            bot_enabled=enabled,
+        ),
+    )
 
 
 @router.message(Command("create_order", prefix="#"), _is_admin)
