@@ -74,6 +74,18 @@ def _env_positive_int(varname: str, *, default: int) -> int:
     )
 
 
+def _env_boolean(varname: str, *, default: bool) -> bool:
+    return bool(
+        env_get(
+            varname,
+            default=str(default),
+            validation_rule=lambda val: val in ("True", "False", "1", "0"),
+            warning_message=f"{varname} must be a boolean",
+            raise_if_failed=True,
+        )
+    )
+
+
 # How often the dispatcher sweeps with no wake signal (backstop for missed wakes).
 DISPATCH_BACKSTOP_SECONDS = _env_positive_int("DISPATCH_BACKSTOP_SECONDS", default=30)
 # Max orders pulled from the backlog per sweep (bounds per-sweep cost).
@@ -85,3 +97,18 @@ RATING_SPEED_WINDOW = _env_positive_int("RATING_SPEED_WINDOW", default=3)
 MAX_ORDERS_PENDING = _env_positive_int("MAX_ORDERS_PENDING", default=3)
 FANOUT_CHUNK_SIZE = _env_positive_int("FANOUT_CHUNK_SIZE", default=20)
 OFFER_RECONCILE_GRACE_SECONDS = _env_positive_int("OFFER_RECONCILE_GRACE_SECONDS", default=15)
+
+APP_ENVIRONMENT = env_get("APP_ENVIRONMENT", default="production", raise_if_failed=False)
+
+# Serve canned upstream-controller responses instead of real HTTP calls, while keeping
+# ExternalOrderApi/OrderEntityService validation real. Distinct from APP_ENVIRONMENT=local,
+# which short-circuits (and thus skips) that validation.
+MOCK_EXTERNAL_API = _env_boolean("MOCK_EXTERNAL_API", default=False)
+
+API_TOKEN = env_get("API_TOKEN")
+API_URL = env_get("API_URL")
+API_TIMEOUT = _env_positive_int("API_TIMEOUT", default=15)
+
+# Bind address for the FastAPI server itself (distinct from the upstream API_URL).
+API_HOST = env_get("API_HOST", default="0.0.0.0", raise_if_failed=False)
+API_PORT = _env_positive_int("API_PORT", default=8000)

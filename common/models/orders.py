@@ -15,6 +15,19 @@ class OrderStatus(StrEnum):
     NO_TAKERS = "no_takers"
 
 
+class ExternalOrderStatus(StrEnum):
+    CREATED = "CREATED"
+    PROCESSING = "PROCESSING"
+    MANUAL_PROCESSING = "MANUAL_PROCESSING"
+    RESTART = "RESTART"
+    PENDING = "PENDING"
+    DEFERRED = "DEFERRED"
+    FAILED = "FAILED"
+    REDEEMED = "REDEEMED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+
+
 @dataclass(frozen=True, slots=True)
 class Order:
     id: int
@@ -22,7 +35,7 @@ class Order:
     shop_access_key: str | None
     status: OrderStatus
     status_reason: str | None
-    amount: int | None
+    amount: int
     pubg_id: int | None
     codes: Any
     unused_codes: Any
@@ -36,6 +49,7 @@ class Order:
     taken_price: int | None
     created_at: datetime
     updated_at: datetime
+    external_status: ExternalOrderStatus
 
     @classmethod
     def from_row(cls, row: asyncpg.Record) -> Order:
@@ -59,4 +73,5 @@ class Order:
             taken_price=row["taken_price"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            external_status=ExternalOrderStatus(row["external_status"]),
         )

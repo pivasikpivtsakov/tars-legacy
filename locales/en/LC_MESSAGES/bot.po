@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "You are now offline."
 
 msgid "start.priority"
-msgstr "Your priority:\nspeed: {speed}\nprice: {price}\ncompleted (strict): {rate_strict}%\ncompleted (incl. not-picked): {rate_full}%"
+msgstr "Order stats:\ntotal: {total}\ncompleted: {complete}\nrefusals: {incomplete}\n\nYour priority:\nspeed: {speed}\nprice: {price}\ncompleted (incl. not-picked): {rate_full}% ({complete}/{total})"
 
 msgid "start.balance"
 msgstr "Your balance: {balance}"
@@ -159,6 +159,12 @@ msgstr "Bot enabled."
 
 msgid "admin.bot_disabled"
 msgstr "Bot disabled."
+
+msgid "admin.bot_online_announcement"
+msgstr "The bot is now enabled. Press \"Go online\" to start receiving orders."
+
+msgid "admin.bot_disabled_announcement"
+msgstr "The bot is now disabled. Orders will no longer be available."
 
 msgid "order.offer"
 msgstr "<b>New order</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPrice: <b>{full_price}</b>"

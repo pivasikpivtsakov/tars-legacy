@@ -10,7 +10,7 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms.fields import begin_registration
 from bot.forms.menu import build_menu_context, open_menu
 from bot.forms.states import REGISTRATION_INPUT_STATES
-from bot.handlers.moderation import MODERATOR_PANEL_TEXT
+from bot.handlers.moderation import MODERATOR_PANEL_TEXT, is_moderator_only
 from bot.keyboards.menu import MENU_BUTTON_KEY
 from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
@@ -62,7 +62,12 @@ class MenuMiddleware(BaseMiddleware):
         user: User = data["event_from_user"]
         profile: UserProfile | None = await self._profiles.get_by_tg_id(tg_id=user.id)
         moderator_ids: frozenset[int] = data["moderator_ids"]
-        if profile is not None and profile.id in moderator_ids:
+        if is_moderator_only(
+            profile=profile,
+            moderator_ids=moderator_ids,
+            admin_ids=data["admin_ids"],
+            tg_id=user.id,
+        ):
             await event.answer(MODERATOR_PANEL_TEXT)
             return None
         if profile is None:
@@ -73,6 +78,7 @@ class MenuMiddleware(BaseMiddleware):
             state=state,
             profile=profile,
             admin_ids=data["admin_ids"],
+            moderator_ids=moderator_ids,
             bot_switch=data["bot_switch"],
         )
         await open_menu(context)

@@ -28,6 +28,7 @@ from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
+from common.services.broadcast import BroadcastService
 from common.services.dispatch_signal import DispatchSignal
 from common.services.order_processing import OrderLifecycle
 
@@ -58,8 +59,8 @@ def build_dispatcher(
         profiles=profiles,
         online_price_index=online_price_index,
     )
+    broadcast = BroadcastService(profiles=profiles)
     dispatcher["profiles"] = profiles
-    dispatcher["orders"] = orders_repo
     dispatcher["rating"] = rating
     dispatcher["online_price_index"] = online_price_index
     dispatcher["dispatch_signal"] = dispatch_signal
@@ -75,6 +76,7 @@ def build_dispatcher(
     dispatcher["admin_ids"] = admin_ids
     dispatcher["moderator_ids"] = moderator_ids
     dispatcher["bot_switch"] = bot_switch
+    dispatcher["broadcast"] = broadcast
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
     dispatcher.update.middleware(
         BotSwitchMiddleware(switch=bot_switch, admin_ids=admin_ids),

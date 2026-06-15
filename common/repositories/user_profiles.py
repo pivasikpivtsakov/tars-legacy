@@ -75,6 +75,18 @@ class UserProfileRepository:
             raise LookupError(msg)
         return UserProfile.from_row(row)
 
+    async def set_packages(
+        self,
+        *,
+        profile_id: int,
+        packages: Sequence[int],
+    ) -> UserProfile:
+        return await self._update_field(
+            profile_id=profile_id,
+            column="packages",
+            value=list(packages),
+        )
+
     async def create_or_update(
         self,
         *,
@@ -140,6 +152,15 @@ class UserProfileRepository:
             return None
         return UserProfile.from_row(row)
 
+    async def get_by_id(self, *, profile_id: int) -> UserProfile | None:
+        row = await self._pool.fetchrow(
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} WHERE id = $1",
+            profile_id,
+        )
+        if row is None:
+            return None
+        return UserProfile.from_row(row)
+
     async def get_tg_id(self, *, profile_id: int) -> int | None:
         return await self._pool.fetchval(
             f"SELECT tg_id FROM {_TABLE} WHERE id = $1",
@@ -154,6 +175,10 @@ class UserProfileRepository:
             list(profile_ids),
         )
         return {row["id"]: row["tg_id"] for row in rows}
+
+    async def all_tg_ids(self) -> list[int]:
+        rows = await self._pool.fetch(f"SELECT tg_id FROM {_TABLE}")
+        return [row["tg_id"] for row in rows]
 
     async def lock_is_online(self, *, profile_id: int, conn: asyncpg.Connection) -> bool | None:
         return await conn.fetchval(

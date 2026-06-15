@@ -85,7 +85,7 @@ async def offer_order_to_next_user(*, ctx: FanoutContext, order: Order) -> None:
         await ctx.orders.mark_no_takers(order_id=order.id)
         expired_user_ids = await ctx.offers.expire_offered(order_id=order.id)
         await _release_not_taken(ctx=ctx, user_ids=expired_user_ids)
-        await forward_to_third_party(order=order)
+        await forward_to_third_party(original_id=order.original_id)
         return
 
     next_recipient = None

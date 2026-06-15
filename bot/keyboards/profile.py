@@ -5,7 +5,7 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.keyboards.start import BackCB
-from common.packages import PACKAGE_SIZES
+from common.keyboards.packages import package_toggle_rows
 
 
 class PackageToggleCB(CallbackData, prefix="pkg"):
@@ -38,18 +38,10 @@ class EditSaveCB(CallbackData, prefix="ef_save"):
 
 
 def package_rows(selected: Iterable[int]) -> list[list[InlineKeyboardButton]]:
-    selected_set = set(selected)
-    rows: list[list[InlineKeyboardButton]] = []
-    for chunk_start in range(0, len(PACKAGE_SIZES), 3):
-        row = [
-            InlineKeyboardButton(
-                text=f"\u2713 {size}" if size in selected_set else str(size),
-                callback_data=PackageToggleCB(value=size).pack(),
-            )
-            for size in PACKAGE_SIZES[chunk_start : chunk_start + 3]
-        ]
-        rows.append(row)
-    return rows
+    return package_toggle_rows(
+        selected=selected,
+        callback_factory=lambda size: PackageToggleCB(value=size).pack(),
+    )
 
 
 def works_alone_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:

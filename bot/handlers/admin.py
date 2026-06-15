@@ -1,10 +1,9 @@
 import asyncio
 import html
-import random
 import sys
 
-from aiogram import F, Router
-from aiogram.filters import BaseFilter, Command, CommandObject
+from aiogram import Bot, F, Router
+from aiogram.filters import BaseFilter, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import I18n
@@ -14,10 +13,9 @@ from bot.forms.menu import MenuContext, render_menu
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.i18n import DOMAIN, LOCALES_DIR
 from common.repositories.online_price_index import OnlinePriceIndex
-from common.repositories.orders import OrderRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
-from common.services.dispatch_signal import DispatchSignal
+from common.services.broadcast import BroadcastService
 
 router = Router(name="admin")
 
@@ -88,42 +86,27 @@ async def cmd_full_restart(
     await message.answer("profile and FSM state wiped")
 
 
-@router.message(Command("approve", prefix="#"), _is_admin)
-async def cmd_approve(
-    message: Message,
-    command: CommandObject,
-    profiles: UserProfileRepository,
-) -> None:
-    args = (command.args or "").split()
-    if not args:
-        await message.answer("usage: #approve <tg_id> [codes]")
-        return
-    try:
-        tg_id = int(args[0])
-    except ValueError:
-        await message.answer("tg_id must be an integer")
-        return
-    with_codes = len(args) > 1 and args[1].casefold() in {"codes", "1", "true", "yes"}
-    profile = await profiles.get_by_tg_id(tg_id=tg_id)
-    if profile is None:
-        await message.answer(f"no profile for tg_id={tg_id}")
-        return
-    updated = await profiles.approve(profile_id=profile.id, with_codes=with_codes)
-    await message.answer(
-        f"approved tg_id={tg_id}: status={updated.status.value}, "
-        f"with_codes={updated.with_codes}",
-    )
-
-
 @router.message(Command("enable", prefix="#"), _is_admin)
-async def cmd_enable(message: Message, bot_switch: BotSwitchService) -> None:
+async def cmd_enable(
+    message: Message,
+    bot: Bot,
+    bot_switch: BotSwitchService,
+    broadcast: BroadcastService,
+) -> None:
     await bot_switch.enable()
+    await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_online_announcement"))
     await message.answer(_("admin.bot_enabled"))
 
 
 @router.message(Command("disable", prefix="#"), _is_admin)
-async def cmd_disable(message: Message, bot_switch: BotSwitchService) -> None:
+async def cmd_disable(
+    message: Message,
+    bot: Bot,
+    bot_switch: BotSwitchService,
+    broadcast: BroadcastService,
+) -> None:
     await bot_switch.disable()
+    await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_disabled_announcement"))
     await message.answer(_("admin.bot_disabled"))
 
 
@@ -133,11 +116,18 @@ async def cmd_disable(message: Message, bot_switch: BotSwitchService) -> None:
 )
 async def toggle_bot_enabled(
     callback: CallbackQuery,
+    bot: Bot,
     state: FSMContext,
     bot_switch: BotSwitchService,
     profiles: UserProfileRepository,
+    broadcast: BroadcastService,
+    moderator_ids: frozenset[int],
 ) -> None:
     enabled = await bot_switch.toggle()
+    if enabled:
+        await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_online_announcement"))
+    else:
+        await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_disabled_announcement"))
     profile = await profiles.get_by_tg_id(tg_id=callback.from_user.id)
     text = _("admin.bot_enabled") if enabled else _("admin.bot_disabled")
     await callback.answer(text, show_alert=False)
@@ -148,23 +138,6 @@ async def toggle_bot_enabled(
             profile=profile,
             for_admin=True,
             bot_enabled=enabled,
+            is_moderator=profile is not None and profile.id in moderator_ids,
         ),
-    )
-
-
-@router.message(Command("create_order", prefix="#"), _is_admin)
-async def cmd_create_order(
-    message: Message,
-    orders: OrderRepository,
-    dispatch_signal: DispatchSignal,
-) -> None:
-    # currently fakes! no order source yet
-    order = await orders.create(
-        original_id=random.randint(1, 1_000_000),
-        amount=385,
-        pubg_id=random.randint(10_000_000, 9_999_999_999),
-    )
-    # await dispatch_signal.request()
-    await message.answer(
-        f"order id={order.id} created (status={order.status.value}); dispatching now",
     )

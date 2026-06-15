@@ -9,10 +9,25 @@ from aiogram.types import CallbackQuery, User
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms.menu import send_menu
-from common.keyboards.moderation import ModApproveCB, ModDenyCB
+from common.keyboards.moderation import (
+    ModApproveCB,
+    ModDenyCB,
+    ModEditPacksCB,
+    ModPacksCancelCB,
+    ModPacksSaveCB,
+    ModPackToggleCB,
+    ModToggleCodesCB,
+    mask_to_packages,
+    moderation_decision_kb,
+    moderation_packages_kb,
+    packages_to_mask,
+)
 from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import is_moderator
+
+NO_PACKAGES_SELECTED = "select at least one package"
+PROFILE_NOT_FOUND = "user not found"
 
 router = Router(name="moderation")
 
@@ -42,6 +57,20 @@ class _IsModerator(BaseFilter):
 
 
 _is_moderator = _IsModerator()
+
+
+def is_moderator_only(
+    *,
+    profile: UserProfile | None,
+    moderator_ids: frozenset[int],
+    admin_ids: frozenset[int],
+    tg_id: int,
+) -> bool:
+    return (
+        profile is not None
+        and profile.id in moderator_ids
+        and tg_id not in admin_ids
+    )
 
 
 def _moderator_label(user: User) -> str:
@@ -76,6 +105,96 @@ def _user_state(*, storage: BaseStorage, bot: Bot, tg_id: int) -> FSMContext:
     return FSMContext(storage=storage, key=key)
 
 
+@router.callback_query(ModToggleCodesCB.filter(), _is_moderator)
+async def toggle_with_codes(
+    callback: CallbackQuery,
+    callback_data: ModToggleCodesCB,
+) -> None:
+    await callback.message.edit_reply_markup(
+        reply_markup=moderation_decision_kb(
+            profile_id=callback_data.profile_id,
+            with_codes=not callback_data.with_codes,
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(ModEditPacksCB.filter(), _is_moderator)
+async def open_pack_editor(
+    callback: CallbackQuery,
+    callback_data: ModEditPacksCB,
+    profiles: UserProfileRepository,
+) -> None:
+    profile = await profiles.get_by_id(profile_id=callback_data.profile_id)
+    if profile is None:
+        await callback.answer(PROFILE_NOT_FOUND, show_alert=True)
+        return
+    await callback.message.edit_reply_markup(
+        reply_markup=moderation_packages_kb(
+            profile_id=callback_data.profile_id,
+            with_codes=callback_data.with_codes,
+            mask=packages_to_mask(profile.packages or ()),
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(ModPackToggleCB.filter(), _is_moderator)
+async def toggle_pack(
+    callback: CallbackQuery,
+    callback_data: ModPackToggleCB,
+) -> None:
+    new_mask = callback_data.mask ^ (1 << callback_data.idx)
+    await callback.message.edit_reply_markup(
+        reply_markup=moderation_packages_kb(
+            profile_id=callback_data.profile_id,
+            with_codes=callback_data.with_codes,
+            mask=new_mask,
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(ModPacksSaveCB.filter(), _is_moderator)
+async def save_packs(
+    callback: CallbackQuery,
+    callback_data: ModPacksSaveCB,
+    profiles: UserProfileRepository,
+) -> None:
+    if callback_data.mask == 0:
+        await callback.answer(NO_PACKAGES_SELECTED, show_alert=True)
+        return
+    try:
+        await profiles.set_packages(
+            profile_id=callback_data.profile_id,
+            packages=mask_to_packages(callback_data.mask),
+        )
+    except LookupError:
+        await callback.answer(PROFILE_NOT_FOUND, show_alert=True)
+        return
+    await callback.message.edit_reply_markup(
+        reply_markup=moderation_decision_kb(
+            profile_id=callback_data.profile_id,
+            with_codes=callback_data.with_codes,
+        ),
+    )
+    await callback.answer("packages saved")
+
+
+@router.callback_query(ModPacksCancelCB.filter(), _is_moderator)
+async def cancel_packs(
+    callback: CallbackQuery,
+    callback_data: ModPacksCancelCB,
+) -> None:
+    await callback.message.edit_reply_markup(
+        reply_markup=moderation_decision_kb(
+            profile_id=callback_data.profile_id,
+            with_codes=callback_data.with_codes,
+        ),
+    )
+    await callback.answer()
+
+
 @router.callback_query(ModApproveCB.filter(), _is_moderator)
 async def approve_user(
     callback: CallbackQuery,
@@ -87,10 +206,10 @@ async def approve_user(
     try:
         profile = await profiles.approve(
             profile_id=callback_data.profile_id,
-            with_codes=False,
+            with_codes=callback_data.with_codes,
         )
     except LookupError:
-        await callback.answer("user not found", show_alert=True)
+        await callback.answer(PROFILE_NOT_FOUND, show_alert=True)
         return
     user_state = _user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
     await user_state.clear()

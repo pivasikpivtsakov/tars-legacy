@@ -34,6 +34,7 @@ def _order(*, status: OrderStatus, order_id: int = 1) -> Order:
         taken_price=None,
         created_at=now,
         updated_at=now,
+        external_status=None,
     )
 
 

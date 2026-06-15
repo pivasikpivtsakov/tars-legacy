@@ -7,6 +7,7 @@ from enum import StrEnum
 import asyncpg
 
 from common.environment import MAX_ORDERS_PENDING
+from common.exceptions.orders import OrderAmountError
 from common.models.orders import Order
 from common.models.user_profiles import UserProfile
 from common.packages import PACKAGE_UNIT_COUNT
@@ -36,10 +37,6 @@ class RankedCandidate:
     speed_seconds: int | None
     refusal_rate: float
     complete: int
-
-
-class OrderAmountError(ValueError):
-    pass
 
 
 class TakeStatus(StrEnum):
@@ -73,8 +70,8 @@ def decompose_amount(amount: int) -> PackageDecomposition:
     )
 
 
-async def forward_to_third_party(*, order: Order) -> None:
-    logger.info("third-party hand-off requested order_id=%s", order.id)
+async def forward_to_third_party(*, original_id: int) -> None:
+    logger.info("third-party hand-off requested original_id=%s", original_id)
 
 
 def _refusal_rate(*, complete: int, incomplete: int, not_taken: int) -> float:
@@ -156,9 +153,6 @@ class OrderManager:
         order: Order,
         exclude_user_ids: Collection[int] = (),
     ) -> list[RankedCandidate]:
-        if order.amount is None:
-            msg = f"order id={order.id} has no amount"
-            raise OrderAmountError(msg)
         decomposition = decompose_amount(order.amount)
         rows = await self._eligible_candidates(required_packages=decomposition.unique_parts)
         excluded = set(exclude_user_ids)
@@ -236,7 +230,7 @@ class OrderLifecycle:
                     if in_work >= MAX_ORDERS_PENDING:
                         raise _TakeAbortError(TakeStatus.LIMIT_REACHED)
                     order = await self._orders.get(order_id=order_id, conn=conn)
-                    if order is None or order.amount is None:
+                    if order is None:
                         raise _TakeAbortError(TakeStatus.UNAVAILABLE)
                     claimed_offer = await self._offers.mark_taken(
                         order_id=order_id,
@@ -294,7 +288,7 @@ class OrderLifecycle:
         if order is None:
             return None
         await self._rating.record_cancellation(user_id=user_id)
-        await forward_to_third_party(order=order)
+        await forward_to_third_party(original_id=order.original_id)
         await self._pending.release(user_id=user_id)
         await self._dispatch.request()
         return order

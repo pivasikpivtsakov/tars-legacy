@@ -13,7 +13,7 @@ from bot.forms.menu import (
     render_menu,
     show_back_panel,
 )
-from bot.handlers.moderation import MODERATOR_PANEL_TEXT
+from bot.handlers.moderation import MODERATOR_PANEL_TEXT, is_moderator_only
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.rating import RatingStats
@@ -36,7 +36,12 @@ async def cmd_start(
     bot_switch: BotSwitchService,
 ) -> None:
     await state.clear()
-    if profile is not None and profile.id in moderator_ids:
+    if is_moderator_only(
+        profile=profile,
+        moderator_ids=moderator_ids,
+        admin_ids=admin_ids,
+        tg_id=message.from_user.id,
+    ):
         await message.answer(MODERATOR_PANEL_TEXT)
         return
     if profile is None:
@@ -49,6 +54,7 @@ async def cmd_start(
         state=state,
         profile=profile,
         admin_ids=admin_ids,
+        moderator_ids=moderator_ids,
         bot_switch=bot_switch,
     )
     await render_menu(context)
@@ -63,6 +69,7 @@ async def open_online(
     online_price_index: OnlinePriceIndex,
     profile: UserProfile,
     admin_ids: frozenset[int],
+    moderator_ids: frozenset[int],
     bot_switch: BotSwitchService,
 ) -> None:
     profile = await profiles.toggle_is_online_and_get(profile_id=profile.id)
@@ -76,17 +83,18 @@ async def open_online(
         state=state,
         profile=profile,
         admin_ids=admin_ids,
+        moderator_ids=moderator_ids,
         bot_switch=bot_switch,
     )
     await render_menu(context)
 
 
-def _completion_rates(stats: RatingStats) -> tuple[int, int]:
-    strict_total = stats.complete + stats.incomplete
-    full_total = strict_total + stats.not_taken
-    strict = round(stats.complete / strict_total * 100) if strict_total else 0
-    full = round(stats.complete / full_total * 100) if full_total else 0
-    return strict, full
+def _order_stats(stats: RatingStats) -> tuple[int, int, int, int]:
+    complete = stats.complete
+    incomplete = stats.incomplete + stats.not_taken
+    total = complete + incomplete
+    rate_full = round(complete / total * 100) if total else 0
+    return complete, incomplete, total, rate_full
 
 
 @router.callback_query(OpenZoneCB.filter(F.value == StartZone.PRIORITY))
@@ -100,13 +108,15 @@ async def open_priority(
         if profile is not None
         else RatingStats(speed_seconds=None, complete=0, incomplete=0, not_taken=0)
     )
-    rate_strict, rate_full = _completion_rates(stats)
+    complete, incomplete, total, rate_full = _order_stats(stats)
     price = profile.price_60 if profile is not None and profile.price_60 is not None else 0
     speed = stats.speed_seconds if stats.speed_seconds is not None else "-"
     text = _("start.priority").format(
         speed=speed,
         price=price,
-        rate_strict=rate_strict,
+        total=total,
+        complete=complete,
+        incomplete=incomplete,
         rate_full=rate_full,
     )
     await show_back_panel(callback=callback, text=text)
@@ -130,6 +140,7 @@ async def back_to_welcome(
     state: FSMContext,
     profile: UserProfile | None,
     admin_ids: frozenset[int],
+    moderator_ids: frozenset[int],
     bot_switch: BotSwitchService,
 ) -> None:
     context = await build_menu_context(
@@ -137,6 +148,7 @@ async def back_to_welcome(
         state=state,
         profile=profile,
         admin_ids=admin_ids,
+        moderator_ids=moderator_ids,
         bot_switch=bot_switch,
     )
     await open_menu(context)

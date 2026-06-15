@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "Ты теперь оффлайн."
 
 msgid "start.priority"
-msgstr "Твой приоритет:\nскорость: {speed}\nцена: {price}\nвыполнено (строго): {rate_strict}%\nвыполнено (с непринятыми): {rate_full}%"
+msgstr "Статистика заказов:\nвсего: {total}\nвыполнено: {complete}\nотказов: {incomplete}\n\nТвой приоритет:\nскорость: {speed}\nцена: {price}\nвыполнено (с непринятыми): {rate_full}% ({complete}/{total})"
 
 msgid "start.balance"
 msgstr "Твой баланс: {balance}"
@@ -159,6 +159,12 @@ msgstr "Бот включён."
 
 msgid "admin.bot_disabled"
 msgstr "Бот отключён."
+
+msgid "admin.bot_online_announcement"
+msgstr "Бот включён. Нажми «Войти онлайн», чтобы начать получать заказы."
+
+msgid "admin.bot_disabled_announcement"
+msgstr "Бот сейчас отключён. Заказы больше недоступны."
 
 msgid "order.offer"
 msgstr "<b>Новый заказ</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nЦена: <b>{full_price}</b>"

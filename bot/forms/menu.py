@@ -31,6 +31,7 @@ class MenuContext:
     profile: UserProfile | None
     for_admin: bool = False
     bot_enabled: bool = True
+    is_moderator: bool = False
 
 
 async def build_menu_context(
@@ -39,6 +40,7 @@ async def build_menu_context(
     state: FSMContext,
     profile: UserProfile | None,
     admin_ids: frozenset[int],
+    moderator_ids: frozenset[int],
     bot_switch: BotSwitchService,
 ) -> MenuContext:
     user = target.from_user
@@ -49,6 +51,7 @@ async def build_menu_context(
         profile=profile,
         for_admin=for_admin,
         bot_enabled=await bot_switch.is_enabled() if for_admin else True,
+        is_moderator=profile is not None and profile.id in moderator_ids,
     )
 
 
@@ -75,12 +78,14 @@ def menu_inline_view(
     *,
     for_admin: bool = False,
     bot_enabled: bool = True,
+    is_moderator: bool = False,
 ) -> tuple[str, InlineKeyboardMarkup | None]:
     if profile is not None and profile.status is UserProfileStatus.ACTIVE:
         return _("start.welcome"), full_menu_kb(
             profile=profile,
             for_admin=for_admin,
             bot_enabled=bot_enabled,
+            is_moderator=is_moderator,
         )
     if profile is not None and profile.status is UserProfileStatus.BANNED:
         return _("start.banned"), None
@@ -97,6 +102,7 @@ async def render_menu(context: MenuContext) -> None:
         profile,
         for_admin=context.for_admin,
         bot_enabled=context.bot_enabled,
+        is_moderator=context.is_moderator,
     )
     if menu_available(profile):
         if isinstance(target, CallbackQuery):

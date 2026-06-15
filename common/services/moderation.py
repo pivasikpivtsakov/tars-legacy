@@ -51,8 +51,7 @@ async def _broadcast(
     text = render_pending_review(profile=profile)
     markup = moderation_decision_kb(
         profile_id=profile.id,
-        yes_text="yes",
-        no_text="no",
+        with_codes=False,
     )
     tg_ids = await profiles.get_tg_ids(profile_ids=moderator_ids)
     for moderator_id in moderator_ids:

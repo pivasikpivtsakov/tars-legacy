@@ -54,6 +54,7 @@ def _make_order(*, amount: int) -> Order:
         taken_price=None,
         created_at=now,
         updated_at=now,
+        external_status=None,
     )
 
 

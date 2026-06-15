@@ -7,12 +7,27 @@ from common.models.user_profiles import UserProfile
 MENU_BUTTON_KEY = "start.btn_menu"
 
 
+def _toggle_bot_text(*, bot_enabled: bool) -> str:
+    return (
+        _("start.btn_toggle_bot_disabled")
+        if bot_enabled
+        else _("start.btn_toggle_bot_enabled")
+    )
+
+
 def full_menu_kb(
     *,
     profile: UserProfile,
     for_admin: bool,
     bot_enabled: bool,
+    is_moderator: bool = False,
 ) -> InlineKeyboardMarkup:
+    if for_admin and is_moderator:
+        return welcome_kb(
+            buttons={
+                StartZone.TOGGLE_BOT_ENABLED: _toggle_bot_text(bot_enabled=bot_enabled),
+            },
+        )
     online_text = (
         _("start.btn_online_off") if profile.is_online else _("start.btn_online_on")
     )
@@ -24,12 +39,7 @@ def full_menu_kb(
         StartZone.REGISTER: _("start.btn_register"),
     }
     if for_admin:
-        toggle_text = (
-            _("start.btn_toggle_bot_disabled")
-            if bot_enabled
-            else _("start.btn_toggle_bot_enabled")
-        )
-        buttons[StartZone.TOGGLE_BOT_ENABLED] = toggle_text
+        buttons[StartZone.TOGGLE_BOT_ENABLED] = _toggle_bot_text(bot_enabled=bot_enabled)
     return welcome_kb(buttons=buttons)
 
 
