@@ -7,7 +7,9 @@ from asyncpg import Pool
 from common.environment import ADMIN_USER_IDS
 from common.services.broadcast import BroadcastService
 from common.models.orders import ExternalOrderStatus, Order as OrderEntity
+from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
+from common.repositories.pending_orders import PendingOrdersRepository
 from api.schemas.order import (
     OrderCreate,
     OrderResponse,
@@ -27,12 +29,16 @@ class OrderEntityService:
         bot: Bot,
         broadcast: BroadcastService,
         orders: OrderRepository,
+        offers: OrderOfferRepository,
+        pending: PendingOrdersRepository,
         external_api: ExternalOrderApi,
     ) -> None:
         self.pool = pool
         self.bot = bot
         self.broadcast = broadcast
         self.order_repo = orders
+        self.offer_repo = offers
+        self.pending_repo = pending
         self.external_api = external_api
 
     async def create(self, data: OrderCreate) -> OrderResponse | None:
@@ -95,19 +101,15 @@ class OrderEntityService:
             order = await self.order_repo.get(order_id=order_id)
         if original_id:
             order = await self.order_repo.get_by_original_id(original_id=original_id)
-        if order:
-            await self.order_repo.remove(order_id=order.id)
-        # note: this does not clean redis active orders counter!
-        # maybe expire order?
-
-    async def update(
-        self,
-        order: ExternalOrder,
-    ) -> OrderEntity | None:
-        return await self.order_repo.update_order(
-            order_id=order.id,
-            **self._order_columns(order),
-        )
+        if order is None:
+            return
+        # cancel order, expire offers, release counters
+        async with self.pool.acquire() as conn, conn.transaction():
+            await self.order_repo.mark_cancelled(order_id=order.id, conn=conn)
+            released_user_ids = await self.offer_repo.expire_offered(
+                order_id=order.id, conn=conn
+            )
+        await self.pending_repo.release_many(user_ids=released_user_ids)
 
     async def _insert(self, order: ExternalOrder) -> OrderEntity:
         return await self.order_repo.add(

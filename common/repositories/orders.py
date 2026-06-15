@@ -187,6 +187,22 @@ class OrderRepository:
             OrderStatus.NO_TAKERS.value,
         )
 
+    async def mark_cancelled(
+        self,
+        *,
+        order_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> None:
+        await (conn or self._pool).execute(
+            f"UPDATE {_TABLE} SET "
+            f"status = $2, "
+            f"closed_at = NOW(), "
+            f"updated_at = NOW() "
+            f"WHERE id = $1",
+            order_id,
+            OrderStatus.CANCELLED.value,
+        )
+
     async def get(
         self,
         *,

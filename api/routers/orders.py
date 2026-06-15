@@ -48,7 +48,7 @@ async def create_order(
 @router.delete(
     path="/clean",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="💀💀💀 Сервисная ручка для удаления всего связанного с order.",
+    summary="💀💀💀 Сервисная ручка для отмены всего связанного с order.",
 )
 async def clean_order(
     _: Annotated[
