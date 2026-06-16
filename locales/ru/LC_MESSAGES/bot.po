@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "Ты теперь оффлайн."
 
 msgid "start.priority"
-msgstr "Статистика заказов:\nвсего: {total}\nвыполнено: {complete}\nотказов: {incomplete}\n\nТвои параметры ранжирования:\nсреднее время выполнения заказа: {speed}\nцена: {price}\nвыполнено (с непринятыми): {rate_full}% ({complete}/{total})"
+msgstr "Статистика заказов:\nвсего: <code>{total}</code>\nвыполнено: <code>{complete}</code>\nотказов: <code>{incomplete}</code>\n\nТвои параметры ранжирования:\nсреднее время выполнения заказа: <code>{speed}</code>\nцена: <code>{price}</code>\nвыполнено (с непринятыми): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
 msgid "start.balance"
 msgstr "Твой баланс: {balance}"

@@ -22,6 +22,8 @@ from common.services.request_service import MethodsEnum, RequestService
 type ResponseKey = tuple[str, MethodsEnum]
 type ResponseSpec = tuple[int, Any]
 
+MOCK_ORDER_AMOUNT = 385
+
 
 class MockRequestService(RequestService):
     def __init__(self, *, responses: Mapping[ResponseKey, ResponseSpec]) -> None:
@@ -57,7 +59,7 @@ def default_external_responses() -> dict[ResponseKey, ResponseSpec]:
             200,
             {
                 "status": ExternalOrderStatus.PENDING,
-                "amount": 60,
+                "amount": MOCK_ORDER_AMOUNT,
                 "shop_access_key": "mock-shop-access-key",
                 "pubg_id": 123456,
                 "status_reason": None,

@@ -16,6 +16,7 @@ from bot.handlers import (
     withdraw,
 )
 from bot.middlewares.bot_switch import BotSwitchMiddleware
+from bot.middlewares.logging import LoggingContextMiddleware
 from bot.middlewares.menu import MenuMiddleware
 from bot.middlewares.profile import ProfileMiddleware
 from common.environment import RATING_SPEED_WINDOW
@@ -87,6 +88,7 @@ def build_dispatcher(
     dispatcher["moderator_ids"] = moderator_ids
     dispatcher["bot_switch"] = bot_switch
     dispatcher["broadcast"] = broadcast
+    dispatcher.update.outer_middleware(LoggingContextMiddleware())
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
     dispatcher.update.middleware(
         BotSwitchMiddleware(switch=bot_switch, admin_ids=admin_ids),

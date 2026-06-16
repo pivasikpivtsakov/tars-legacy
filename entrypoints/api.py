@@ -6,4 +6,4 @@ from common.logging_config import setup_logging  # noqa: E402
 
 setup_logging()
 
-uvicorn.run(app, host=API_HOST, port=API_PORT)
+uvicorn.run(app, host=API_HOST, port=API_PORT, log_config=None)

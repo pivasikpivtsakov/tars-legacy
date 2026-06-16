@@ -2,14 +2,16 @@ import asyncio
 
 import pytest
 
-from api.testing import MockRequestService, default_external_responses
+from api.testing import (
+    MOCK_ORDER_AMOUNT,
+    MockRequestService,
+    default_external_responses,
+)
 from common.exceptions.orders import OrderProcessingError
 from common.models.orders import ExternalOrderStatus
 from common.schemas.external_order import ExternalOrder
 from common.services.external_order_api import PATH_ORDER_GET, ExternalOrderApi
 from common.services.request_service import MethodsEnum
-
-EXPECTED_AMOUNT = 60
 
 
 def _api(responses: dict[tuple[str, MethodsEnum], tuple[int, object]]) -> ExternalOrderApi:
@@ -24,7 +26,7 @@ def test_get_order_populates_order_from_pending_response() -> None:
     order = asyncio.run(api.get_order(order=ExternalOrder(original_id=1)))
 
     assert order is not None
-    assert order.amount == EXPECTED_AMOUNT
+    assert order.amount == MOCK_ORDER_AMOUNT
     assert order.shop_access_key == "mock-shop-access-key"
     assert order.status == ExternalOrderStatus.PENDING
     assert order.unused_codes == {"CODE-1": 60}

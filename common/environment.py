@@ -98,6 +98,20 @@ MAX_ORDERS_PENDING = _env_positive_int("MAX_ORDERS_PENDING", default=3)
 FANOUT_CHUNK_SIZE = _env_positive_int("FANOUT_CHUNK_SIZE", default=20)
 OFFER_RECONCILE_GRACE_SECONDS = _env_positive_int("OFFER_RECONCILE_GRACE_SECONDS", default=15)
 
+LOG_LEVEL = env_get("LOG_LEVEL", default="INFO", raise_if_failed=False)
+LOG_FORMAT = env_get(
+    "LOG_FORMAT",
+    default="json",
+    validation_rule=lambda val: val in ("json", "console"),
+    warning_message="LOG_FORMAT must be 'json' or 'console'",
+    raise_if_failed=False,
+)
+AIOGRAM_EVENT_LOG_LEVEL = env_get(
+    "AIOGRAM_EVENT_LOG_LEVEL",
+    default="WARNING",
+    raise_if_failed=False,
+)
+
 APP_ENVIRONMENT = env_get("APP_ENVIRONMENT", default="production", raise_if_failed=False)
 
 # Serve canned upstream-controller responses instead of real HTTP calls, while keeping
