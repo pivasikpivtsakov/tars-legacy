@@ -23,7 +23,7 @@ msgid "start.btn_withdraw"
 msgstr "Withdraw"
 
 msgid "start.btn_priority"
-msgstr "Priority"
+msgstr "Stats"
 
 msgid "start.btn_register"
 msgstr "Register / edit profile"
@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "You are now offline."
 
 msgid "start.priority"
-msgstr "Order stats:\ntotal: {total}\ncompleted: {complete}\nrefusals: {incomplete}\n\nYour priority:\nspeed: {speed}\nprice: {price}\ncompleted (incl. not-picked): {rate_full}% ({complete}/{total})"
+msgstr "Order stats:\ntotal: {total}\ncompleted: {complete}\nrefusals: {incomplete}\n\nYour ranking params:\naverage task completion time: {speed}\nprice: {price}\ncompleted (incl. not-picked): {rate_full}% ({complete}/{total})"
 
 msgid "start.balance"
 msgstr "Your balance: {balance}"
