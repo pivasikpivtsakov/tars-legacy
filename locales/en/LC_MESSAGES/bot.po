@@ -204,3 +204,9 @@ msgstr "You already have 3 orders in progress."
 
 msgid "order.offline"
 msgstr "You're offline. Go online to take orders."
+
+msgid "order.unfinished"
+msgstr "Not all codes are activated. Please check again."
+
+msgid "order.fraud_detected"
+msgstr "⚠️ Potential fraud in order #{order_id} by user {user}: codes were activated on a different account."

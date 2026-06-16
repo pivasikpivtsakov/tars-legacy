@@ -12,17 +12,8 @@ from common.services.request_service import MethodsEnum
 EXPECTED_AMOUNT = 60
 
 
-class _FakeUserProfiles:
-    def __init__(self) -> None:
-        self.blocked: list[int] = []
-
-    async def block(self, *, profile_id: int) -> None:
-        self.blocked.append(profile_id)
-
-
 def _api(responses: dict[tuple[str, MethodsEnum], tuple[int, object]]) -> ExternalOrderApi:
     return ExternalOrderApi(
-        user_profiles=_FakeUserProfiles(),
         requests=MockRequestService(responses=responses),
     )
 

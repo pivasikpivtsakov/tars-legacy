@@ -4,7 +4,6 @@ from fastapi import status
 import httpx
 
 from common.models.orders import ExternalOrderStatus as Status
-from common.services.user_profiles import UserProfileService
 from common.services.request_service import RequestService, MethodsEnum
 from common.environment import API_URL, API_TOKEN, API_TIMEOUT, APP_ENVIRONMENT
 from common.schemas.external_order import ExternalOrder
@@ -30,10 +29,8 @@ class ExternalOrderApi:
     def __init__(
         self,
         *,
-        user_profiles: UserProfileService,
         requests: RequestService,
     ) -> None:
-        self._user_profiles = user_profiles
         self._requests = requests
 
     async def get_order(self, order: ExternalOrder) -> ExternalOrder | None:
@@ -131,7 +128,6 @@ class ExternalOrderApi:
                     f" {pubg_id} != {res.get('exchange_open_id')}"
                     f" Юзер id:{user_id} будет заблокирован"
                 )
-                await self._user_profiles.block(profile_id=user_id)
                 return False, True
         return True, False
 

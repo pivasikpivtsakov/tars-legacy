@@ -15,7 +15,6 @@ from common.repositories.user_profiles import UserProfileRepository
 from common.services.broadcast import BroadcastService
 from common.services.external_order_api import ExternalOrderApi
 from common.services.request_service import RequestService
-from common.services.user_profiles import UserProfileService
 
 bot = create_bot(token=TELEGRAM_BOT_TOKEN)
 
@@ -67,21 +66,14 @@ def get_broadcast_service() -> BroadcastService:
     )
 
 
-def get_user_profile_service() -> UserProfileService:
-    return UserProfileService(
-        repo=UserProfileRepository(pool=get_pool()),
-    )
-
-
 def get_request_service() -> RequestService:
     return RequestService()
 
 
 def get_external_order_api(
-    user_profile_service: UserProfileService = Depends(get_user_profile_service),
     requests: RequestService = Depends(get_request_service),
 ) -> ExternalOrderApi:
-    return ExternalOrderApi(user_profiles=user_profile_service, requests=requests)
+    return ExternalOrderApi(requests=requests)
 
 
 def get_order_entity_service(

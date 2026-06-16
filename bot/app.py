@@ -27,10 +27,14 @@ from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.anti_fraud import AntiFraudService
 from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService
 from common.services.dispatch_signal import DispatchSignal
+from common.services.external_order_api import ExternalOrderApi
 from common.services.order_processing import OrderLifecycle
+from common.services.request_service import RequestService
+from common.services.user_profiles import UserProfileService
 
 
 def build_dispatcher(
@@ -60,6 +64,7 @@ def build_dispatcher(
         online_price_index=online_price_index,
     )
     broadcast = BroadcastService(profiles=profiles)
+    external_order_api = ExternalOrderApi(requests=RequestService())
     dispatcher["profiles"] = profiles
     dispatcher["rating"] = rating
     dispatcher["online_price_index"] = online_price_index
@@ -72,6 +77,11 @@ def build_dispatcher(
         rating=rating,
         pending=pending,
         dispatch_signal=dispatch_signal,
+    )
+    dispatcher["anti_fraud"] = AntiFraudService(
+        orders=orders_repo,
+        external_api=external_order_api,
+        user_profiles=UserProfileService(repo=profiles),
     )
     dispatcher["admin_ids"] = admin_ids
     dispatcher["moderator_ids"] = moderator_ids

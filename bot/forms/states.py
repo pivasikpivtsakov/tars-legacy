@@ -3,6 +3,10 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.keyboards.profile import ProfileField
 
 
+class UserSession(StatesGroup):
+    blocked = State()
+
+
 class Registration(StatesGroup):
     works_alone = State()
     packages = State()
