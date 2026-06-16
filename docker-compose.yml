@@ -1,6 +1,33 @@
+name: tars_legacy
+
+x-app-service: &app-service
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: tars_legacy-app
+  restart: unless-stopped
+  env_file:
+    - .env
+  # Point the app at the in-network services regardless of what .env uses for
+  # host-run development (localhost). environment overrides env_file in compose.
+  environment:
+    RDS_HOSTNAME: postgres
+    RDS_PORT: "5432"
+    REDIS_URL: redis://redis:6379/0
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - payment-bots-network
+
 services:
   postgres:
     image: postgres:18-alpine
+    restart: unless-stopped
+    networks:
+      - payment-bots-network
     environment:
       POSTGRES_USER: ${RDS_USERNAME:-app}
       POSTGRES_PASSWORD: ${RDS_PASSWORD:-app}
@@ -8,35 +35,66 @@ services:
     volumes:
       # Postgres 18+ stores data under $PGDATA = /var/lib/postgresql/<MAJOR>/docker,
       # so the volume mount target is /var/lib/postgresql (not /data).
-      # See docker-library/postgres#1259.
       - postgres-data:/var/lib/postgresql
+      # Idempotent schema migrations, applied once on a fresh data volume.
+      - ./migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${RDS_USERNAME:-app} -d ${RDS_DB_NAME:-app}"]
       interval: 2s
       timeout: 3s
       retries: 20
-    ports:
-      - "${RDS_PORT:-5433}:5432"
 
   redis:
+  # cpu/mem limits
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    networks:
+      - payment-bots-network
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --save
+      - "900"
+      - "1"
+      - --save
+      - "300"
+      - "10"
+      - --save
+      - "60"
+      - "10000"
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       timeout: 3s
       retries: 20
-    volumes:
-      - redis-data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
 
-#env_file:
-#      - .env
-# todo: limits cpu/mem
-# logging
-# restart: unless-stopped
+  api:
+    <<: *app-service
+    command: python entrypoints/api.py
+    ports:
+      - "${API_PORT:-8000}:${API_PORT:-8000}"
+
+  bot:
+    <<: *app-service
+    command: python entrypoints/bot.py
+
+  dispatcher:
+    <<: *app-service
+    command: python entrypoints/dispatcher.py
+
+  offer_expirer:
+    <<: *app-service
+    command: python entrypoints/offer_expirer.py
 
 volumes:
   postgres-data:
   redis-data:
+
+networks:
+  payment-bots-network:
+    external: true

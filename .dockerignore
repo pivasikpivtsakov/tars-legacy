@@ -1,0 +1,32 @@
+# Version control / IDE
+.git
+.gitignore
+.idea
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+wheels/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local virtualenv (recreated inside the image)
+.venv
+
+# Secrets / local env (injected at runtime via env_file)
+.env
+
+# Tests and local-only files
+tests/
+tars_legacy.md
+
+# Deployment descriptors (not needed inside the image)
+deploy.sh
+docker-compose.yml
+docker-compose.local.yml

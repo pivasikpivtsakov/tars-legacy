@@ -9,9 +9,9 @@ from common.models.orders import ExternalOrderStatus, OrderStatus
 
 class OrderCreate(BaseModel):
     id: int
+    pubg_id: int  # было none
     shop_access_key: str | None = None
     amount: int | None = None
-    pubg_id: int | None = None
     status: ExternalOrderStatus = ExternalOrderStatus.CREATED
     status_reason: str | None = None
     codes: dict[str, int] = {}
