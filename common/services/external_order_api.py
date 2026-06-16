@@ -343,9 +343,8 @@ class ExternalOrderApi:
             msg = (
                 f"Заказ: {order.original_id}\n"
                 f"Найден код: {code} с некорректной стоимостью"
-                f" {amount} != {res.get('amount')}"
-                f"{exchange_open_id}, Меняем статус на "
-                f"available"
+                f" {amount} != {res.get('amount')}\n"
+                "Меняем статус на available"
             )
             order.additional_data.setdefault("debug_messages", []).append(msg)
             msg = (
