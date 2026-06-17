@@ -128,7 +128,31 @@ async def ready_order(
         profile=profile,
         block_on_fraud=not is_user_privileged,
     )
+    if review.unverified_codes:
+        await broadcast.send_to_user_ids(
+            bot=bot,
+            user_ids=moderator_ids,
+            text=_("order.codes_unverified_moderator").format(
+                order_id=review.order.original_id,
+                codes=", ".join(review.unverified_codes),
+                user_id=profile.id,
+                tg_id=profile.tg_id,
+            ),
+        )
     if review.verdict is FraudVerdict.FRAUD:
+        await broadcast.send_to_user_ids(
+            bot=bot,
+            user_ids=moderator_ids,
+            text=_("order.check_failed_moderator").format(
+                order_id=review.order.original_id,
+                reason=_("order.check_reason_fraud"),
+                user_id=profile.id,
+                tg_id=profile.tg_id,
+                ban_status=_("order.user_banned")
+                if not is_user_privileged
+                else _("order.user_not_banned"),
+            ),
+        )
         await _report_fraud(
             callback=callback,
             bot=bot,
@@ -140,6 +164,17 @@ async def ready_order(
         )
         return
     if review.verdict is FraudVerdict.UNFINISHED:
+        await broadcast.send_to_user_ids(
+            bot=bot,
+            user_ids=moderator_ids,
+            text=_("order.check_failed_moderator").format(
+                order_id=review.order.original_id,
+                reason=_("order.check_reason_not_activated"),
+                user_id=profile.id,
+                tg_id=profile.tg_id,
+                ban_status=_("order.user_not_banned"),
+            ),
+        )
         await callback.answer(_("order.unfinished"), show_alert=True)
         return
     order = await order_lifecycle.complete(

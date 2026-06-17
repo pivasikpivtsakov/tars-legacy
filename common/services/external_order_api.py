@@ -87,18 +87,20 @@ class ExternalOrderApi:
         order: ExternalOrder,
         user_id: int,
         is_w_codes: bool,
-    ) -> tuple[bool, bool]:
+    ) -> tuple[bool, bool, list[str]]:
         """Check codes whether codes activated correctly
 
         Returns:
-            tuple[bool, bool]: First value whether order is finished,
-            and the second whether fraud is found in order
+            tuple[bool, bool, list[str]]: first value whether order is finished,
+            the second whether fraud is found in order, 
+            and the third the codes whose activation could not be verified (assumed activated)
         """
         if is_w_codes is False:
-            return True, False
+            return True, False, []
         if APP_ENVIRONMENT == "local":
-            return True, False
+            return True, False, []
         pubg_id = str(order.additional_data.get("player_open_id"))
+        unverified_codes: list[str] = []
         for code in order.unused_codes:
             res = await self.get_code_exchange_time(
                 code=code,
@@ -109,6 +111,7 @@ class ExternalOrderApi:
                     f"Не удалось проверить активацию кода: {code},"
                     " считаем, что активирован"
                 )
+                unverified_codes.append(code)
                 continue
             res = res.json()
             if res.get("is_redeemed") is False:
@@ -119,7 +122,7 @@ class ExternalOrderApi:
                 )
                 order.additional_data.setdefault("debug_messages", []).append(msg)
                 logger.info(msg)
-                return False, False
+                return False, False, unverified_codes
             if pubg_id is not None and str(pubg_id) != str(
                 res.get("exchange_open_id")
             ):
@@ -128,8 +131,8 @@ class ExternalOrderApi:
                     f" {pubg_id} != {res.get('exchange_open_id')}"
                     f" Юзер id:{user_id} будет заблокирован"
                 )
-                return False, True
-        return True, False
+                return False, True, unverified_codes
+        return True, False, unverified_codes
 
     async def change_order_status(self, order: ExternalOrder) -> None:
         if APP_ENVIRONMENT == "local":

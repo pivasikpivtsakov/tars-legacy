@@ -20,6 +20,7 @@ class FraudVerdict(StrEnum):
 class FraudReview:
     verdict: FraudVerdict
     order: Order | None = None
+    unverified_codes: tuple[str, ...] = ()
 
 
 def _to_external(order: Order) -> ExternalOrder:
@@ -56,15 +57,22 @@ class AntiFraudService:
         order = await self._orders.get(order_id=order_id)
         if order is None or order.taken_by != profile.id or order.status is not OrderStatus.TAKEN:
             return FraudReview(verdict=FraudVerdict.UNAVAILABLE)
-        ok, is_fraud = await self._external_api.check_order_finished(
+        ok, is_fraud, unverified_codes = await self._external_api.check_order_finished(
             order=_to_external(order),
             user_id=profile.id,
             is_w_codes=profile.with_codes,
         )
+        unverified = tuple(unverified_codes)
         if is_fraud:
             if block_on_fraud:
                 await self._user_profiles.block(profile_id=profile.id)
-            return FraudReview(verdict=FraudVerdict.FRAUD, order=order)
+            return FraudReview(
+                verdict=FraudVerdict.FRAUD, order=order, unverified_codes=unverified
+            )
         if not ok:
-            return FraudReview(verdict=FraudVerdict.UNFINISHED, order=order)
-        return FraudReview(verdict=FraudVerdict.OK, order=order)
+            return FraudReview(
+                verdict=FraudVerdict.UNFINISHED, order=order, unverified_codes=unverified
+            )
+        return FraudReview(
+            verdict=FraudVerdict.OK, order=order, unverified_codes=unverified
+        )

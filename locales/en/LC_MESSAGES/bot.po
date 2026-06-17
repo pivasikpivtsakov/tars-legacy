@@ -210,3 +210,21 @@ msgstr "Not all codes are activated. Please check again."
 
 msgid "order.fraud_detected"
 msgstr "⚠️ Potential fraud in order #{order_id} by user {user}: codes were activated on a different account."
+
+msgid "order.check_failed_moderator"
+msgstr "⚠️ Code check failed for order #{order_id}.\nReason: {reason}\nUser id: {user_id}, telegram: {tg_id}\n{ban_status}"
+
+msgid "order.check_reason_not_activated"
+msgstr "code not activated"
+
+msgid "order.check_reason_fraud"
+msgstr "code activated on a different account"
+
+msgid "order.user_banned"
+msgstr "User has been banned."
+
+msgid "order.user_not_banned"
+msgstr "User was not banned."
+
+msgid "order.codes_unverified_moderator"
+msgstr "⚠️ Could not verify activation of codes for order #{order_id}: {codes}. Assumed activated. User id: {user_id}, telegram: {tg_id}."

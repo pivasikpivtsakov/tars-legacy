@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -9,16 +9,41 @@ from common.models.orders import ExternalOrderStatus, OrderStatus
 
 class OrderCreate(BaseModel):
     id: int
-    pubg_id: int  # было none
-    shop_access_key: str | None = None
-    amount: int | None = None
+    merchant_id: str
+
+    shop_id: int
+    shop_name: str
+    shop_access_key: str
+    shop_access_key_name: str
+
+    order_type: str
+    activator_type: str
+
+    amount: int
+    decomposed_amount: list[int]
+    pubg_id: int
+
     status: ExternalOrderStatus = ExternalOrderStatus.CREATED
     status_reason: str | None = None
+
+    redeem_attempts: int = 2
+    max_redeem_attempts: int = 5
+    ignore_redeem_error: bool = False
+
     codes: dict[str, int] = {}
     unused_codes: dict[str, int] = {}
     broken_codes: list[str] = []
     redeemed_codes: list[str] = []
+
+    screenshots: list[str] = []
+    webhook: str | None = None
     additional_data: dict[str, Any] = {}
+
+    last_update: datetime
+    creation_date: date
+    creation_timestamp: datetime
+
+    is_only_w_codes: bool
 
 
 class OrderResponse(BaseModel):

@@ -210,3 +210,21 @@ msgstr "Не все коды активированы. Проверьте ещё
 
 msgid "order.fraud_detected"
 msgstr "⚠️ В заказе #{order_id} обнаружен потенциальный фрод от пользователя {user}: коды активированы на другом аккаунте."
+
+msgid "order.check_failed_moderator"
+msgstr "⚠️ Проверка кодов не пройдена по заказу #{order_id}.\nПричина: {reason}\nЮзер id: {user_id}, telegram: {tg_id}\n{ban_status}"
+
+msgid "order.check_reason_not_activated"
+msgstr "код не активирован"
+
+msgid "order.check_reason_fraud"
+msgstr "код активирован на другом аккаунте"
+
+msgid "order.user_banned"
+msgstr "Пользователь заблокирован."
+
+msgid "order.user_not_banned"
+msgstr "Пользователь не заблокирован."
+
+msgid "order.codes_unverified_moderator"
+msgstr "⚠️ Не удалось проверить активацию кодов по заказу #{order_id}: {codes}. Считаем активированными. Юзер id: {user_id}, telegram: {tg_id}."

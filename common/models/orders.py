@@ -50,6 +50,7 @@ class Order:
     created_at: datetime
     updated_at: datetime
     external_status: ExternalOrderStatus
+    is_only_w_codes: bool
 
     @classmethod
     def from_row(cls, row: asyncpg.Record) -> Order:
@@ -74,4 +75,5 @@ class Order:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             external_status=ExternalOrderStatus(row["external_status"]),
+            is_only_w_codes=row["is_only_w_codes"],
         )

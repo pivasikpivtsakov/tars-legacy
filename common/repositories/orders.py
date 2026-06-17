@@ -27,7 +27,7 @@ _SELECT_COLUMNS = (
     "id, original_id, shop_access_key, status, status_reason, amount, pubg_id, "
     "codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
     "offered_at, closed_at, taken_at, taken_by, taken_price, created_at, updated_at, "
-    "external_status"
+    "external_status, is_only_w_codes"
 )
 
 
