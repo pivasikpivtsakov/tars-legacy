@@ -142,4 +142,5 @@ class OrderEntityService:
             "additional_data": order.additional_data,
             "external_status": order.status,
             "status_reason": order.status_reason,
+            "is_only_w_codes": order.is_only_w_codes,
         }

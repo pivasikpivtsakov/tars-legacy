@@ -13,6 +13,9 @@ class PricedCandidate:
     price_60: int
 
 
+_WITH_CODES_KEY = "rank:with_codes"
+
+
 def _pkg_key(size: int) -> str:
     return f"rank:pkg:{size}"
 
@@ -37,6 +40,10 @@ class OnlinePriceIndex:
                 pipe.zadd(_pkg_key(size), {member: price})
             else:
                 pipe.zrem(_pkg_key(size), member)
+        if eligible and profile.with_codes:
+            pipe.sadd(_WITH_CODES_KEY, member)
+        else:
+            pipe.srem(_WITH_CODES_KEY, member)
         await pipe.execute()
 
     async def remove(self, *, user_id: int) -> None:
@@ -44,10 +51,14 @@ class OnlinePriceIndex:
         pipe = self._redis.pipeline(transaction=True)
         for size in PACKAGE_SIZES:
             pipe.zrem(_pkg_key(size), member)
+        pipe.srem(_WITH_CODES_KEY, member)
         await pipe.execute()
 
     async def clear(self) -> None:
-        await self._redis.delete(*(_pkg_key(size) for size in PACKAGE_SIZES))
+        await self._redis.delete(
+            *(_pkg_key(size) for size in PACKAGE_SIZES),
+            _WITH_CODES_KEY,
+        )
 
     async def get_cheapest_candidates(
         self,
@@ -62,3 +73,14 @@ class OnlinePriceIndex:
             PricedCandidate(user_id=int(member), price_60=int(score))
             for member, score in pairs
         ]
+
+    async def filter_with_codes(self, *, user_ids: Sequence[int]) -> set[int]:
+        if not user_ids:
+            return set()
+        members = [str(user_id) for user_id in user_ids]
+        flags = await self._redis.smismember(_WITH_CODES_KEY, members)
+        return {
+            user_id
+            for user_id, present in zip(user_ids, flags, strict=True)
+            if present
+        }

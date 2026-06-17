@@ -24,6 +24,7 @@ class ExternalOrder(BaseModel):
     broken_codes: list[str] = []
     redeemed_codes: list[str] = []
     additional_data: dict[str, Any] = {}
+    is_only_w_codes: bool = False
 
     @model_validator(mode="before")
     @classmethod

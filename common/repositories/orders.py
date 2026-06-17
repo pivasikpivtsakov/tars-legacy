@@ -49,14 +49,15 @@ class OrderRepository:
         additional_data: Any = None,
         external_status: ExternalOrderStatus | None = None,
         status_reason: str | None = None,
+        is_only_w_codes: bool = False,
         conn: asyncpg.Connection | None = None,
     ) -> Order:
         row = await (conn or self._pool).fetchrow(
             f"INSERT INTO {_TABLE} ("
             f"original_id, shop_access_key, status_reason, amount, pubg_id, "
             f"codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
-            f"external_status"
-            f") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) "
+            f"external_status, is_only_w_codes"
+            f") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) "
             f"RETURNING {_SELECT_COLUMNS}",
             original_id,
             shop_access_key,
@@ -69,6 +70,7 @@ class OrderRepository:
             list(redeemed_codes),
             _dump_json(additional_data),
             external_status,
+            is_only_w_codes,
         )
         if row is None:
             msg = "failed to insert order"

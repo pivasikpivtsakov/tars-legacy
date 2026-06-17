@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import UTC, datetime
 
 import pytest
@@ -32,7 +32,7 @@ def _candidate(
     )
 
 
-def _make_order(*, amount: int) -> Order:
+def _make_order(*, amount: int, is_only_w_codes: bool = False) -> Order:
     now = datetime.now(UTC)
     return Order(
         id=1,
@@ -55,13 +55,21 @@ def _make_order(*, amount: int) -> Order:
         created_at=now,
         updated_at=now,
         external_status=None,
+        is_only_w_codes=is_only_w_codes,
     )
 
 
 class _FakeOnlinePriceIndex:
-    def __init__(self, *, rows: Sequence[PricedCandidate]) -> None:
+    def __init__(
+        self,
+        *,
+        rows: Sequence[PricedCandidate],
+        with_codes_user_ids: Collection[int] = (),
+    ) -> None:
         self._rows = sorted(rows, key=lambda row: (row.price_60, row.user_id))
+        self._with_codes_user_ids = set(with_codes_user_ids)
         self.requested_packages: Sequence[int] | None = None
+        self.filter_with_codes_calls: list[list[int]] = []
 
     async def get_cheapest_candidates(
         self,
@@ -70,6 +78,12 @@ class _FakeOnlinePriceIndex:
     ) -> list[PricedCandidate]:
         self.requested_packages = required_packages
         return list(self._rows)
+
+    async def filter_with_codes(self, *, user_ids: Sequence[int]) -> set[int]:
+        self.filter_with_codes_calls.append(list(user_ids))
+        return {
+            user_id for user_id in user_ids if user_id in self._with_codes_user_ids
+        }
 
 
 class _FakeRating:
@@ -203,3 +217,70 @@ def test_select_candidates_excludes_user_ids() -> None:
 
     assert rating.requested_user_ids == [2]
     assert [c.user_id for c in result] == [2]
+
+
+def test_select_candidates_codes_only_keeps_with_codes_users() -> None:
+    online_price_index = _FakeOnlinePriceIndex(
+        rows=[
+            PricedCandidate(user_id=1, price_60=100),
+            PricedCandidate(user_id=2, price_60=100),
+            PricedCandidate(user_id=3, price_60=100),
+        ],
+        with_codes_user_ids=[2, 3],
+    )
+    rating = _FakeRating(
+        stats={
+            2: RatingStats(speed_seconds=10, complete=0, incomplete=0, not_taken=0),
+            3: RatingStats(speed_seconds=20, complete=0, incomplete=0, not_taken=0),
+        },
+    )
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
+
+    result = asyncio.run(
+        manager.select_candidates(order=_make_order(amount=60, is_only_w_codes=True)),
+    )
+
+    assert online_price_index.filter_with_codes_calls == [[1, 2, 3]]
+    assert rating.requested_user_ids == [2, 3]
+    assert [c.user_id for c in result] == [2, 3]
+
+
+def test_select_candidates_non_codes_order_skips_with_codes_filter() -> None:
+    online_price_index = _FakeOnlinePriceIndex(
+        rows=[
+            PricedCandidate(user_id=1, price_60=100),
+            PricedCandidate(user_id=2, price_60=100),
+        ],
+        with_codes_user_ids=[2],
+    )
+    rating = _FakeRating(
+        stats={
+            1: RatingStats(speed_seconds=10, complete=0, incomplete=0, not_taken=0),
+            2: RatingStats(speed_seconds=20, complete=0, incomplete=0, not_taken=0),
+        },
+    )
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
+
+    result = asyncio.run(manager.select_candidates(order=_make_order(amount=60)))
+
+    assert online_price_index.filter_with_codes_calls == []
+    assert [c.user_id for c in result] == [1, 2]
+
+
+def test_select_candidates_codes_only_empty_when_no_codes_users() -> None:
+    online_price_index = _FakeOnlinePriceIndex(
+        rows=[
+            PricedCandidate(user_id=1, price_60=100),
+            PricedCandidate(user_id=2, price_60=100),
+        ],
+        with_codes_user_ids=[],
+    )
+    rating = _FakeRating(stats={})
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
+
+    result = asyncio.run(
+        manager.select_candidates(order=_make_order(amount=60, is_only_w_codes=True)),
+    )
+
+    assert result == []
+    assert rating.requested_user_ids is None

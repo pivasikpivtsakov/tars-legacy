@@ -157,6 +157,11 @@ class OrderManager:
         rows = await self._eligible_candidates(required_packages=decomposition.unique_parts)
         excluded = set(exclude_user_ids)
         rows = [row for row in rows if row.user_id not in excluded]
+        if order.is_only_w_codes and rows:
+            allowed = await self._online_price_index.filter_with_codes(
+                user_ids=[row.user_id for row in rows],
+            )
+            rows = [row for row in rows if row.user_id in allowed]
         if not rows:
             return []
         bucket = _cheapest_price_bucket(rows)
