@@ -23,6 +23,8 @@ type ResponseKey = tuple[str, MethodsEnum]
 type ResponseSpec = tuple[int, Any]
 
 MOCK_ORDER_AMOUNT = 385
+MOCK_PLAYER_OPEN_ID = "123456"
+MOCK_FRAUD_OPEN_ID = "999999"
 
 
 class MockRequestService(RequestService):
@@ -53,8 +55,27 @@ class MockRequestService(RequestService):
         )
 
 
-def default_external_responses() -> dict[ResponseKey, ResponseSpec]:
-    return {
+def code_exchange_time_response(
+    *,
+    is_redeemed: bool = True,
+    exchange_open_id: str = MOCK_PLAYER_OPEN_ID,
+    amount: int = 60,
+) -> ResponseSpec:
+    return (
+        200,
+        {
+            "is_redeemed": is_redeemed,
+            "exchange_open_id": exchange_open_id,
+            "amount": amount,
+        },
+    )
+
+
+def default_external_responses(
+    *,
+    overrides: Mapping[ResponseKey, ResponseSpec] | None = None,
+) -> dict[ResponseKey, ResponseSpec]:
+    responses: dict[ResponseKey, ResponseSpec] = {
         (PATH_ORDER_GET, MethodsEnum.GET): (
             200,
             {
@@ -67,14 +88,11 @@ def default_external_responses() -> dict[ResponseKey, ResponseSpec]:
                 "unused_codes": {"CODE-1": 60},
                 "broken_codes": [],
                 "redeemed_codes": [],
-                "additional_data": {"player_open_id": "123456"},
+                "additional_data": {"player_open_id": MOCK_PLAYER_OPEN_ID},
             },
         ),
         (PATH_ORDERS_SET_STATUS, MethodsEnum.PATCH): (200, {"success": True}),
-        (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): (
-            200,
-            {"is_redeemed": True, "exchange_open_id": "123456", "amount": 60},
-        ),
+        (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(),
         (PATH_CODE_EXCHANGE_STATUS, MethodsEnum.GET): (200, {"is_redeemed": True}),
         (PATH_CODES_SET_STATUS, MethodsEnum.PATCH): (200, {"success": True}),
         (PATH_CODES_REPLACE, MethodsEnum.POST): (200, {"code": "CODE-REPLACED"}),
@@ -83,6 +101,34 @@ def default_external_responses() -> dict[ResponseKey, ResponseSpec]:
         (PATH_ORDER_UPDATE_CODES, MethodsEnum.PUT): (200, {"success": True}),
         (PATH_SEND_MSG_TO_MODERATORS, MethodsEnum.POST): (200, {"success": True}),
     }
+    if overrides:
+        responses.update(overrides)
+    return responses
+
+
+def fraud_external_responses(
+    *,
+    exchange_open_id: str = MOCK_FRAUD_OPEN_ID,
+) -> dict[ResponseKey, ResponseSpec]:
+    """Code redeemed on a different open_id -> antifraud blocks the user."""
+    return default_external_responses(
+        overrides={
+            (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
+                exchange_open_id=exchange_open_id
+            ),
+        }
+    )
+
+
+def unfinished_external_responses() -> dict[ResponseKey, ResponseSpec]:
+    """Code not redeemed yet -> antifraud reports order as unfinished."""
+    return default_external_responses(
+        overrides={
+            (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
+                is_redeemed=False
+            ),
+        }
+    )
 
 
 def enable_mock_external_api(
