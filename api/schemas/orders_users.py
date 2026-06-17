@@ -1,33 +1,32 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
 
 class OrderUser(BaseModel):
     id: int
-    user_id: Optional[int] = None
-    order_id: Optional[int] = None
+    user_id: int | None = None
+    order_id: int | None = None
     is_pending: bool
     is_rejected: bool
     is_finished: bool
     created_at: datetime
-    assigned_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    is_w_codes: Optional[bool] = None
+    assigned_at: datetime | None = None
+    finished_at: datetime | None = None
+    is_w_codes: bool | None = None
 
 
 class OrderUserCreateDB(BaseModel):
-    user_id: Optional[int] = None
-    order_id: Optional[int] = None
-    is_pending: Optional[bool] = True
+    user_id: int | None = None
+    order_id: int | None = None
+    is_pending: bool | None = True
 
 
 class OrderUserUpdateDB(BaseModel):
-    user_id: Optional[int] = None
-    is_pending: Optional[bool] = None
-    is_rejected: Optional[bool] = None
-    is_finished: Optional[bool] = None
-    assigned_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    is_w_codes: Optional[bool] = None
+    user_id: int | None = None
+    is_pending: bool | None = None
+    is_rejected: bool | None = None
+    is_finished: bool | None = None
+    assigned_at: datetime | None = None
+    finished_at: datetime | None = None
+    is_w_codes: bool | None = None

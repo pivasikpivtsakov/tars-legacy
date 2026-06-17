@@ -1,16 +1,15 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
-from fastapi import Request, APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from api.dependencies import get_order_entity_service
-from api.constants.user_roles import UserRoleEnum
 from api.authorization import (
+    Authorization,
     AuthorizationEnum,
 )
-from api.authorization import Authorization
+from api.constants.user_roles import UserRoleEnum
+from api.dependencies import get_order_entity_service
+from api.schemas.order import OrderCreate, OrderResponse
 from api.services.order_entity import OrderEntityService
-from api.schemas.order import OrderResponse, OrderCreate
-
 
 router = APIRouter(
     prefix="/orders",
@@ -25,17 +24,16 @@ router = APIRouter(
 )
 async def create_order(
     _: Annotated[
-        tuple[Optional[int], Optional[UserRoleEnum]],
+        tuple[int | None, UserRoleEnum | None],
         Depends(
             Authorization(
                 auth_type=AuthorizationEnum.INTERNAL,
             )
         ),
     ],
-    request: Request,
     create_data: OrderCreate,
-    service: OrderEntityService = Depends(get_order_entity_service),
-) -> Optional[OrderResponse]:
+    service: Annotated[OrderEntityService, Depends(get_order_entity_service)],
+) -> OrderResponse | None:
     try:
         return await service.create(data=create_data)
     except Exception as ex:
@@ -52,16 +50,16 @@ async def create_order(
 )
 async def clean_order(
     _: Annotated[
-        tuple[Optional[int], Optional[UserRoleEnum]],
+        tuple[int | None, UserRoleEnum | None],
         Depends(
             Authorization(
                 auth_type=AuthorizationEnum.INTERNAL,
             )
         ),
     ],
-    order_id: Optional[int] = None,
-    original_id: Optional[int] = None,
-    service: OrderEntityService = Depends(get_order_entity_service),
+    service: Annotated[OrderEntityService, Depends(get_order_entity_service)],
+    order_id: int | None = None,
+    original_id: int | None = None,
 ) -> None:
     if (not order_id and not original_id) or (order_id and original_id):
         raise HTTPException(

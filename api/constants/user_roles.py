@@ -3,7 +3,7 @@ from enum import Enum
 
 class CustomEnum(Enum):
     @classmethod
-    def _missing_(cls, name):  # noqa: ANN001, ANN206
+    def _missing_(cls, name):
         if isinstance(name, str):
             return cls.__members__.get(name)
         return super()._missing_(name)

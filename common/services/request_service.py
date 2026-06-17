@@ -1,14 +1,13 @@
-from enum import Enum
+from enum import StrEnum
 from logging import getLogger
 from typing import Any
 
 import httpx
 
-
 logger = getLogger(__name__)
 
 
-class MethodsEnum(str, Enum):
+class MethodsEnum(StrEnum):
     GET = "GET"
     POST = "POST"
     PUT = "PUT"

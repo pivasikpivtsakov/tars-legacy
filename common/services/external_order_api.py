@@ -1,13 +1,13 @@
 from logging import getLogger
 
-from fastapi import status
 import httpx
+from fastapi import status
 
-from common.models.orders import ExternalOrderStatus as Status
-from common.services.request_service import RequestService, MethodsEnum
-from common.environment import API_URL, API_TOKEN, API_TIMEOUT, APP_ENVIRONMENT
-from common.schemas.external_order import ExternalOrder
+from common.environment import API_TIMEOUT, API_TOKEN, API_URL, APP_ENVIRONMENT
 from common.exceptions.orders import OrderProcessingError
+from common.models.orders import ExternalOrderStatus as Status
+from common.schemas.external_order import ExternalOrder
+from common.services.request_service import MethodsEnum, RequestService
 
 CONTROLLER_RETRY_DELAY = 60
 PATH_CODE_EXCHANGE_TIME = "/activators/code_exchange_time"
@@ -150,7 +150,7 @@ class ExternalOrderApi:
             and r.status_code == status.HTTP_200_OK
             and r.json().get("success") is True
         ):
-            return None
+            return
         logger.exception(r.text if r else "Response text not found")
         if (
             r.status_code == status.HTTP_200_OK

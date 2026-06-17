@@ -31,4 +31,5 @@ lint.select = [
 
 lint.ignore = [
     "PLR0913",  # too-many-arguments
+    "RUF001",   # ambiguous unicode char in strings (legitimate Cyrillic/Russian text)
 ]

@@ -1,13 +1,12 @@
 from logging import getLogger
-from typing import Optional, Tuple
 
-from common.environment import API_TOKEN
-from fastapi import Request, Depends
+from fastapi import Depends, Request
 from fastapi.security import APIKeyHeader
 
-from common.exceptions import AuthorizationException
-from api.constants.user_roles import UserRoleEnum
 from api.constants.authorization import AuthorizationEnum
+from api.constants.user_roles import UserRoleEnum
+from common.environment import API_TOKEN
+from common.exceptions import AuthorizationException
 
 logger = getLogger(__name__)
 
@@ -15,8 +14,8 @@ class Authorization:
     def __init__(
         self,
         auth_type: AuthorizationEnum,
-        required_user_role: Optional[UserRoleEnum] = None,
-        is_blocked_users_allowed: Optional[bool] = None,
+        required_user_role: UserRoleEnum | None = None,
+        is_blocked_users_allowed: bool | None = None,
     ) -> None:
         self.__auth_type = auth_type
         self.__required_user_role = required_user_role
@@ -36,7 +35,7 @@ class Authorization:
                 auto_error=True,
             )
         ),
-    ) -> Tuple[Optional[int], Optional[UserRoleEnum]]:
+    ) -> tuple[int | None, UserRoleEnum | None]:
         host = request.headers.get("X-Real-IP", request.client.host)
         endpoint = request.url.path
 
@@ -61,12 +60,13 @@ class Authorization:
         )
 
         if self.__auth_type == AuthorizationEnum.INTERNAL:
-            if await self.validate_internal_authorization(
+            is_valid = await self.validate_internal_authorization(
                 provided_access_token=provided_access_token,
-            ):
+            )
+            if is_valid:
                 return None, UserRoleEnum.ADMINISTRATOR
 
-            raise AuthorizationException(detail="Authorization failed")
+        raise AuthorizationException(detail="Authorization failed")
 
     @staticmethod
     async def validate_internal_authorization(

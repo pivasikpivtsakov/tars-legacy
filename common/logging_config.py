@@ -63,7 +63,7 @@ def _json_formatter() -> JsonFormatter:
         datefmt=_DATE_FMT,
         rename_fields=_LOGRECORD_TO_GRAFANA,
         reserved_attrs=[*RESERVED_ATTRS, "color_message"],
-        defaults={attr: None for attr in _CONTEXT_ATTRS},
+        defaults=dict.fromkeys(_CONTEXT_ATTRS),
     )
 
 
