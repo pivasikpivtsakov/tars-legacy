@@ -26,17 +26,7 @@ from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import is_moderator
 
-NO_PACKAGES_SELECTED = "select at least one package"
-PROFILE_NOT_FOUND = "user not found"
-
 router = Router(name="moderation")
-
-MODERATOR_PANEL_TEXT = (
-    "You are a moderator.\n"
-    "You will receive approval requests when users register or update their "
-    "registration data. Use the buttons on each request to approve or deny."
-)
-MODERATOR_NOT_ORDER_TAKER = "Moderators cannot register as order-takers."
 
 
 class _IsModerator(BaseFilter):
@@ -57,20 +47,6 @@ class _IsModerator(BaseFilter):
 
 
 _is_moderator = _IsModerator()
-
-
-def is_moderator_only(
-    *,
-    profile: UserProfile | None,
-    moderator_ids: frozenset[int],
-    admin_ids: frozenset[int],
-    tg_id: int,
-) -> bool:
-    return (
-        profile is not None
-        and profile.id in moderator_ids
-        and tg_id not in admin_ids
-    )
 
 
 def _moderator_label(user: User) -> str:
@@ -127,7 +103,7 @@ async def open_pack_editor(
 ) -> None:
     profile = await profiles.get_by_id(profile_id=callback_data.profile_id)
     if profile is None:
-        await callback.answer(PROFILE_NOT_FOUND, show_alert=True)
+        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
     await callback.message.edit_reply_markup(
         reply_markup=moderation_packages_kb(
@@ -162,7 +138,7 @@ async def save_packs(
     profiles: UserProfileRepository,
 ) -> None:
     if callback_data.mask == 0:
-        await callback.answer(NO_PACKAGES_SELECTED, show_alert=True)
+        await callback.answer(_("moderation.no_packages_selected"), show_alert=True)
         return
     try:
         await profiles.set_packages(
@@ -170,7 +146,7 @@ async def save_packs(
             packages=mask_to_packages(callback_data.mask),
         )
     except LookupError:
-        await callback.answer(PROFILE_NOT_FOUND, show_alert=True)
+        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
     await callback.message.edit_reply_markup(
         reply_markup=moderation_decision_kb(
@@ -178,7 +154,7 @@ async def save_packs(
             with_codes=callback_data.with_codes,
         ),
     )
-    await callback.answer("packages saved")
+    await callback.answer(_("moderation.packages_saved"))
 
 
 @router.callback_query(ModPacksCancelCB.filter(), _is_moderator)
@@ -209,7 +185,7 @@ async def approve_user(
             with_codes=callback_data.with_codes,
         )
     except LookupError:
-        await callback.answer(PROFILE_NOT_FOUND, show_alert=True)
+        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
     user_state = _user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
     await user_state.clear()

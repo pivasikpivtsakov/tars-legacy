@@ -13,7 +13,6 @@ from bot.forms.menu import (
     render_menu,
     show_back_panel,
 )
-from bot.handlers.moderation import MODERATOR_PANEL_TEXT, is_moderator_only
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.rating import RatingStats
@@ -36,14 +35,6 @@ async def cmd_start(
     bot_switch: BotSwitchService,
 ) -> None:
     await state.clear()
-    if is_moderator_only(
-        profile=profile,
-        moderator_ids=moderator_ids,
-        admin_ids=admin_ids,
-        tg_id=message.from_user.id,
-    ):
-        await message.answer(MODERATOR_PANEL_TEXT)
-        return
     if profile is None:
         await fields.begin_registration(message=message, state=state)
         return

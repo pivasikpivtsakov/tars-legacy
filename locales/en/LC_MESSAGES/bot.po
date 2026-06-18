@@ -64,6 +64,9 @@ msgstr "Your profile is on moderation. Please wait for an admin to review it."
 msgid "start.banned"
 msgstr "Your account has been blocked."
 
+msgid "start.no_menu_actions"
+msgstr "No menu actions are available for you."
+
 msgid "start.approved"
 msgstr "You're approved! Welcome aboard."
 
@@ -165,6 +168,18 @@ msgstr "The bot is now enabled. Press \"Go online\" to start receiving orders."
 
 msgid "admin.bot_disabled_announcement"
 msgstr "The bot is now disabled. Orders will no longer be available."
+
+msgid "moderation.profile_not_found"
+msgstr "user not found"
+
+msgid "moderation.no_packages_selected"
+msgstr "select at least one package"
+
+msgid "moderation.packages_saved"
+msgstr "packages saved"
+
+msgid "moderation.not_order_taker"
+msgstr "Moderators cannot register as order-takers."
 
 msgid "order.offer"
 msgstr "<b>New order</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPrice: <b>{full_price}</b>"

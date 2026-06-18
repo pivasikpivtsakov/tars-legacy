@@ -81,12 +81,15 @@ def menu_inline_view(
     is_moderator: bool = False,
 ) -> tuple[str, InlineKeyboardMarkup | None]:
     if profile is not None and profile.status is UserProfileStatus.ACTIVE:
-        return _("start.welcome"), full_menu_kb(
+        markup = full_menu_kb(
             profile=profile,
             for_admin=for_admin,
             bot_enabled=bot_enabled,
             is_moderator=is_moderator,
         )
+        if markup is None:
+            return _("start.no_menu_actions"), None
+        return _("start.welcome"), markup
     if profile is not None and profile.status is UserProfileStatus.BANNED:
         return _("start.banned"), None
     if profile is not None:

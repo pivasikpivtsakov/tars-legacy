@@ -1,10 +1,10 @@
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.i18n import gettext as _
 
 from bot.forms import fields
 from bot.forms.states import ProfileEdit
-from bot.handlers.moderation import MODERATOR_NOT_ORDER_TAKER
 from bot.keyboards.profile import (
     EditFieldCB,
     EditSaveCB,
@@ -30,7 +30,7 @@ async def open_edit(
     moderator_ids: frozenset[int],
 ) -> None:
     if profile.id in moderator_ids:
-        await callback.answer(MODERATOR_NOT_ORDER_TAKER, show_alert=True)
+        await callback.answer(_("moderation.not_order_taker"), show_alert=True)
         return
     await fields.load_profile_into_state(state=state, profile=profile)
     await fields.show_edit_menu(target=callback, state=state)

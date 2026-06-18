@@ -8,7 +8,7 @@ from api.schemas.order import (
     OrderCreate,
     OrderResponse,
 )
-from common.environment import ADMIN_USER_IDS
+from common.environment import MODERATOR_USER_IDS
 from common.exceptions import (
     ControllerAuthorizationError,
     OrderProcessingError,
@@ -57,7 +57,7 @@ class OrderEntityService:
             if order.amount is None:
                 msg = f"Order amount is not found for {order.original_id=}"
                 await self.broadcast.send_to_user_ids(
-                    bot=self.bot, user_ids=ADMIN_USER_IDS, text=msg
+                    bot=self.bot, user_ids=MODERATOR_USER_IDS, text=msg
                 )
                 await forward_to_third_party(original_id=order.original_id)
                 return None
@@ -69,7 +69,7 @@ class OrderEntityService:
                 )
                 for msg in msg_to_admin:
                     await self.broadcast.send_to_user_ids(
-                        bot=self.bot, user_ids=ADMIN_USER_IDS, text=msg
+                        bot=self.bot, user_ids=MODERATOR_USER_IDS, text=msg
                     )
             if not order.unused_codes:
                 msg = (
@@ -78,7 +78,7 @@ class OrderEntityService:
                     "Прекращаем обработку"
                 )
                 await self.broadcast.send_to_user_ids(
-                    bot=self.bot, user_ids=ADMIN_USER_IDS, text=msg
+                    bot=self.bot, user_ids=MODERATOR_USER_IDS, text=msg
                 )
                 order.status = ExternalOrderStatus.REDEEMED
                 order.status_reason = None
@@ -88,7 +88,7 @@ class OrderEntityService:
                 return None
         except (OrderProcessingError, ControllerAuthorizationError) as ex:
             await self.broadcast.send_to_user_ids(
-                bot=self.bot, user_ids=ADMIN_USER_IDS, text=ex.message
+                bot=self.bot, user_ids=MODERATOR_USER_IDS, text=ex.message
             )
             raise
         entity = await self._insert(order)
