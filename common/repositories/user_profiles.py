@@ -92,6 +92,7 @@ class UserProfileRepository:
         *,
         tg_id: int,
         works_alone: bool,
+        with_codes: bool,
         packages: Sequence[int],
         price_60: int,
         withdrawal_method: str,
@@ -100,11 +101,12 @@ class UserProfileRepository:
     ) -> UserProfile:
         row = await self._pool.fetchrow(
             f"INSERT INTO {_TABLE} "
-            f"(tg_id, works_alone, packages, price_60, withdrawal_method, "
-            f"work_start, work_end) "
-            f"VALUES ($1, $2, $3, $4, $5, $6, $7) "
+            f"(tg_id, works_alone, with_codes, packages, price_60, "
+            f"withdrawal_method, work_start, work_end) "
+            f"VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
             f"ON CONFLICT (tg_id) DO UPDATE SET "
             f"works_alone = EXCLUDED.works_alone, "
+            f"with_codes = EXCLUDED.with_codes, "
             f"packages = EXCLUDED.packages, "
             f"price_60 = EXCLUDED.price_60, "
             f"withdrawal_method = EXCLUDED.withdrawal_method, "
@@ -115,6 +117,7 @@ class UserProfileRepository:
             f"RETURNING {_SELECT_COLUMNS}",
             tg_id,
             works_alone,
+            with_codes,
             list(packages),
             price_60,
             withdrawal_method,

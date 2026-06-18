@@ -16,12 +16,17 @@ class WorksAloneCB(CallbackData, prefix="wa"):
     value: bool
 
 
+class WithCodesCB(CallbackData, prefix="wc"):
+    value: bool
+
+
 class PackagesDoneCB(CallbackData, prefix="pkg_done"):
     pass
 
 
 class ProfileField(StrEnum):
     works_alone = "works_alone"
+    with_codes = "with_codes"
     packages = "packages"
     price_60 = "price_60"
     withdrawal_method = "withdrawal_method"
@@ -44,20 +49,38 @@ def package_rows(selected: Iterable[int]) -> list[list[InlineKeyboardButton]]:
     )
 
 
-def works_alone_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
+def _bool_kb(
+    *,
+    yes_text: str,
+    no_text: str,
+    yes_callback: str,
+    no_callback: str,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(
-                    text=yes_text,
-                    callback_data=WorksAloneCB(value=True).pack(),
-                ),
-                InlineKeyboardButton(
-                    text=no_text,
-                    callback_data=WorksAloneCB(value=False).pack(),
-                ),
+                InlineKeyboardButton(text=yes_text, callback_data=yes_callback),
+                InlineKeyboardButton(text=no_text, callback_data=no_callback),
             ],
         ],
+    )
+
+
+def works_alone_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
+    return _bool_kb(
+        yes_text=yes_text,
+        no_text=no_text,
+        yes_callback=WorksAloneCB(value=True).pack(),
+        no_callback=WorksAloneCB(value=False).pack(),
+    )
+
+
+def with_codes_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
+    return _bool_kb(
+        yes_text=yes_text,
+        no_text=no_text,
+        yes_callback=WithCodesCB(value=True).pack(),
+        no_callback=WithCodesCB(value=False).pack(),
     )
 
 

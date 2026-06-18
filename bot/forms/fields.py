@@ -13,6 +13,7 @@ from bot.keyboards.profile import (
     ProfileField,
     edit_menu_kb,
     packages_kb,
+    with_codes_kb,
     works_alone_kb,
 )
 from common.models.user_profiles import UserProfile
@@ -75,6 +76,14 @@ def packages_markup(selected: Iterable[int]) -> InlineKeyboardMarkup:
     return packages_kb(selected=selected, done_text=_("registration.btn_done"))
 
 
+_TEXT_PROMPT_KEYS = {
+    ProfileField.price_60: "registration.ask_price",
+    ProfileField.withdrawal_method: "registration.ask_withdrawal_method",
+    ProfileField.work_start: "registration.ask_work_start",
+    ProfileField.work_end: "registration.ask_work_end",
+}
+
+
 def field_prompt(
     field: ProfileField,
     *,
@@ -85,15 +94,14 @@ def field_prompt(
             yes_text=_("registration.btn_yes"),
             no_text=_("registration.btn_no"),
         )
+    if field is ProfileField.with_codes:
+        return _("registration.ask_with_codes"), with_codes_kb(
+            yes_text=_("registration.btn_yes"),
+            no_text=_("registration.btn_no"),
+        )
     if field is ProfileField.packages:
         return _("registration.ask_packages"), packages_markup(selected)
-    if field is ProfileField.price_60:
-        return _("registration.ask_price"), None
-    if field is ProfileField.withdrawal_method:
-        return _("registration.ask_withdrawal_method"), None
-    if field is ProfileField.work_start:
-        return _("registration.ask_work_start"), None
-    return _("registration.ask_work_end"), None
+    return _(_TEXT_PROMPT_KEYS[field]), None
 
 
 async def send_prompt(
@@ -109,6 +117,7 @@ async def send_prompt(
 def _edit_labels() -> dict[ProfileField, str]:
     return {
         ProfileField.works_alone: _("edit.field_works_alone"),
+        ProfileField.with_codes: _("edit.field_with_codes"),
         ProfileField.packages: _("edit.field_packages"),
         ProfileField.price_60: _("edit.field_price"),
         ProfileField.withdrawal_method: _("edit.field_withdrawal"),
@@ -120,6 +129,7 @@ def _edit_labels() -> dict[ProfileField, str]:
 def _summary(template: str, data: Mapping[str, Any]) -> str:
     return template.format(
         works_alone=_fmt_bool(data["works_alone"]),
+        with_codes=_fmt_bool(data["with_codes"]),
         packages=_fmt_packages(data["packages"]),
         price_60=_fmt_price(data["price_60"]),
         withdrawal_method=data["withdrawal_method"] or "-",
@@ -131,6 +141,7 @@ def _summary(template: str, data: Mapping[str, Any]) -> str:
 def _profile_data(profile: UserProfile) -> dict[str, Any]:
     return {
         "works_alone": profile.works_alone,
+        "with_codes": profile.with_codes,
         "packages": list(profile.packages or ()),
         "price_60": profile.price_60,
         "withdrawal_method": profile.withdrawal_method,
@@ -141,6 +152,10 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
 
 async def apply_works_alone(*, state: FSMContext, value: bool) -> None:
     await state.update_data(works_alone=value)
+
+
+async def apply_with_codes(*, state: FSMContext, value: bool) -> None:
+    await state.update_data(with_codes=value)
 
 
 async def apply_withdrawal(*, state: FSMContext, text: str) -> None:
@@ -250,6 +265,7 @@ async def save_profile_from_data(
     profile = await profiles.create_or_update(
         tg_id=tg_id,
         works_alone=data["works_alone"],
+        with_codes=data["with_codes"],
         packages=data["packages"],
         price_60=data["price_60"],
         withdrawal_method=data["withdrawal_method"],

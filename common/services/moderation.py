@@ -23,17 +23,18 @@ def _fmt_packages(packages: tuple[int, ...] | None) -> str:
     return ", ".join(str(pkg) for pkg in packages) if packages else "-"
 
 
-def _fmt_works_alone(works_alone: bool | None) -> str:
-    if works_alone is None:
+def _fmt_yes_no(value: bool | None) -> str:
+    if value is None:
         return "-"
-    return "yes" if works_alone else "no"
+    return "yes" if value else "no"
 
 
 def render_pending_review(*, profile: UserProfile) -> str:
     return (
         "#pending user awaiting moderation\n"
         f"tg_id: {profile.tg_id}\n"
-        f"works alone: {_fmt_works_alone(profile.works_alone)}\n"
+        f"works alone: {_fmt_yes_no(profile.works_alone)}\n"
+        f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
         f"packages: {_fmt_packages(profile.packages)}\n"
         f"price (60): {profile.price_60 if profile.price_60 is not None else '-'}\n"
         f"withdrawal: {profile.withdrawal_method or '-'}\n"
@@ -51,7 +52,7 @@ async def _broadcast(
     text = render_pending_review(profile=profile)
     markup = moderation_decision_kb(
         profile_id=profile.id,
-        with_codes=False,
+        with_codes=profile.with_codes,
     )
     tg_ids = await profiles.get_tg_ids(profile_ids=moderator_ids)
     for moderator_id in moderator_ids:

@@ -85,6 +85,9 @@ msgstr "Да"
 msgid "registration.btn_no"
 msgstr "Нет"
 
+msgid "registration.ask_with_codes"
+msgstr "Ты работаешь с кодами?"
+
 msgid "registration.ask_packages"
 msgstr "Какие пакеты ты делаешь? Отметь сколько нужно и нажми «Готово»."
 
@@ -116,16 +119,19 @@ msgid "registration.work_end_before_start"
 msgstr "Время окончания должно быть позже времени начала. Пришли время окончания ещё раз."
 
 msgid "registration.done"
-msgstr "Записал: один={works_alone}, пакеты={packages}, цена/60={price_60}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
+msgstr "Записал: один={works_alone}, с кодами={with_codes}, пакеты={packages}, цена/60={price_60}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
 
 msgid "registration.finished_filling"
 msgstr "Регистрация уже завершена. Отправь /start, чтобы открыть меню."
 
 msgid "edit.title"
-msgstr "Измени профиль и нажми «Сохранить».\n\nРаботаю один: {works_alone}\nПакеты: {packages}\nЦена/60: {price_60}\nВывод: {withdrawal_method}\nЧасы работы: {work_start}-{work_end} МСК"
+msgstr "Измени профиль и нажми «Сохранить».\n\nРаботаю один: {works_alone}\nС кодами: {with_codes}\nПакеты: {packages}\nЦена/60: {price_60}\nВывод: {withdrawal_method}\nЧасы работы: {work_start}-{work_end} МСК"
 
 msgid "edit.field_works_alone"
 msgstr "Работаю один"
+
+msgid "edit.field_with_codes"
+msgstr "Работаю с кодами"
 
 msgid "edit.field_packages"
 msgstr "Пакеты"

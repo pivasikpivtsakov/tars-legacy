@@ -10,6 +10,7 @@ from bot.keyboards.profile import (
     EditSaveCB,
     PackagesDoneCB,
     PackageToggleCB,
+    WithCodesCB,
     WorksAloneCB,
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
@@ -54,6 +55,17 @@ async def edit_works_alone(
     state: FSMContext,
 ) -> None:
     await fields.apply_works_alone(state=state, value=callback_data.value)
+    await fields.show_edit_menu(target=callback, state=state)
+    await callback.answer()
+
+
+@router.callback_query(ProfileEdit.with_codes, WithCodesCB.filter())
+async def edit_with_codes(
+    callback: CallbackQuery,
+    callback_data: WithCodesCB,
+    state: FSMContext,
+) -> None:
+    await fields.apply_with_codes(state=state, value=callback_data.value)
     await fields.show_edit_menu(target=callback, state=state)
     await callback.answer()
 

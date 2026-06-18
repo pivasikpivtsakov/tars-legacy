@@ -9,6 +9,7 @@ from bot.keyboards.profile import (
     PackagesDoneCB,
     PackageToggleCB,
     ProfileField,
+    WithCodesCB,
     WorksAloneCB,
 )
 from common.repositories.online_price_index import OnlinePriceIndex
@@ -24,6 +25,19 @@ async def process_works_alone(
     state: FSMContext,
 ) -> None:
     await fields.apply_works_alone(state=state, value=callback_data.value)
+    await state.set_state(Registration.with_codes)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await fields.send_prompt(callback.message, ProfileField.with_codes)
+    await callback.answer()
+
+
+@router.callback_query(Registration.with_codes, WithCodesCB.filter())
+async def process_with_codes(
+    callback: CallbackQuery,
+    callback_data: WithCodesCB,
+    state: FSMContext,
+) -> None:
+    await fields.apply_with_codes(state=state, value=callback_data.value)
     await state.set_state(Registration.packages)
     await callback.message.edit_reply_markup(reply_markup=None)
     await fields.send_prompt(callback.message, ProfileField.packages, selected=())

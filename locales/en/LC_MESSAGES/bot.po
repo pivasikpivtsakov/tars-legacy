@@ -85,6 +85,9 @@ msgstr "Yes"
 msgid "registration.btn_no"
 msgstr "No"
 
+msgid "registration.ask_with_codes"
+msgstr "Do you work with codes?"
+
 msgid "registration.ask_packages"
 msgstr "Which packages do you make? Toggle as many as you want, then press Done."
 
@@ -116,16 +119,19 @@ msgid "registration.work_end_before_start"
 msgstr "End time must be later than start time. Please send the end time again."
 
 msgid "registration.done"
-msgstr "Got it: solo={works_alone}, packages={packages}, price/60={price_60}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
+msgstr "Got it: solo={works_alone}, with codes={with_codes}, packages={packages}, price/60={price_60}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
 
 msgid "registration.finished_filling"
 msgstr "Registration already finished. Use /start to open the menu."
 
 msgid "edit.title"
-msgstr "Edit your profile, then press Save.\n\nWork alone: {works_alone}\nPackages: {packages}\nPrice/60: {price_60}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
+msgstr "Edit your profile, then press Save.\n\nWork alone: {works_alone}\nWith codes: {with_codes}\nPackages: {packages}\nPrice/60: {price_60}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
 
 msgid "edit.field_works_alone"
 msgstr "Work alone"
+
+msgid "edit.field_with_codes"
+msgstr "With codes"
 
 msgid "edit.field_packages"
 msgstr "Packages"
