@@ -28,7 +28,6 @@ class ProfileField(StrEnum):
     works_alone = "works_alone"
     with_codes = "with_codes"
     packages = "packages"
-    price_60 = "price_60"
     withdrawal_method = "withdrawal_method"
     work_start = "work_start"
     work_end = "work_end"

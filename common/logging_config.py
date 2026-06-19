@@ -68,11 +68,7 @@ def _json_formatter() -> JsonFormatter:
 
 
 def _colored_formatter(*, with_context: bool) -> ColoredFormatter:
-    attrs = [
-        attr
-        for attr in _LOGRECORD_TO_GRAFANA
-        if with_context or attr not in _CONTEXT_ATTRS
-    ]
+    attrs = [attr for attr in _LOGRECORD_TO_GRAFANA if with_context or attr not in _CONTEXT_ATTRS]
     fmt = " ".join(f"%({_CONSOLE_COLORS[attr]})s%({attr})s%(reset)s" for attr in attrs)
     return ColoredFormatter(
         fmt=fmt,

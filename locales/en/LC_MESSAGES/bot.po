@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "You are now offline."
 
 msgid "start.priority"
-msgstr "Order stats:\ntotal: <code>{total}</code>\ncompleted: <code>{complete}</code>\nrefusals: <code>{incomplete}</code>\n\nYour ranking params:\naverage task completion time: <code>{speed}</code>\nprice: <code>{price}</code>\ncompleted (incl. not-picked): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
+msgstr "Order stats:\ntotal: <code>{total}</code>\ncompleted: <code>{complete}</code>\nrefusals: <code>{incomplete}</code>\n\nYour ranking params:\naverage task completion time: <code>{speed}</code>\nprices: <code>{prices}</code>\ncompleted (incl. not-picked): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
 msgid "start.balance"
 msgstr "Your balance: {balance}"
@@ -97,11 +97,11 @@ msgstr "Done"
 msgid "registration.no_packages_selected"
 msgstr "Pick at least one package."
 
-msgid "registration.ask_price"
-msgstr "What is your price for the 60 UC pack? Send a whole number, e.g. 60."
+msgid "registration.ask_pack_price"
+msgstr "What is your price for the {size} UC pack? Send a whole number (1-{limit})."
 
 msgid "registration.invalid_price"
-msgstr "I couldn't parse that. Please send a positive whole number, e.g. 60."
+msgstr "I couldn't parse that. Please send a whole number between 1 and {limit}."
 
 msgid "registration.ask_withdrawal_method"
 msgstr "How do you withdraw your money?"
@@ -119,13 +119,13 @@ msgid "registration.work_end_before_start"
 msgstr "End time must be later than start time. Please send the end time again."
 
 msgid "registration.done"
-msgstr "Got it: solo={works_alone}, with codes={with_codes}, packages={packages}, price/60={price_60}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
+msgstr "Got it: solo={works_alone}, with codes={with_codes}, packages={packages}, prices={prices}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
 
 msgid "registration.finished_filling"
 msgstr "Registration already finished. Use /start to open the menu."
 
 msgid "edit.title"
-msgstr "Edit your profile, then press Save.\n\nWork alone: {works_alone}\nWith codes: {with_codes}\nPackages: {packages}\nPrice/60: {price_60}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
+msgstr "Edit your profile, then press Save.\n\nWork alone: {works_alone}\nWith codes: {with_codes}\nPackages: {packages}\nPrices: {prices}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
 
 msgid "edit.field_works_alone"
 msgstr "Work alone"
@@ -134,10 +134,7 @@ msgid "edit.field_with_codes"
 msgstr "With codes"
 
 msgid "edit.field_packages"
-msgstr "Packages"
-
-msgid "edit.field_price"
-msgstr "Price / 60"
+msgstr "Packages & prices"
 
 msgid "edit.field_withdrawal"
 msgstr "Withdrawal method"

@@ -1,4 +1,4 @@
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping
 from datetime import time
 
 import asyncpg
@@ -8,7 +8,7 @@ from common.models.user_profiles import UserProfile, UserProfileStatus
 _TABLE = "user_profiles"
 
 _SELECT_COLUMNS = (
-    "id, tg_id, works_alone, packages, price_60, withdrawal_method, "
+    "id, tg_id, works_alone, prices, withdrawal_method, "
     "work_start, work_end, is_online, with_codes, status, balance"
 )
 
@@ -75,16 +75,16 @@ class UserProfileRepository:
             raise LookupError(msg)
         return UserProfile.from_row(row)
 
-    async def set_packages(
+    async def set_prices(
         self,
         *,
         profile_id: int,
-        packages: Sequence[int],
+        prices: Mapping[int, int],
     ) -> UserProfile:
         return await self._update_field(
             profile_id=profile_id,
-            column="packages",
-            value=list(packages),
+            column="prices",
+            value=dict(prices),
         )
 
     async def create_or_update(
@@ -93,22 +93,20 @@ class UserProfileRepository:
         tg_id: int,
         works_alone: bool,
         with_codes: bool,
-        packages: Sequence[int],
-        price_60: int,
+        prices: Mapping[int, int],
         withdrawal_method: str,
         work_start: time,
         work_end: time,
     ) -> UserProfile:
         row = await self._pool.fetchrow(
             f"INSERT INTO {_TABLE} "
-            f"(tg_id, works_alone, with_codes, packages, price_60, "
+            f"(tg_id, works_alone, with_codes, prices, "
             f"withdrawal_method, work_start, work_end) "
-            f"VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
+            f"VALUES ($1, $2, $3, $4, $5, $6, $7) "
             f"ON CONFLICT (tg_id) DO UPDATE SET "
             f"works_alone = EXCLUDED.works_alone, "
             f"with_codes = EXCLUDED.with_codes, "
-            f"packages = EXCLUDED.packages, "
-            f"price_60 = EXCLUDED.price_60, "
+            f"prices = EXCLUDED.prices, "
             f"withdrawal_method = EXCLUDED.withdrawal_method, "
             f"work_start = EXCLUDED.work_start, "
             f"work_end = EXCLUDED.work_end, "
@@ -118,8 +116,7 @@ class UserProfileRepository:
             tg_id,
             works_alone,
             with_codes,
-            list(packages),
-            price_60,
+            dict(prices),
             withdrawal_method,
             work_start,
             work_end,
@@ -197,8 +194,7 @@ class UserProfileRepository:
         conn: asyncpg.Connection | None = None,
     ) -> None:
         await (conn or self._pool).execute(
-            f"UPDATE {_TABLE} SET balance = balance + $2, updated_at = NOW() "
-            f"WHERE id = $1",
+            f"UPDATE {_TABLE} SET balance = balance + $2, updated_at = NOW() WHERE id = $1",
             profile_id,
             amount,
         )
@@ -208,14 +204,11 @@ class UserProfileRepository:
             f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
             "WHERE is_online = TRUE "
             "AND status = $1 "
-            "AND price_60 IS NOT NULL "
-            "AND packages IS NOT NULL "
-            "AND cardinality(packages) > 0",
+            "AND prices IS NOT NULL "
+            "AND prices <> '{}'::jsonb",
             UserProfileStatus.ACTIVE.value,
         )
         return [UserProfile.from_row(row) for row in rows]
 
     async def go_everyone_full_offline(self) -> None:
-        await self._pool.execute(
-            f"UPDATE {_TABLE} SET is_online = FALSE, updated_at = NOW() "
-        )
+        await self._pool.execute(f"UPDATE {_TABLE} SET is_online = FALSE, updated_at = NOW() ")

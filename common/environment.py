@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 def env_get(
-        varname: str,
-        default: str | None = None,
-        validation_rule: Callable[[str], bool] | None = None,
-        warning_message: str | None = None,
-        raise_if_failed: bool = True,
+    varname: str,
+    default: str | None = None,
+    validation_rule: Callable[[str], bool] | None = None,
+    warning_message: str | None = None,
+    raise_if_failed: bool = True,
 ) -> str | None:
     varvalue = os.environ.get(varname, default)
     if not varvalue:
@@ -42,8 +42,7 @@ REDIS_URL = env_get(
 )
 
 TELEGRAM_BOT_TOKEN = env_get(
-    "TELEGRAM_BOT_TOKEN",
-    warning_message="obtain TELEGRAM_BOT_TOKEN from @BotFather"
+    "TELEGRAM_BOT_TOKEN", warning_message="obtain TELEGRAM_BOT_TOKEN from @BotFather"
 )
 
 

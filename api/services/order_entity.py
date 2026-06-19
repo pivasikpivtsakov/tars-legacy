@@ -26,6 +26,7 @@ from common.services.order_processing import forward_to_third_party
 
 logger = logging.getLogger(__name__)
 
+
 class OrderEntityService:
     def __init__(
         self,
@@ -64,9 +65,7 @@ class OrderEntityService:
 
             await self.external_api.change_order_status(order)
             if order.unused_codes:
-                order, msg_to_admin = await self.external_api.check_unused_codes(
-                    order
-                )
+                order, msg_to_admin = await self.external_api.check_unused_codes(order)
                 for msg in msg_to_admin:
                     await self.broadcast.send_to_user_ids(
                         bot=self.bot, user_ids=MODERATOR_USER_IDS, text=msg
@@ -105,9 +104,7 @@ class OrderEntityService:
             return await self.order_repo.get_by_original_id(original_id=original_id)
         return None
 
-    async def clean_order(
-        self, order_id: int, original_id: int
-    ) -> None:
+    async def clean_order(self, order_id: int, original_id: int) -> None:
         order = None
         if order_id:
             order = await self.order_repo.get(order_id=order_id)
@@ -118,9 +115,7 @@ class OrderEntityService:
         # cancel order, expire offers, release counters
         async with self.pool.acquire() as conn, conn.transaction():
             await self.order_repo.mark_cancelled(order_id=order.id, conn=conn)
-            released_user_ids = await self.offer_repo.expire_offered(
-                order_id=order.id, conn=conn
-            )
+            released_user_ids = await self.offer_repo.expire_offered(order_id=order.id, conn=conn)
         await self.pending_repo.release_many(user_ids=released_user_ids)
 
     async def _insert(self, order: ExternalOrder) -> OrderEntity:

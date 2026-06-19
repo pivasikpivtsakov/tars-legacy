@@ -17,6 +17,7 @@ from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
+from common.packages import format_prices
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
@@ -65,9 +66,7 @@ async def open_online(
 ) -> None:
     profile = await profiles.toggle_is_online_and_get(profile_id=profile.id)
     await online_price_index.sync(profile=profile)
-    alert = (
-        _("start.online_now_on") if profile.is_online else _("start.online_now_off")
-    )
+    alert = _("start.online_now_on") if profile.is_online else _("start.online_now_off")
     await callback.answer(alert, show_alert=False)
     context = await build_menu_context(
         target=callback,
@@ -100,11 +99,11 @@ async def open_priority(
         else RatingStats(speed_seconds=None, complete=0, incomplete=0, not_taken=0)
     )
     complete, incomplete, total, rate_full = _order_stats(stats)
-    price = profile.price_60 if profile is not None and profile.price_60 is not None else 0
+    prices = format_prices(profile.prices) if profile is not None else "-"
     speed = stats.speed_seconds if stats.speed_seconds is not None else "-"
     text = _("start.priority").format(
         speed=speed,
-        price=price,
+        prices=prices,
         total=total,
         complete=complete,
         incomplete=incomplete,

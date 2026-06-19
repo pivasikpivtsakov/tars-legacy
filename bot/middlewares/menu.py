@@ -15,9 +15,7 @@ from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
 
 _MENU_COMMAND = "/menu"
-_REGISTRATION_STATE_NAMES = frozenset(
-    item.state for item in REGISTRATION_INPUT_STATES
-)
+_REGISTRATION_STATE_NAMES = frozenset(item.state for item in REGISTRATION_INPUT_STATES)
 
 
 def _is_menu_command(text: str) -> bool:
@@ -30,8 +28,7 @@ def _is_menu_button_text(text: str) -> bool:
     if i18n is None:
         return False
     return text in {
-        i18n.gettext(MENU_BUTTON_KEY, locale=locale)
-        for locale in i18n.available_locales
+        i18n.gettext(MENU_BUTTON_KEY, locale=locale) for locale in i18n.available_locales
     }
 
 

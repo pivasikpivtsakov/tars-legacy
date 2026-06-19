@@ -10,6 +10,7 @@ from common.exceptions import AuthorizationException
 
 logger = getLogger(__name__)
 
+
 class Authorization:
     def __init__(
         self,
@@ -29,8 +30,7 @@ class Authorization:
                 name="X-Access-Token",
                 scheme_name="X-Access-Token",
                 description=(
-                    "X-Access-Token - JWT access token"
-                    " for internal or external authorization"
+                    "X-Access-Token - JWT access token for internal or external authorization"
                 ),
                 auto_error=True,
             )

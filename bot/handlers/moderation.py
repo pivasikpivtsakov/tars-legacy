@@ -140,10 +140,19 @@ async def save_packs(
     if callback_data.mask == 0:
         await callback.answer(_("moderation.no_packages_selected"), show_alert=True)
         return
+    profile = await profiles.get_by_id(profile_id=callback_data.profile_id)
+    if profile is None:
+        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
+        return
+    selected = set(mask_to_packages(callback_data.mask))
+    trimmed = {size: price for size, price in (profile.prices or {}).items() if size in selected}
+    if not trimmed:
+        await callback.answer(_("moderation.no_packages_selected"), show_alert=True)
+        return
     try:
-        await profiles.set_packages(
+        await profiles.set_prices(
             profile_id=callback_data.profile_id,
-            packages=mask_to_packages(callback_data.mask),
+            prices=trimmed,
         )
     except LookupError:
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)

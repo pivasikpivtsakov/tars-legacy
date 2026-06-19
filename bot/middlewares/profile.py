@@ -27,8 +27,7 @@ def _is_profile_complete(profile: UserProfile | None) -> bool:
         return False
     return (
         profile.works_alone is not None
-        and profile.packages is not None
-        and profile.price_60 is not None
+        and bool(profile.prices)
         and profile.withdrawal_method is not None
         and profile.work_start is not None
         and profile.work_end is not None
@@ -41,10 +40,7 @@ def _requirement_alert(
 ) -> str | None:
     if not _is_profile_complete(profile):
         return _("start.profile_required")
-    if (
-        requirement is ProfileRequirement.ACTIVE
-        and profile.status is not UserProfileStatus.ACTIVE
-    ):
+    if requirement is ProfileRequirement.ACTIVE and profile.status is not UserProfileStatus.ACTIVE:
         return _("start.action_needs_active")
     return None
 

@@ -20,6 +20,7 @@ from common.services.request_service import RequestService
 
 bot = create_bot(token=TELEGRAM_BOT_TOKEN)
 
+
 class _Connections:
     pool: asyncpg.Pool | None = None
     redis: Redis | None = None

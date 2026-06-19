@@ -87,13 +87,17 @@ async def edit_packages_done(
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    await fields.show_edit_menu(target=callback, state=state)
+    await state.set_state(ProfileEdit.prices)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await fields.begin_pricing(message=callback.message, state=state)
     await callback.answer()
 
 
-@router.message(ProfileEdit.price_60, F.text)
-async def edit_price(message: Message, state: FSMContext) -> None:
-    if not await fields.apply_price(message=message, state=state):
+@router.message(ProfileEdit.prices, F.text)
+async def edit_pack_price(message: Message, state: FSMContext) -> None:
+    if not await fields.apply_pack_price(message=message, state=state):
+        return
+    if await fields.prompt_next_pack_price(message=message, state=state):
         return
     await fields.show_edit_menu(target=message, state=state)
 

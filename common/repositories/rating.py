@@ -75,10 +75,9 @@ class RatingRepository:
         not_taken: int,
         speed_samples: Sequence[tuple[datetime, datetime]],
     ) -> None:
-        entries = [
-            _encode_speed(taken_at, closed_at)
-            for taken_at, closed_at in speed_samples
-        ][: self._speed_window]
+        entries = [_encode_speed(taken_at, closed_at) for taken_at, closed_at in speed_samples][
+            : self._speed_window
+        ]
         pipe = self._redis.pipeline(transaction=True)
         pipe.delete(_stats_key(user_id))
         pipe.hset(

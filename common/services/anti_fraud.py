@@ -73,6 +73,4 @@ class AntiFraudService:
             return FraudReview(
                 verdict=FraudVerdict.UNFINISHED, order=order, unverified_codes=unverified
             )
-        return FraudReview(
-            verdict=FraudVerdict.OK, order=order, unverified_codes=unverified
-        )
+        return FraudReview(verdict=FraudVerdict.OK, order=order, unverified_codes=unverified)

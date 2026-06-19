@@ -16,8 +16,7 @@ class UserProfile:
     id: int
     tg_id: int
     works_alone: bool | None
-    packages: tuple[int, ...] | None
-    price_60: int | None
+    prices: dict[int, int] | None
     withdrawal_method: str | None
     work_start: time | None
     work_end: time | None
@@ -26,15 +25,22 @@ class UserProfile:
     status: UserProfileStatus
     balance: int
 
+    @property
+    def packages(self) -> tuple[int, ...] | None:
+        if not self.prices:
+            return None
+        return tuple(sorted(self.prices))
+
     @classmethod
     def from_row(cls, row: asyncpg.Record) -> UserProfile:
-        packages = row["packages"]
+        prices = row["prices"]
         return cls(
             id=row["id"],
             tg_id=row["tg_id"],
             works_alone=row["works_alone"],
-            packages=tuple(packages) if packages is not None else None,
-            price_60=row["price_60"],
+            prices={int(size): int(price) for size, price in prices.items()}
+            if prices is not None
+            else None,
             withdrawal_method=row["withdrawal_method"],
             work_start=row["work_start"],
             work_end=row["work_end"],

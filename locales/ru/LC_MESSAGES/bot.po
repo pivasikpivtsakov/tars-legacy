@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "Ты теперь оффлайн."
 
 msgid "start.priority"
-msgstr "Статистика заказов:\nвсего: <code>{total}</code>\nвыполнено: <code>{complete}</code>\nотказов: <code>{incomplete}</code>\n\nТвои параметры ранжирования:\nсреднее время выполнения заказа: <code>{speed}</code>\nцена: <code>{price}</code>\nвыполнено (с непринятыми): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
+msgstr "Статистика заказов:\nвсего: <code>{total}</code>\nвыполнено: <code>{complete}</code>\nотказов: <code>{incomplete}</code>\n\nТвои параметры ранжирования:\nсреднее время выполнения заказа: <code>{speed}</code>\nцены: <code>{prices}</code>\nвыполнено (с непринятыми): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
 msgid "start.balance"
 msgstr "Твой баланс: {balance}"
@@ -97,11 +97,11 @@ msgstr "Готово"
 msgid "registration.no_packages_selected"
 msgstr "Выбери хотя бы один пакет."
 
-msgid "registration.ask_price"
-msgstr "Какая твоя цена за пак 60 UC? Пришли целое число, например 60."
+msgid "registration.ask_pack_price"
+msgstr "Какая твоя цена за пак {size} UC? Пришли целое число (1-{limit})."
 
 msgid "registration.invalid_price"
-msgstr "Не получилось распознать цену. Пришли положительное целое число, например 60."
+msgstr "Не получилось распознать цену. Пришли целое число от 1 до {limit}."
 
 msgid "registration.ask_withdrawal_method"
 msgstr "Каким способом ты выводишь деньги?"
@@ -119,13 +119,13 @@ msgid "registration.work_end_before_start"
 msgstr "Время окончания должно быть позже времени начала. Пришли время окончания ещё раз."
 
 msgid "registration.done"
-msgstr "Записал: один={works_alone}, с кодами={with_codes}, пакеты={packages}, цена/60={price_60}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
+msgstr "Записал: один={works_alone}, с кодами={with_codes}, пакеты={packages}, цены={prices}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
 
 msgid "registration.finished_filling"
 msgstr "Регистрация уже завершена. Отправь /start, чтобы открыть меню."
 
 msgid "edit.title"
-msgstr "Измени профиль и нажми «Сохранить».\n\nРаботаю один: {works_alone}\nС кодами: {with_codes}\nПакеты: {packages}\nЦена/60: {price_60}\nВывод: {withdrawal_method}\nЧасы работы: {work_start}-{work_end} МСК"
+msgstr "Измени профиль и нажми «Сохранить».\n\nРаботаю один: {works_alone}\nС кодами: {with_codes}\nПакеты: {packages}\nЦены: {prices}\nВывод: {withdrawal_method}\nЧасы работы: {work_start}-{work_end} МСК"
 
 msgid "edit.field_works_alone"
 msgstr "Работаю один"
@@ -134,10 +134,7 @@ msgid "edit.field_with_codes"
 msgstr "Работаю с кодами"
 
 msgid "edit.field_packages"
-msgstr "Пакеты"
-
-msgid "edit.field_price"
-msgstr "Цена / 60"
+msgstr "Пакеты и цены"
 
 msgid "edit.field_withdrawal"
 msgstr "Способ вывода"

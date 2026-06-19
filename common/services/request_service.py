@@ -51,9 +51,7 @@ class RequestService:
                         timeout=timeout,
                     )
                 if method == MethodsEnum.GET:
-                    return await client.get(
-                        url, headers=headers, params=params, timeout=timeout
-                    )
+                    return await client.get(url, headers=headers, params=params, timeout=timeout)
                 if method == MethodsEnum.PATCH:
                     return await client.patch(
                         url,

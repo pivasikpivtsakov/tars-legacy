@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from redis.asyncio import Redis
@@ -10,7 +10,7 @@ from common.packages import PACKAGE_SIZES
 @dataclass(frozen=True, slots=True)
 class PricedCandidate:
     user_id: int
-    price_60: int
+    full_price: int
 
 
 _WITH_CODES_KEY = "rank:with_codes"
@@ -28,15 +28,14 @@ class OnlinePriceIndex:
         eligible = (
             profile.status is UserProfileStatus.ACTIVE
             and profile.is_online
-            and profile.price_60 is not None
-            and bool(profile.packages)
+            and bool(profile.prices)
         )
-        price = profile.price_60 if eligible else None
-        target_sizes = set(profile.packages or ()) if eligible else set()
+        prices = profile.prices if eligible else None
         member = str(profile.id)
         pipe = self._redis.pipeline(transaction=True)
         for size in PACKAGE_SIZES:
-            if price is not None and size in target_sizes:
+            price = prices.get(size) if prices is not None else None
+            if price is not None:
                 pipe.zadd(_pkg_key(size), {member: price})
             else:
                 pipe.zrem(_pkg_key(size), member)
@@ -63,15 +62,14 @@ class OnlinePriceIndex:
     async def get_cheapest_candidates(
         self,
         *,
-        required_packages: Sequence[int],
+        package_counts: Mapping[int, int],
     ) -> list[PricedCandidate]:
-        if not required_packages:
+        if not package_counts:
             return []
-        keys = [_pkg_key(size) for size in required_packages]
-        pairs = await self._redis.zinter(keys, aggregate="MIN", withscores=True)
+        keys = {_pkg_key(size): count for size, count in package_counts.items()}
+        pairs = await self._redis.zinter(keys, aggregate="SUM", withscores=True)
         return [
-            PricedCandidate(user_id=int(member), price_60=int(score))
-            for member, score in pairs
+            PricedCandidate(user_id=int(member), full_price=int(score)) for member, score in pairs
         ]
 
     async def filter_with_codes(self, *, user_ids: Sequence[int]) -> set[int]:
@@ -79,8 +77,4 @@ class OnlinePriceIndex:
             return set()
         members = [str(user_id) for user_id in user_ids]
         flags = await self._redis.smismember(_WITH_CODES_KEY, members)
-        return {
-            user_id
-            for user_id, present in zip(user_ids, flags, strict=True)
-            if present
-        }
+        return {user_id for user_id, present in zip(user_ids, flags, strict=True) if present}

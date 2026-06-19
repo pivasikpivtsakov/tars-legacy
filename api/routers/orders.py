@@ -39,7 +39,7 @@ async def create_order(
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error while processin: {ex}"
+            detail=f"Error while processin: {ex}",
         ) from ex
 
 

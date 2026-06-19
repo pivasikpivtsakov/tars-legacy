@@ -11,7 +11,7 @@ class Registration(StatesGroup):
     works_alone = State()
     with_codes = State()
     packages = State()
-    price_60 = State()
+    prices = State()
     withdrawal_method = State()
     work_start = State()
     work_end = State()
@@ -23,7 +23,7 @@ class ProfileEdit(StatesGroup):
     works_alone = State()
     with_codes = State()
     packages = State()
-    price_60 = State()
+    prices = State()
     withdrawal_method = State()
     work_start = State()
     work_end = State()
@@ -33,7 +33,7 @@ REGISTRATION_INPUT_STATES = (
     Registration.works_alone,
     Registration.with_codes,
     Registration.packages,
-    Registration.price_60,
+    Registration.prices,
     Registration.withdrawal_method,
     Registration.work_start,
     Registration.work_end,
@@ -43,7 +43,6 @@ STATE_BY_FIELD = {
     ProfileField.works_alone: ProfileEdit.works_alone,
     ProfileField.with_codes: ProfileEdit.with_codes,
     ProfileField.packages: ProfileEdit.packages,
-    ProfileField.price_60: ProfileEdit.price_60,
     ProfileField.withdrawal_method: ProfileEdit.withdrawal_method,
     ProfileField.work_start: ProfileEdit.work_start,
     ProfileField.work_end: ProfileEdit.work_end,

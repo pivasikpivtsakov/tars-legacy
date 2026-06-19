@@ -17,13 +17,13 @@ from bot.keyboards.profile import (
     works_alone_kb,
 )
 from common.models.user_profiles import UserProfile
+from common.packages import PACKAGE_PRICE_LIMIT, format_prices
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import deactivate_and_notify
 
 MSK_TZ = timezone(timedelta(hours=3))
 TIME_FORMAT = "%H:%M"
-MAX_PRICE = 1_000
 
 
 def parse_msk_time(raw: str) -> time | None:
@@ -34,12 +34,12 @@ def parse_msk_time(raw: str) -> time | None:
     return parsed.timetz()
 
 
-def parse_price(raw: str) -> int | None:
+def parse_price(raw: str, *, limit: int) -> int | None:
     try:
         value = int(raw.strip())
     except ValueError:
         return None
-    if value <= 0 or value > MAX_PRICE:
+    if value <= 0 or value > limit:
         return None
     return value
 
@@ -62,12 +62,6 @@ def _fmt_bool(value: bool | None) -> str:
     return _("registration.btn_yes") if value else _("registration.btn_no")
 
 
-def _fmt_price(value: int | None) -> str:
-    if value is None:
-        return "-"
-    return str(value)
-
-
 def is_valid_work_hours(*, start: time, end: time) -> bool:
     return end > start
 
@@ -77,7 +71,6 @@ def packages_markup(selected: Iterable[int]) -> InlineKeyboardMarkup:
 
 
 _TEXT_PROMPT_KEYS = {
-    ProfileField.price_60: "registration.ask_price",
     ProfileField.withdrawal_method: "registration.ask_withdrawal_method",
     ProfileField.work_start: "registration.ask_work_start",
     ProfileField.work_end: "registration.ask_work_end",
@@ -119,7 +112,6 @@ def _edit_labels() -> dict[ProfileField, str]:
         ProfileField.works_alone: _("edit.field_works_alone"),
         ProfileField.with_codes: _("edit.field_with_codes"),
         ProfileField.packages: _("edit.field_packages"),
-        ProfileField.price_60: _("edit.field_price"),
         ProfileField.withdrawal_method: _("edit.field_withdrawal"),
         ProfileField.work_start: _("edit.field_work_start"),
         ProfileField.work_end: _("edit.field_work_end"),
@@ -131,7 +123,7 @@ def _summary(template: str, data: Mapping[str, Any]) -> str:
         works_alone=_fmt_bool(data["works_alone"]),
         with_codes=_fmt_bool(data["with_codes"]),
         packages=_fmt_packages(data["packages"]),
-        price_60=_fmt_price(data["price_60"]),
+        prices=format_prices(data["prices"]),
         withdrawal_method=data["withdrawal_method"] or "-",
         work_start=_fmt_time(time.fromisoformat(data["work_start"])),
         work_end=_fmt_time(time.fromisoformat(data["work_end"])),
@@ -143,7 +135,7 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
         "works_alone": profile.works_alone,
         "with_codes": profile.with_codes,
         "packages": list(profile.packages or ()),
-        "price_60": profile.price_60,
+        "prices": {str(size): price for size, price in (profile.prices or {}).items()},
         "withdrawal_method": profile.withdrawal_method,
         "work_start": profile.work_start.isoformat() if profile.work_start else None,
         "work_end": profile.work_end.isoformat() if profile.work_end else None,
@@ -162,12 +154,46 @@ async def apply_withdrawal(*, state: FSMContext, text: str) -> None:
     await state.update_data(withdrawal_method=text)
 
 
-async def apply_price(*, message: Message, state: FSMContext) -> bool:
-    parsed = parse_price(message.text)
-    if parsed is None:
-        await message.answer(_("registration.invalid_price"))
+def _next_unpriced_size(data: Mapping[str, Any]) -> int | None:
+    prices = data.get("prices") or {}
+    for size in data.get("packages") or ():
+        if str(size) not in prices:
+            return size
+    return None
+
+
+async def begin_pricing(*, message: Message, state: FSMContext) -> None:
+    await state.update_data(prices={})
+    await prompt_next_pack_price(message=message, state=state)
+
+
+async def prompt_next_pack_price(*, message: Message, state: FSMContext) -> bool:
+    size = _next_unpriced_size(await state.get_data())
+    if size is None:
         return False
-    await state.update_data(price_60=parsed)
+    await message.answer(
+        _("registration.ask_pack_price").format(
+            size=size,
+            limit=PACKAGE_PRICE_LIMIT[size],
+        ),
+    )
+    return True
+
+
+async def apply_pack_price(*, message: Message, state: FSMContext) -> bool:
+    data = await state.get_data()
+    size = _next_unpriced_size(data)
+    if size is None:
+        return True
+    parsed = parse_price(message.text, limit=PACKAGE_PRICE_LIMIT[size])
+    if parsed is None:
+        await message.answer(
+            _("registration.invalid_price").format(limit=PACKAGE_PRICE_LIMIT[size]),
+        )
+        return False
+    prices = dict(data.get("prices") or {})
+    prices[str(size)] = parsed
+    await state.update_data(prices=prices)
     return True
 
 
@@ -262,12 +288,12 @@ async def save_profile_from_data(
     online_price_index: OnlinePriceIndex,
     moderator_ids: Collection[int],
 ) -> UserProfile:
+    prices = {int(size): price for size, price in (data["prices"] or {}).items()}
     profile = await profiles.create_or_update(
         tg_id=tg_id,
         works_alone=data["works_alone"],
         with_codes=data["with_codes"],
-        packages=data["packages"],
-        price_60=data["price_60"],
+        prices=prices,
         withdrawal_method=data["withdrawal_method"],
         work_start=time.fromisoformat(data["work_start"]),
         work_end=time.fromisoformat(data["work_end"]),

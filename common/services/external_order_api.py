@@ -92,7 +92,7 @@ class ExternalOrderApi:
 
         Returns:
             tuple[bool, bool, list[str]]: first value whether order is finished,
-            the second whether fraud is found in order, 
+            the second whether fraud is found in order,
             and the third the codes whose activation could not be verified (assumed activated)
         """
         if is_w_codes is False:
@@ -108,8 +108,7 @@ class ExternalOrderApi:
             )
             if not res or res.status_code != status.HTTP_200_OK:
                 order.additional_data.setdefault("debug_messages", []).append(
-                    f"Не удалось проверить активацию кода: {code},"
-                    " считаем, что активирован"
+                    f"Не удалось проверить активацию кода: {code}, считаем, что активирован"
                 )
                 unverified_codes.append(code)
                 continue
@@ -123,9 +122,7 @@ class ExternalOrderApi:
                 order.additional_data.setdefault("debug_messages", []).append(msg)
                 logger.info(msg)
                 return False, False, unverified_codes
-            if pubg_id is not None and str(pubg_id) != str(
-                res.get("exchange_open_id")
-            ):
+            if pubg_id is not None and str(pubg_id) != str(res.get("exchange_open_id")):
                 order.additional_data.setdefault("debug_messages", []).append(
                     f"Код: {code} активирован на отличный id,"
                     f" {pubg_id} != {res.get('exchange_open_id')}"
@@ -148,26 +145,16 @@ class ExternalOrderApi:
                 "new_status": Status.MANUAL_PROCESSING,
             },
         )
-        if (
-            r
-            and r.status_code == status.HTTP_200_OK
-            and r.json().get("success") is True
-        ):
+        if r and r.status_code == status.HTTP_200_OK and r.json().get("success") is True:
             return
         logger.exception(r.text if r else "Response text not found")
-        if (
-            r.status_code == status.HTTP_200_OK
-            and r.json().get("success") is False
-        ):
+        if r.status_code == status.HTTP_200_OK and r.json().get("success") is False:
             msg = (
                 f"❌ <b>Не удалось сменить статус заказу: {order.original_id}"
                 " на MANUAL_PROCESSING.</b> Удаляем заказ"
             )
         elif r.status_code == status.HTTP_400_BAD_REQUEST:
-            msg = (
-                f"❌ <b>Не удалось найти заказ: {order.original_id}</b>"
-                "Удаляем заказ"
-            )
+            msg = f"❌ <b>Не удалось найти заказ: {order.original_id}</b>Удаляем заказ"
         else:
             msg = (
                 "❌ <b>Ошибка контроллера при попытке сменить статус заказу:"
@@ -256,11 +243,7 @@ class ExternalOrderApi:
             msg = f"Code already redeemed: {code}"
             logger.info(msg)
             exchange_open_id = str(res.get("exchange_open_id"))
-            if (
-                player_open_id
-                and exchange_open_id
-                and (exchange_open_id == player_open_id)
-            ):
+            if player_open_id and exchange_open_id and (exchange_open_id == player_open_id):
                 order.redeemed_codes.append(code)
                 codes_to_remove.append(code)
                 order.additional_data.setdefault("debug_messages", []).append(
@@ -317,9 +300,7 @@ class ExternalOrderApi:
                         f"Заказ: {order.original_id}\n успешно поменяли"
                         f" код: {code} на код: {new_code}"
                     )
-                    order.additional_data.setdefault("debug_messages", []).append(
-                        msg
-                    )
+                    order.additional_data.setdefault("debug_messages", []).append(msg)
                     msg = (
                         f"🖊 <b>В заказе {order.original_id} успешно поменяли"
                         f" код: {code} на {new_code}</b>"
@@ -357,9 +338,7 @@ class ExternalOrderApi:
                 "Меняем статус на available"
             )
             messages_to_admin.append(msg)
-            await self.send_change_codes_status(
-                codes=[code], status="available", order=order
-            )
+            await self.send_change_codes_status(codes=[code], status="available", order=order)
             if new_code := await self.get_code(amount=amount, order=order):
                 codes_to_add[new_code] = res.get("amount")
                 await self.send_change_codes_status(
@@ -370,10 +349,7 @@ class ExternalOrderApi:
                 msg = f"Успешно поменяли код: {code} на код: {new_code}"
                 order.additional_data.setdefault("debug_messages", []).append(msg)
                 return
-            msg = (
-                f"Заказ: {order.original_id}\nНе удалось"
-                f" заменить код: {code}, пропускаем"
-            )
+            msg = f"Заказ: {order.original_id}\nНе удалось заменить код: {code}, пропускаем"
             order.additional_data.setdefault("debug_messages", []).append(msg)
             logger.exception(msg)
             msg = (

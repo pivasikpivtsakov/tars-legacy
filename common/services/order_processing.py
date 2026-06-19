@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -24,10 +24,14 @@ logger = logging.getLogger(__name__)
 _PACKAGE_SIZES_DESC: tuple[int, ...] = tuple(sorted(PACKAGE_UNIT_COUNT, reverse=True))
 _PRICE_TOLERANCE = 0.01
 
+
 @dataclass(frozen=True, slots=True)
 class PackageDecomposition:
-    unique_parts: tuple[int, ...]
-    total_units: int
+    counts: tuple[tuple[int, int], ...]
+
+    @property
+    def package_counts(self) -> dict[int, int]:
+        return dict(self.counts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,18 +60,20 @@ def decompose_amount(amount: int) -> PackageDecomposition:
     if amount <= 0:
         msg = f"amount must be positive, got {amount}"
         raise OrderAmountError(msg)
-    parts: list[int] = []
+    counts: list[tuple[int, int]] = []
     remaining = amount
     for size in _PACKAGE_SIZES_DESC:
         count, remaining = divmod(remaining, size)
-        parts.extend([size] * count)
+        if count:
+            counts.append((size, count))
     if remaining != 0:
         msg = f"cannot decompose amount={amount} into available packages"
         raise OrderAmountError(msg)
-    return PackageDecomposition(
-        unique_parts=tuple(sorted(set(parts))),
-        total_units=sum(PACKAGE_UNIT_COUNT[p] for p in parts),
-    )
+    return PackageDecomposition(counts=tuple(sorted(counts)))
+
+
+def full_price_for(*, prices: Mapping[int, int], counts: Mapping[int, int]) -> int:
+    return sum(prices[size] * count for size, count in counts.items())
 
 
 async def forward_to_third_party(*, original_id: int) -> None:
@@ -90,9 +96,9 @@ def _cheapest_price_bucket(rows: Sequence[PricedCandidate]) -> list[PricedCandid
     # Everyone within _PRICE_TOLERANCE of the cheapest price is mutually
     # price-equivalent, so the winner can only come from this bucket: ranking it
     # alone avoids loading ratings for providers that price already rules out.
-    min_price = min(row.price_60 for row in rows)
+    min_price = min(row.full_price for row in rows)
     threshold = min_price * (1 + _PRICE_TOLERANCE)
-    return [row for row in rows if row.price_60 <= threshold]
+    return [row for row in rows if row.full_price <= threshold]
 
 
 def _ranking_key(candidate: RankedCandidate) -> tuple[float, float, int, int, int]:
@@ -105,7 +111,7 @@ def _ranking_key(candidate: RankedCandidate) -> tuple[float, float, int, int, in
     )
 
 
-type _CandidateCache = dict[tuple[int, ...], asyncio.Future[list[PricedCandidate]]]
+type _CandidateCache = dict[tuple[tuple[int, int], ...], asyncio.Future[list[PricedCandidate]]]
 
 
 class OrderManager:
@@ -128,23 +134,24 @@ class OrderManager:
     async def _eligible_candidates(
         self,
         *,
-        required_packages: tuple[int, ...],
+        decomposition: PackageDecomposition,
     ) -> list[PricedCandidate]:
+        package_counts = decomposition.package_counts
         cache = self._candidate_cache
         if cache is None:
             return await self._online_price_index.get_cheapest_candidates(
-                required_packages=required_packages,
+                package_counts=package_counts,
             )
-        future = cache.get(required_packages)
+        future = cache.get(decomposition.counts)
         if future is None:
             # Register the future before awaiting so concurrent orders sharing a
-            # package-set await one ZINTER instead of each issuing their own.
+            # decomposition await one ZINTER instead of each issuing their own.
             future = asyncio.ensure_future(
                 self._online_price_index.get_cheapest_candidates(
-                    required_packages=required_packages,
+                    package_counts=package_counts,
                 ),
             )
-            cache[required_packages] = future
+            cache[decomposition.counts] = future
         return await future
 
     async def select_candidates(
@@ -154,7 +161,7 @@ class OrderManager:
         exclude_user_ids: Collection[int] = (),
     ) -> list[RankedCandidate]:
         decomposition = decompose_amount(order.amount)
-        rows = await self._eligible_candidates(required_packages=decomposition.unique_parts)
+        rows = await self._eligible_candidates(decomposition=decomposition)
         excluded = set(exclude_user_ids)
         rows = [row for row in rows if row.user_id not in excluded]
         if order.is_only_w_codes and rows:
@@ -174,7 +181,7 @@ class OrderManager:
             candidates.append(
                 RankedCandidate(
                     user_id=row.user_id,
-                    full_price=row.price_60 * decomposition.total_units,
+                    full_price=row.full_price,
                     speed_seconds=user_stats.speed_seconds,
                     refusal_rate=_refusal_rate(
                         complete=user_stats.complete,
@@ -220,7 +227,7 @@ class OrderLifecycle:
         user_id: int,
         profile: UserProfile,
     ) -> TakeResult:
-        if profile.price_60 is None:
+        if not profile.prices:
             return TakeResult(status=TakeStatus.UNAVAILABLE)
         async with self._pool.acquire() as conn:
             try:
@@ -237,6 +244,9 @@ class OrderLifecycle:
                     order = await self._orders.get(order_id=order_id, conn=conn)
                     if order is None:
                         raise _TakeAbortError(TakeStatus.UNAVAILABLE)
+                    counts = decompose_amount(order.amount).package_counts
+                    if any(size not in profile.prices for size in counts):
+                        raise _TakeAbortError(TakeStatus.UNAVAILABLE)
                     claimed_offer = await self._offers.mark_taken(
                         order_id=order_id,
                         user_id=user_id,
@@ -244,7 +254,7 @@ class OrderLifecycle:
                     )
                     if claimed_offer is None:
                         raise _TakeAbortError(TakeStatus.UNAVAILABLE)
-                    taken_price = profile.price_60 * decompose_amount(order.amount).total_units
+                    taken_price = full_price_for(prices=profile.prices, counts=counts)
                     claimed = await self._orders.claim_for_take(
                         order_id=order_id,
                         user_id=user_id,

@@ -7,6 +7,7 @@ from aiogram.exceptions import TelegramAPIError
 
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
+from common.packages import format_prices
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 
@@ -36,7 +37,7 @@ def render_pending_review(*, profile: UserProfile) -> str:
         f"works alone: {_fmt_yes_no(profile.works_alone)}\n"
         f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
         f"packages: {_fmt_packages(profile.packages)}\n"
-        f"price (60): {profile.price_60 if profile.price_60 is not None else '-'}\n"
+        f"prices: {format_prices(profile.prices)}\n"
         f"withdrawal: {profile.withdrawal_method or '-'}\n"
         f"work hours: {_fmt_time(profile.work_start)}-{_fmt_time(profile.work_end)}"
     )

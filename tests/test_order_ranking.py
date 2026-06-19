@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from datetime import UTC, datetime
 
 import pytest
@@ -66,24 +66,22 @@ class _FakeOnlinePriceIndex:
         rows: Sequence[PricedCandidate],
         with_codes_user_ids: Collection[int] = (),
     ) -> None:
-        self._rows = sorted(rows, key=lambda row: (row.price_60, row.user_id))
+        self._rows = sorted(rows, key=lambda row: (row.full_price, row.user_id))
         self._with_codes_user_ids = set(with_codes_user_ids)
-        self.requested_packages: Sequence[int] | None = None
+        self.requested_package_counts: Mapping[int, int] | None = None
         self.filter_with_codes_calls: list[list[int]] = []
 
     async def get_cheapest_candidates(
         self,
         *,
-        required_packages: Sequence[int],
+        package_counts: Mapping[int, int],
     ) -> list[PricedCandidate]:
-        self.requested_packages = required_packages
+        self.requested_package_counts = package_counts
         return list(self._rows)
 
     async def filter_with_codes(self, *, user_ids: Sequence[int]) -> set[int]:
         self.filter_with_codes_calls.append(list(user_ids))
-        return {
-            user_id for user_id in user_ids if user_id in self._with_codes_user_ids
-        }
+        return {user_id for user_id in user_ids if user_id in self._with_codes_user_ids}
 
 
 class _FakeRating:
@@ -113,12 +111,9 @@ def test_cheapest_price_bucket(
     prices: list[int],
     expected_bucket: list[int],
 ) -> None:
-    rows = [
-        PricedCandidate(user_id=index, price_60=price)
-        for index, price in enumerate(prices)
-    ]
+    rows = [PricedCandidate(user_id=index, full_price=price) for index, price in enumerate(prices)]
     bucket = _cheapest_price_bucket(rows)
-    assert sorted(row.price_60 for row in bucket) == sorted(expected_bucket)
+    assert sorted(row.full_price for row in bucket) == sorted(expected_bucket)
 
 
 def test_ranking_prefers_faster_speed() -> None:
@@ -162,10 +157,10 @@ def test_ranking_is_total_order_on_quality_ties() -> None:
 def test_select_candidates_only_fetches_cheapest_bucket() -> None:
     online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            PricedCandidate(user_id=1, price_60=100),
-            PricedCandidate(user_id=2, price_60=101),
-            PricedCandidate(user_id=3, price_60=102),
-            PricedCandidate(user_id=4, price_60=200),
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=101),
+            PricedCandidate(user_id=3, full_price=102),
+            PricedCandidate(user_id=4, full_price=200),
         ],
     )
     rating = _FakeRating(
@@ -178,7 +173,7 @@ def test_select_candidates_only_fetches_cheapest_bucket() -> None:
 
     result = asyncio.run(manager.select_candidates(order=_make_order(amount=60)))
 
-    assert online_price_index.requested_packages == (60,)
+    assert online_price_index.requested_package_counts == {60: 1}
     assert rating.requested_user_ids == [1, 2]
     assert [c.user_id for c in result] == [2, 1]
 
@@ -197,8 +192,8 @@ def test_select_candidates_empty_skips_rating_lookup() -> None:
 def test_select_candidates_excludes_user_ids() -> None:
     online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            PricedCandidate(user_id=1, price_60=100),
-            PricedCandidate(user_id=2, price_60=100),
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=100),
         ],
     )
     rating = _FakeRating(
@@ -222,9 +217,9 @@ def test_select_candidates_excludes_user_ids() -> None:
 def test_select_candidates_codes_only_keeps_with_codes_users() -> None:
     online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            PricedCandidate(user_id=1, price_60=100),
-            PricedCandidate(user_id=2, price_60=100),
-            PricedCandidate(user_id=3, price_60=100),
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=100),
+            PricedCandidate(user_id=3, full_price=100),
         ],
         with_codes_user_ids=[2, 3],
     )
@@ -248,8 +243,8 @@ def test_select_candidates_codes_only_keeps_with_codes_users() -> None:
 def test_select_candidates_non_codes_order_skips_with_codes_filter() -> None:
     online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            PricedCandidate(user_id=1, price_60=100),
-            PricedCandidate(user_id=2, price_60=100),
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=100),
         ],
         with_codes_user_ids=[2],
     )
@@ -270,8 +265,8 @@ def test_select_candidates_non_codes_order_skips_with_codes_filter() -> None:
 def test_select_candidates_codes_only_empty_when_no_codes_users() -> None:
     online_price_index = _FakeOnlinePriceIndex(
         rows=[
-            PricedCandidate(user_id=1, price_60=100),
-            PricedCandidate(user_id=2, price_60=100),
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=100),
         ],
         with_codes_user_ids=[],
     )

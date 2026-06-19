@@ -8,11 +8,7 @@ MENU_BUTTON_KEY = "start.btn_menu"
 
 
 def _toggle_bot_text(*, bot_enabled: bool) -> str:
-    return (
-        _("start.btn_toggle_bot_disabled")
-        if bot_enabled
-        else _("start.btn_toggle_bot_enabled")
-    )
+    return _("start.btn_toggle_bot_disabled") if bot_enabled else _("start.btn_toggle_bot_enabled")
 
 
 def full_menu_kb(
@@ -24,9 +20,7 @@ def full_menu_kb(
 ) -> InlineKeyboardMarkup | None:
     buttons: dict[StartZone, str] = {}
     if not is_moderator:
-        online_text = (
-            _("start.btn_online_off") if profile.is_online else _("start.btn_online_on")
-        )
+        online_text = _("start.btn_online_off") if profile.is_online else _("start.btn_online_on")
         buttons = {
             StartZone.ONLINE: online_text,
             StartZone.BALANCE: _("start.btn_balance"),

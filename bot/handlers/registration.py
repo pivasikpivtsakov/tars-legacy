@@ -61,15 +61,17 @@ async def process_packages_done(
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    await state.set_state(Registration.price_60)
+    await state.set_state(Registration.prices)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await fields.send_prompt(callback.message, ProfileField.price_60)
+    await fields.begin_pricing(message=callback.message, state=state)
     await callback.answer()
 
 
-@router.message(Registration.price_60, F.text)
-async def process_price(message: Message, state: FSMContext) -> None:
-    if not await fields.apply_price(message=message, state=state):
+@router.message(Registration.prices, F.text)
+async def process_pack_price(message: Message, state: FSMContext) -> None:
+    if not await fields.apply_pack_price(message=message, state=state):
+        return
+    if await fields.prompt_next_pack_price(message=message, state=state):
         return
     await state.set_state(Registration.withdrawal_method)
     await fields.send_prompt(message, ProfileField.withdrawal_method)

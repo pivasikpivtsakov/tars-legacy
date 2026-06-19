@@ -37,7 +37,5 @@ def render_taken_text(
         return text
     header = gettext("order.codes_header")
     line = gettext("order.codes_line")
-    codes_block = "\n".join(
-        line.format(key=key, value=value) for key, value in codes.items()
-    )
+    codes_block = "\n".join(line.format(key=key, value=value) for key, value in codes.items())
     return f"{text}\n{header}\n{codes_block}"

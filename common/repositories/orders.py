@@ -13,6 +13,7 @@ _TABLE = "orders"
 def _dump_json(value: Any) -> str:
     return json.dumps(value if value is not None else {})
 
+
 _ACTIVE_FANOUT_STATUSES: tuple[str, ...] = (
     OrderStatus.PENDING.value,
     OrderStatus.OFFERING.value,
@@ -235,8 +236,7 @@ class OrderRepository:
         conn: asyncpg.Connection | None = None,
     ) -> int:
         return await (conn or self._pool).fetchval(
-            f"SELECT count(*) FROM {_TABLE} "
-            f"WHERE taken_by = $1 AND status = $2::order_status",
+            f"SELECT count(*) FROM {_TABLE} WHERE taken_by = $1 AND status = $2::order_status",
             user_id,
             OrderStatus.TAKEN.value,
         )
