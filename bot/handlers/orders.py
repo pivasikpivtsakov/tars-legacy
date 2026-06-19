@@ -1,12 +1,10 @@
-import contextlib
-
 from aiogram import Bot, Router
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms.states import UserSession
+from bot.utils.telegram import ignore_not_modified
 from common.keyboards.orders import (
     CancelOrderCB,
     NoopCB,
@@ -35,7 +33,7 @@ async def _render_taken(
         with_codes=profile.with_codes,
         gettext=_,
     )
-    with contextlib.suppress(TelegramBadRequest):
+    with ignore_not_modified():
         await callback.message.edit_text(
             text,
             reply_markup=working_inline_kb(
@@ -47,7 +45,7 @@ async def _render_taken(
 
 
 async def _finalize(*, callback: CallbackQuery, text: str) -> None:
-    with contextlib.suppress(TelegramBadRequest):
+    with ignore_not_modified():
         await callback.message.edit_text(text)
 
 

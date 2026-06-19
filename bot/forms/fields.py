@@ -16,8 +16,14 @@ from bot.keyboards.profile import (
     with_codes_kb,
     works_alone_kb,
 )
+from common.catalog.packages import PACKAGE_PRICE_LIMIT, format_prices
+from common.catalog.tiers import (
+    TIER_MAX_AMOUNT,
+    Tier,
+    allowed_packages_for_tier,
+    max_package_for_tier,
+)
 from common.models.user_profiles import UserProfile
-from common.packages import PACKAGE_PRICE_LIMIT, format_prices
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import deactivate_and_notify
@@ -134,12 +140,20 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
     return {
         "works_alone": profile.works_alone,
         "with_codes": profile.with_codes,
+        "tier": int(profile.tier),
         "packages": list(profile.packages or ()),
         "prices": {str(size): price for size, price in (profile.prices or {}).items()},
         "withdrawal_method": profile.withdrawal_method,
         "work_start": profile.work_start.isoformat() if profile.work_start else None,
         "work_end": profile.work_end.isoformat() if profile.work_end else None,
     }
+
+
+def _package_above_tier_message(tier: int) -> str:
+    return _("registration.package_above_tier").format(
+        cap=TIER_MAX_AMOUNT[Tier(tier)],
+        max_package=max_package_for_tier(Tier(tier)),
+    )
 
 
 async def apply_works_alone(*, state: FSMContext, value: bool) -> None:
@@ -256,7 +270,13 @@ async def toggle_and_render(
     value: int,
 ) -> None:
     data = await state.get_data()
-    selected = _toggle_packages(data.get("packages", []), value)
+    current = data.get("packages", [])
+    tier = data.get("tier")
+    adding = value not in current
+    if tier is not None and adding and value not in allowed_packages_for_tier(Tier(tier)):
+        await callback.answer(_package_above_tier_message(tier), show_alert=True)
+        return
+    selected = _toggle_packages(current, value)
     await state.update_data(packages=selected)
     await callback.message.edit_reply_markup(reply_markup=packages_markup(selected))
 
@@ -267,10 +287,17 @@ async def ensure_packages_selected(
     state: FSMContext,
 ) -> bool:
     data = await state.get_data()
-    if data.get("packages"):
-        return True
-    await callback.answer(_("registration.no_packages_selected"), show_alert=True)
-    return False
+    selected = data.get("packages")
+    if not selected:
+        await callback.answer(_("registration.no_packages_selected"), show_alert=True)
+        return False
+    tier = data.get("tier")
+    if tier is not None:
+        allowed = set(allowed_packages_for_tier(Tier(tier)))
+        if any(size not in allowed for size in selected):
+            await callback.answer(_package_above_tier_message(tier), show_alert=True)
+            return False
+    return True
 
 
 async def begin_registration(*, message: Message, state: FSMContext) -> None:
@@ -367,6 +394,9 @@ async def begin_field_edit(
     await state.set_state(STATE_BY_FIELD[field])
     data = await state.get_data()
     text, markup = field_prompt(field, selected=data["packages"])
+    tier = data.get("tier")
+    if field is ProfileField.packages and tier is not None:
+        text = f"{text}\n\n{_package_above_tier_message(tier)}"
     await callback.message.edit_text(text, reply_markup=markup)
 
 

@@ -65,11 +65,14 @@ class _FakeOnlinePriceIndex:
         *,
         rows: Sequence[PricedCandidate],
         with_codes_user_ids: Collection[int] = (),
+        tiers: Mapping[int, int] | None = None,
     ) -> None:
         self._rows = sorted(rows, key=lambda row: (row.full_price, row.user_id))
         self._with_codes_user_ids = set(with_codes_user_ids)
+        self._tiers = dict(tiers or {})
         self.requested_package_counts: Mapping[int, int] | None = None
         self.filter_with_codes_calls: list[list[int]] = []
+        self.filter_by_min_tier_calls: list[tuple[list[int], int]] = []
 
     async def get_cheapest_candidates(
         self,
@@ -82,6 +85,14 @@ class _FakeOnlinePriceIndex:
     async def filter_with_codes(self, *, user_ids: Sequence[int]) -> set[int]:
         self.filter_with_codes_calls.append(list(user_ids))
         return {user_id for user_id in user_ids if user_id in self._with_codes_user_ids}
+
+    async def filter_by_min_tier(self, *, user_ids: Sequence[int], min_tier: int) -> set[int]:
+        self.filter_by_min_tier_calls.append((list(user_ids), min_tier))
+        return {
+            user_id
+            for user_id in user_ids
+            if (tier := self._tiers.get(user_id)) is not None and tier >= min_tier
+        }
 
 
 class _FakeRating:
@@ -279,3 +290,59 @@ def test_select_candidates_codes_only_empty_when_no_codes_users() -> None:
 
     assert result == []
     assert rating.requested_user_ids is None
+
+
+def test_select_candidates_tier_zero_order_skips_tier_filter() -> None:
+    online_price_index = _FakeOnlinePriceIndex(
+        rows=[PricedCandidate(user_id=1, full_price=100)],
+        tiers={1: 0},
+    )
+    rating = _FakeRating(
+        stats={1: RatingStats(speed_seconds=10, complete=0, incomplete=0, not_taken=0)},
+    )
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
+
+    result = asyncio.run(manager.select_candidates(order=_make_order(amount=60)))
+
+    assert online_price_index.filter_by_min_tier_calls == []
+    assert [c.user_id for c in result] == [1]
+
+
+def test_select_candidates_filters_below_required_tier() -> None:
+    online_price_index = _FakeOnlinePriceIndex(
+        rows=[
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=100),
+        ],
+        tiers={1: 0, 2: 1},
+    )
+    rating = _FakeRating(
+        stats={2: RatingStats(speed_seconds=10, complete=0, incomplete=0, not_taken=0)},
+    )
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
+
+    result = asyncio.run(manager.select_candidates(order=_make_order(amount=1800)))
+
+    assert online_price_index.filter_by_min_tier_calls == [([1, 2], 1)]
+    assert rating.requested_user_ids == [2]
+    assert [c.user_id for c in result] == [2]
+
+
+def test_select_candidates_tier_two_order_requires_top_tier() -> None:
+    online_price_index = _FakeOnlinePriceIndex(
+        rows=[
+            PricedCandidate(user_id=1, full_price=100),
+            PricedCandidate(user_id=2, full_price=100),
+            PricedCandidate(user_id=3, full_price=100),
+        ],
+        tiers={1: 0, 2: 1, 3: 2},
+    )
+    rating = _FakeRating(
+        stats={3: RatingStats(speed_seconds=10, complete=0, incomplete=0, not_taken=0)},
+    )
+    manager = OrderManager(online_price_index=online_price_index, rating=rating)
+
+    result = asyncio.run(manager.select_candidates(order=_make_order(amount=24300)))
+
+    assert online_price_index.filter_by_min_tier_calls == [([1, 2, 3], 2)]
+    assert [c.user_id for c in result] == [3]

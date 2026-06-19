@@ -15,9 +15,9 @@ from bot.forms.menu import (
 )
 from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
+from common.catalog.packages import format_prices_table
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
-from common.packages import format_prices
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
@@ -99,7 +99,9 @@ async def open_priority(
         else RatingStats(speed_seconds=None, complete=0, incomplete=0, not_taken=0)
     )
     complete, incomplete, total, rate_full = _order_stats(stats)
-    prices = format_prices(profile.prices) if profile is not None else "-"
+    prices = (
+        format_prices_table(profile.prices) if profile is not None else "<code>-</code>"
+    )
     speed = stats.speed_seconds if stats.speed_seconds is not None else "-"
     text = _("start.priority").format(
         speed=speed,

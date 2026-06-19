@@ -1,8 +1,6 @@
-import contextlib
 from dataclasses import dataclass
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
     CallbackQuery,
@@ -14,6 +12,7 @@ from aiogram.utils.i18n import gettext as _
 
 from bot.keyboards.menu import full_menu_kb, menu_button_markup
 from bot.keyboards.start import back_kb
+from bot.utils.telegram import ignore_message_gone
 from common.models.user_profiles import UserProfile, UserProfileStatus
 from common.services.bot_switch import BotSwitchService
 
@@ -69,7 +68,7 @@ async def _delete_remembered_menu(
     message_id = data.get(_MENU_MESSAGE_ID_KEY)
     if message_id is None:
         return
-    with contextlib.suppress(TelegramBadRequest):
+    with ignore_message_gone():
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
@@ -120,7 +119,7 @@ async def render_menu(context: MenuContext) -> None:
         return
     message = target.message if isinstance(target, CallbackQuery) else target
     if isinstance(target, CallbackQuery):
-        with contextlib.suppress(TelegramBadRequest):
+        with ignore_message_gone():
             await target.message.delete()
     await message.answer(text, reply_markup=ReplyKeyboardRemove())
 

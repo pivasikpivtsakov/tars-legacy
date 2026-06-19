@@ -4,6 +4,8 @@ from enum import StrEnum
 
 import asyncpg
 
+from common.catalog.tiers import Tier
+
 
 class UserProfileStatus(StrEnum):
     INACTIVE = "inactive"
@@ -24,6 +26,7 @@ class UserProfile:
     with_codes: bool
     status: UserProfileStatus
     balance: int
+    tier: Tier
 
     @property
     def packages(self) -> tuple[int, ...] | None:
@@ -48,4 +51,5 @@ class UserProfile:
             with_codes=row["with_codes"],
             status=UserProfileStatus(row["status"]),
             balance=row["balance"],
+            tier=Tier(row["tier"]),
         )

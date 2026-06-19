@@ -1,7 +1,8 @@
 import contextlib
+import html
 
 from aiogram import Bot, Router
-from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import BaseStorage, StorageKey
@@ -9,6 +10,8 @@ from aiogram.types import CallbackQuery, User
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms.menu import send_menu
+from bot.utils.telegram import ignore_not_modified
+from common.catalog.tiers import Tier
 from common.keyboards.moderation import (
     ModApproveCB,
     ModDenyCB,
@@ -16,6 +19,7 @@ from common.keyboards.moderation import (
     ModPacksCancelCB,
     ModPacksSaveCB,
     ModPackToggleCB,
+    ModSetTierCB,
     ModToggleCodesCB,
     mask_to_packages,
     moderation_decision_kb,
@@ -56,8 +60,7 @@ def _moderator_label(user: User) -> str:
 async def _annotate(*, callback: CallbackQuery, note: str) -> None:
     base = callback.message.text or ""
     text = f"{base}\n\n{note}" if base else note
-    with contextlib.suppress(TelegramBadRequest):
-        await callback.message.edit_text(text, reply_markup=None)
+    await callback.message.edit_text(html.escape(text), reply_markup=None)
 
 
 async def _notify_approved(
@@ -90,8 +93,27 @@ async def toggle_with_codes(
         reply_markup=moderation_decision_kb(
             profile_id=callback_data.profile_id,
             with_codes=not callback_data.with_codes,
+            tier=callback_data.tier,
         ),
     )
+    await callback.answer()
+
+
+@router.callback_query(ModSetTierCB.filter(), _is_moderator)
+async def set_tier(
+    callback: CallbackQuery,
+    callback_data: ModSetTierCB,
+) -> None:
+    # Re-tapping the already-selected tier yields identical markup, which Telegram
+    # rejects with "message is not modified"; ignore that no-op only.
+    with ignore_not_modified():
+        await callback.message.edit_reply_markup(
+            reply_markup=moderation_decision_kb(
+                profile_id=callback_data.profile_id,
+                with_codes=callback_data.with_codes,
+                tier=callback_data.tier,
+            ),
+        )
     await callback.answer()
 
 
@@ -109,6 +131,7 @@ async def open_pack_editor(
         reply_markup=moderation_packages_kb(
             profile_id=callback_data.profile_id,
             with_codes=callback_data.with_codes,
+            tier=callback_data.tier,
             mask=packages_to_mask(profile.packages or ()),
         ),
     )
@@ -125,6 +148,7 @@ async def toggle_pack(
         reply_markup=moderation_packages_kb(
             profile_id=callback_data.profile_id,
             with_codes=callback_data.with_codes,
+            tier=callback_data.tier,
             mask=new_mask,
         ),
     )
@@ -161,6 +185,7 @@ async def save_packs(
         reply_markup=moderation_decision_kb(
             profile_id=callback_data.profile_id,
             with_codes=callback_data.with_codes,
+            tier=callback_data.tier,
         ),
     )
     await callback.answer(_("moderation.packages_saved"))
@@ -175,6 +200,7 @@ async def cancel_packs(
         reply_markup=moderation_decision_kb(
             profile_id=callback_data.profile_id,
             with_codes=callback_data.with_codes,
+            tier=callback_data.tier,
         ),
     )
     await callback.answer()
@@ -192,6 +218,7 @@ async def approve_user(
         profile = await profiles.approve(
             profile_id=callback_data.profile_id,
             with_codes=callback_data.with_codes,
+            tier=Tier(callback_data.tier),
         )
     except LookupError:
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)

@@ -6,11 +6,12 @@ from enum import StrEnum
 
 import asyncpg
 
+from common.catalog.packages import PACKAGE_UNIT_COUNT
+from common.catalog.tiers import Tier, required_tier, tier_allows
 from common.environment import MAX_ORDERS_PENDING
 from common.exceptions.orders import OrderAmountError
 from common.models.orders import Order
 from common.models.user_profiles import UserProfile
-from common.packages import PACKAGE_UNIT_COUNT
 from common.repositories.online_price_index import OnlinePriceIndex, PricedCandidate
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
@@ -164,6 +165,13 @@ class OrderManager:
         rows = await self._eligible_candidates(decomposition=decomposition)
         excluded = set(exclude_user_ids)
         rows = [row for row in rows if row.user_id not in excluded]
+        required = required_tier(order.amount)
+        if required > Tier.BASIC and rows:
+            allowed = await self._online_price_index.filter_by_min_tier(
+                user_ids=[row.user_id for row in rows],
+                min_tier=int(required),
+            )
+            rows = [row for row in rows if row.user_id in allowed]
         if order.is_only_w_codes and rows:
             allowed = await self._online_price_index.filter_with_codes(
                 user_ids=[row.user_id for row in rows],
@@ -243,6 +251,8 @@ class OrderLifecycle:
                         raise _TakeAbortError(TakeStatus.LIMIT_REACHED)
                     order = await self._orders.get(order_id=order_id, conn=conn)
                     if order is None:
+                        raise _TakeAbortError(TakeStatus.UNAVAILABLE)
+                    if not tier_allows(tier=profile.tier, amount=order.amount):
                         raise _TakeAbortError(TakeStatus.UNAVAILABLE)
                     counts = decompose_amount(order.amount).package_counts
                     if any(size not in profile.prices for size in counts):

@@ -3,13 +3,14 @@ from datetime import time
 
 import asyncpg
 
+from common.catalog.tiers import Tier
 from common.models.user_profiles import UserProfile, UserProfileStatus
 
 _TABLE = "user_profiles"
 
 _SELECT_COLUMNS = (
     "id, tg_id, works_alone, prices, withdrawal_method, "
-    "work_start, work_end, is_online, with_codes, status, balance"
+    "work_start, work_end, is_online, with_codes, status, balance, tier"
 )
 
 _MODERATION_RESET = "status = 'inactive', is_online = FALSE"
@@ -62,13 +63,14 @@ class UserProfileRepository:
             raise LookupError(msg)
         return UserProfile.from_row(row)
 
-    async def approve(self, *, profile_id: int, with_codes: bool) -> UserProfile:
+    async def approve(self, *, profile_id: int, with_codes: bool, tier: Tier) -> UserProfile:
         row = await self._pool.fetchrow(
-            f"UPDATE {_TABLE} SET status = $2, with_codes = $3, updated_at = NOW() "
+            f"UPDATE {_TABLE} SET status = $2, with_codes = $3, tier = $4, updated_at = NOW() "
             f"WHERE id = $1 RETURNING {_SELECT_COLUMNS}",
             profile_id,
             UserProfileStatus.ACTIVE.value,
             with_codes,
+            tier.value,
         )
         if row is None:
             msg = f"no {_TABLE} row to approve for id={profile_id}"

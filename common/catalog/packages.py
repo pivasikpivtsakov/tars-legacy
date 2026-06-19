@@ -22,3 +22,12 @@ def format_prices(prices: Mapping[int, int] | None) -> str:
     if not prices:
         return "-"
     return ", ".join(f"{size}={prices[size]}" for size in sorted(prices, key=int))
+
+
+def format_prices_table(prices: Mapping[int, int] | None) -> str:
+    if not prices:
+        return "<code>-</code>"
+    return "\n".join(
+        f"<code>{size}</code>  <code>{prices[size]}</code>"
+        for size in sorted(prices, key=int)
+    )

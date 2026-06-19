@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "You are now offline."
 
 msgid "start.priority"
-msgstr "Order stats:\ntotal: <code>{total}</code>\ncompleted: <code>{complete}</code>\nrefusals: <code>{incomplete}</code>\n\nYour ranking params:\naverage task completion time: <code>{speed}</code>\nprices: <code>{prices}</code>\ncompleted (incl. not-picked): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
+msgstr "Order stats:\ntotal: <code>{total}</code>\ncompleted: <code>{complete}</code>\nrefusals: <code>{incomplete}</code>\n\nYour ranking params:\naverage task completion time: <code>{speed}</code>\nprices:\npack   price\n{prices}\ncompleted (incl. not-picked): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
 msgid "start.balance"
 msgstr "Your balance: {balance}"
@@ -96,6 +96,9 @@ msgstr "Done"
 
 msgid "registration.no_packages_selected"
 msgstr "Pick at least one package."
+
+msgid "registration.package_above_tier"
+msgstr "Your tier allows orders up to {cap}. The largest package you can select is {max_package}."
 
 msgid "registration.ask_pack_price"
 msgstr "What is your price for the {size} UC pack? Send a whole number (1-{limit})."

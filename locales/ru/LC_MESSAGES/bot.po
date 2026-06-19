@@ -50,7 +50,7 @@ msgid "start.online_now_off"
 msgstr "Ты теперь оффлайн."
 
 msgid "start.priority"
-msgstr "Статистика заказов:\nвсего: <code>{total}</code>\nвыполнено: <code>{complete}</code>\nотказов: <code>{incomplete}</code>\n\nТвои параметры ранжирования:\nсреднее время выполнения заказа: <code>{speed}</code>\nцены: <code>{prices}</code>\nвыполнено (с непринятыми): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
+msgstr "Статистика заказов:\nвсего: <code>{total}</code>\nвыполнено: <code>{complete}</code>\nотказов: <code>{incomplete}</code>\n\nТвои параметры ранжирования:\nсреднее время выполнения заказа: <code>{speed}</code>\nцены:\nпакет  цена\n{prices}\nвыполнено (с непринятыми): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
 msgid "start.balance"
 msgstr "Твой баланс: {balance}"
@@ -96,6 +96,9 @@ msgstr "Готово"
 
 msgid "registration.no_packages_selected"
 msgstr "Выбери хотя бы один пакет."
+
+msgid "registration.package_above_tier"
+msgstr "Твой тариф позволяет заказы до {cap}. Самый большой пакет, который ты можешь выбрать, — {max_package}."
 
 msgid "registration.ask_pack_price"
 msgstr "Какая твоя цена за пак {size} UC? Пришли целое число (1-{limit})."

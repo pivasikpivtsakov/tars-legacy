@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable
 
 from aiogram.types import InlineKeyboardButton
 
-from common.packages import PACKAGE_SIZES
+from common.catalog.packages import PACKAGE_SIZES
 
 CHECK_MARK = "\u2713"
 

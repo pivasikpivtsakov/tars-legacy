@@ -1,3 +1,4 @@
+import html
 import logging
 from collections.abc import Collection
 from datetime import time
@@ -5,9 +6,10 @@ from datetime import time
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
+from common.catalog.packages import format_prices
+from common.catalog.tiers import Tier, tier_cap_label
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
-from common.packages import format_prices
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 
@@ -30,17 +32,23 @@ def _fmt_yes_no(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
+def _fmt_tier(tier: Tier) -> str:
+    return f"{int(tier)} ({tier_cap_label(tier)})"
+
+
 def render_pending_review(*, profile: UserProfile) -> str:
-    return (
+    text = (
         "#pending user awaiting moderation\n"
         f"tg_id: {profile.tg_id}\n"
         f"works alone: {_fmt_yes_no(profile.works_alone)}\n"
         f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
+        f"tier: {_fmt_tier(profile.tier)}\n"
         f"packages: {_fmt_packages(profile.packages)}\n"
         f"prices: {format_prices(profile.prices)}\n"
         f"withdrawal: {profile.withdrawal_method or '-'}\n"
         f"work hours: {_fmt_time(profile.work_start)}-{_fmt_time(profile.work_end)}"
     )
+    return html.escape(text)
 
 
 async def _broadcast(
@@ -54,6 +62,7 @@ async def _broadcast(
     markup = moderation_decision_kb(
         profile_id=profile.id,
         with_codes=profile.with_codes,
+        tier=int(profile.tier),
     )
     tg_ids = await profiles.get_tg_ids(profile_ids=moderator_ids)
     for moderator_id in moderator_ids:
