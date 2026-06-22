@@ -14,6 +14,7 @@ from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.user_roles import UserRoleRepository
 from common.services.broadcast import BroadcastService
 from common.services.external_order_api import ExternalOrderApi
 from common.services.request_service import RequestService
@@ -88,6 +89,7 @@ def get_order_entity_service(
         offers=OrderOfferRepository(pool=get_pool()),
         pending=PendingOrdersRepository(redis=get_redis()),
         external_api=external_api,
+        roles=UserRoleRepository(redis=get_redis()),
     )
 
 

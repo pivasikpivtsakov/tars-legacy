@@ -12,6 +12,7 @@ from bot.handlers import (
     fallback,
     moderation,
     orders,
+    pack_limits,
     packages,
     registration,
     withdraw,
@@ -20,15 +21,18 @@ from bot.middlewares.bot_switch import BotSwitchMiddleware
 from bot.middlewares.logging import LoggingContextMiddleware
 from bot.middlewares.menu import MenuMiddleware
 from bot.middlewares.profile import ProfileMiddleware
+from bot.middlewares.roles import RoleContextMiddleware
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
 from common.repositories.bot_switch import BotSwitchRepository
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
+from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.user_roles import UserRoleRepository
 from common.services.anti_fraud import AntiFraudService
 from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService
@@ -44,8 +48,6 @@ def build_dispatcher(
     pool: asyncpg.Pool,
     redis: Redis,
     redis_url: str,
-    admin_ids: frozenset[int],
-    moderator_ids: frozenset[int],
 ) -> Dispatcher:
     storage = RedisStorage.from_url(
         redis_url,
@@ -60,6 +62,7 @@ def build_dispatcher(
     pending = PendingOrdersRepository(redis=redis)
     dispatch_signal = DispatchSignal(redis=redis)
     bot_switch_repo = BotSwitchRepository(redis=redis)
+    roles = UserRoleRepository(redis=redis)
     bot_switch = BotSwitchService(
         repo=bot_switch_repo,
         profiles=profiles,
@@ -70,6 +73,7 @@ def build_dispatcher(
     dispatcher["profiles"] = profiles
     dispatcher["rating"] = rating
     dispatcher["online_price_index"] = online_price_index
+    dispatcher["pack_price_limits"] = PackPriceLimitRepository(redis=redis)
     dispatcher["dispatch_signal"] = dispatch_signal
     dispatcher["order_lifecycle"] = OrderLifecycle(
         pool=pool,
@@ -85,14 +89,14 @@ def build_dispatcher(
         external_api=external_order_api,
         user_profiles=UserProfileService(repo=profiles),
     )
-    dispatcher["admin_ids"] = admin_ids
-    dispatcher["moderator_ids"] = moderator_ids
+    dispatcher["roles"] = roles
     dispatcher["bot_switch"] = bot_switch
     dispatcher["broadcast"] = broadcast
     dispatcher.update.outer_middleware(LoggingContextMiddleware())
+    dispatcher.update.outer_middleware(RoleContextMiddleware(roles=roles))
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
     dispatcher.update.middleware(
-        BotSwitchMiddleware(switch=bot_switch, admin_ids=admin_ids),
+        BotSwitchMiddleware(switch=bot_switch, profiles=profiles),
     )
     dispatcher.message.outer_middleware(MenuMiddleware(profiles=profiles))
 
@@ -108,6 +112,7 @@ def build_dispatcher(
 
     dispatcher.include_router(admin.router)
     dispatcher.include_router(moderation.router)
+    dispatcher.include_router(pack_limits.router)
     dispatcher.include_router(common.router)
     dispatcher.include_router(withdraw.router)
     dispatcher.include_router(orders.router)

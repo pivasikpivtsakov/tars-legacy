@@ -5,6 +5,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, Update, User
 from aiogram.utils.i18n import gettext as _
 
+from common.repositories.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
 
 
@@ -13,10 +14,10 @@ class BotSwitchMiddleware(BaseMiddleware):
         self,
         *,
         switch: BotSwitchService,
-        admin_ids: frozenset[int],
+        profiles: UserProfileRepository,
     ) -> None:
         self._switch = switch
-        self._admin_ids = admin_ids
+        self._profiles = profiles
 
     async def __call__(
         self,
@@ -24,14 +25,21 @@ class BotSwitchMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        user: User | None = data.get("event_from_user")
-        if user is not None and user.id in self._admin_ids:
-            return await handler(event, data)
         if await self._switch.is_enabled():
+            return await handler(event, data)
+        if await self._is_admin(data=data):
             return await handler(event, data)
         if isinstance(event, Update):
             await _answer_disabled(event)
         return None
+
+    async def _is_admin(self, *, data: dict[str, Any]) -> bool:
+        admin_ids: frozenset[int] = data["admin_ids"]
+        user: User | None = data.get("event_from_user")
+        if user is None or not admin_ids:
+            return False
+        profile = await self._profiles.get_by_tg_id(tg_id=user.id)
+        return profile is not None and profile.id in admin_ids
 
 
 async def _answer_disabled(update: Update) -> None:

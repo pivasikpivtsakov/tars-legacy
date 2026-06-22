@@ -61,9 +61,9 @@ async def _report_fraud(
 ) -> None:
     if blocked:
         await state.set_state(UserSession.blocked)
-    await broadcast.send_to_tg_ids(
+    await broadcast.send_to_user_ids(
         bot=bot,
-        tg_ids=admin_ids,
+        user_ids=admin_ids,
         text=_("order.fraud_detected").format(
             order_id=order.original_id,
             user=callback.from_user.id,
@@ -120,7 +120,7 @@ async def ready_order(
     if profile is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
-    is_user_privileged = profile.tg_id in admin_ids or profile.id in moderator_ids
+    is_user_privileged = profile.id in admin_ids or profile.id in moderator_ids
     review = await anti_fraud.review(
         order_id=callback_data.order_id,
         profile=profile,

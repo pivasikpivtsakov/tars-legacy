@@ -40,6 +40,9 @@ msgstr "Enable bot"
 msgid "start.btn_toggle_bot_disabled"
 msgstr "Disable bot"
 
+msgid "start.btn_pack_price_limits"
+msgstr "Pack price limits"
+
 msgid "start.menu_hint"
 msgstr "Tap the ☰ Menu button below to reopen the menu anytime."
 
@@ -127,6 +130,9 @@ msgstr "What is your price for the {size} UC pack? Send a whole number (1-{limit
 msgid "registration.invalid_price"
 msgstr "I couldn't parse that. Please send a whole number between 1 and {limit}."
 
+msgid "registration.price_too_high"
+msgstr "That price is too high — the maximum for the {size} UC pack is {limit}. Send a whole number between 1 and {limit}."
+
 msgid "registration.ask_withdrawal_method"
 msgstr "How do you withdraw your money?"
 
@@ -195,6 +201,21 @@ msgstr "The bot is now enabled. Tap the online button below to start receiving o
 
 msgid "admin.bot_disabled_announcement"
 msgstr "The bot is now disabled. Orders will no longer be available."
+
+msgid "admin.pack_limits_title"
+msgstr "Max price per pack. Tap a pack to change its limit.\npack   limit\n{limits}"
+
+msgid "admin.btn_pack_limits_reset"
+msgstr "Reset to defaults"
+
+msgid "admin.pack_limits_prompt"
+msgstr "Send the new max price for the {size} UC pack (current: {current}). Whole number."
+
+msgid "admin.pack_limits_invalid"
+msgstr "I couldn't parse that. Please send a whole number between 1 and {max}."
+
+msgid "admin.pack_limits_reset_done"
+msgstr "Limits reset to defaults."
 
 msgid "moderation.profile_not_found"
 msgstr "user not found"

@@ -38,8 +38,7 @@ async def process_with_codes(
 ) -> None:
     await fields.apply_with_codes(state=state, value=callback_data.value)
     await state.set_state(Registration.packages)
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await fields.show_packages_grid(target=callback.message, state=state)
+    await fields.show_packages_grid(target=callback, state=state)
     await callback.answer()
 
 

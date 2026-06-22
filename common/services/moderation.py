@@ -101,6 +101,21 @@ async def is_moderator(
     return profile is not None and profile.id in moderator_ids
 
 
+async def is_staff(
+    *,
+    profiles: UserProfileRepository,
+    admin_ids: Collection[int],
+    moderator_ids: Collection[int],
+    tg_id: int,
+) -> bool:
+    if not admin_ids and not moderator_ids:
+        return False
+    profile = await profiles.get_by_tg_id(tg_id=tg_id)
+    if profile is None:
+        return False
+    return profile.id in admin_ids or profile.id in moderator_ids
+
+
 async def deactivate_and_notify(
     *,
     bot: Bot,

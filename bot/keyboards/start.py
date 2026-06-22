@@ -18,6 +18,8 @@ class StartZone(StrEnum):
     REGISTER = "register"
     # for admins only
     TOGGLE_BOT_ENABLED = "toggle_bot_enabled"
+    # for admins & moderators
+    PACK_PRICE_LIMITS = "pack_price_limits"
 
 
 class OpenZoneCB(CallbackData, prefix="zone"):

@@ -20,14 +20,33 @@ from common.services.broadcast import BroadcastService
 router = Router(name="admin")
 
 
+async def _is_admin_profile(
+    *,
+    tg_id: int,
+    admin_ids: frozenset[int],
+    profiles: UserProfileRepository,
+) -> bool:
+    if not admin_ids:
+        return False
+    profile = await profiles.get_by_tg_id(tg_id=tg_id)
+    return profile is not None and profile.id in admin_ids
+
+
 class _IsAdmin(BaseFilter):
     async def __call__(
         self,
         message: Message,
         admin_ids: frozenset[int],
+        profiles: UserProfileRepository,
     ) -> bool:
         user = message.from_user
-        return user is not None and user.id in admin_ids
+        if user is None:
+            return False
+        return await _is_admin_profile(
+            tg_id=user.id,
+            admin_ids=admin_ids,
+            profiles=profiles,
+        )
 
 
 _is_admin = _IsAdmin()
@@ -38,8 +57,13 @@ class _IsAdminCallback(BaseFilter):
         self,
         callback: CallbackQuery,
         admin_ids: frozenset[int],
+        profiles: UserProfileRepository,
     ) -> bool:
-        return callback.from_user.id in admin_ids
+        return await _is_admin_profile(
+            tg_id=callback.from_user.id,
+            admin_ids=admin_ids,
+            profiles=profiles,
+        )
 
 
 _is_admin_callback = _IsAdminCallback()

@@ -5,8 +5,6 @@ from bot.app import build_dispatcher
 from common.bot import create_bot
 from common.db import create_pool
 from common.environment import (
-    ADMIN_USER_IDS,
-    MODERATOR_USER_IDS,
     REDIS_URL,
     TELEGRAM_BOT_TOKEN,
 )
@@ -26,8 +24,6 @@ async def main() -> None:
             pool=pool,
             redis=redis,
             redis_url=REDIS_URL,
-            admin_ids=ADMIN_USER_IDS,
-            moderator_ids=MODERATOR_USER_IDS,
         )
 
         logger.info("starting bot polling")

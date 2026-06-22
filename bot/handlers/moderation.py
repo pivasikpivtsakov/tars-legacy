@@ -1,5 +1,5 @@
-import contextlib
 import html
+import logging
 
 from aiogram import Bot, Router
 from aiogram.exceptions import TelegramAPIError
@@ -7,6 +7,7 @@ from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import CallbackQuery, User
+from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms import fields
@@ -27,10 +28,13 @@ from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import is_moderator, render_pending_review
 
+logger = logging.getLogger(__name__)
+
 router = Router(name="moderation")
 
 _MOD_PROFILE_ID_KEY = "mod_profile_id"
 _MOD_WITH_CODES_KEY = "mod_with_codes"
+_LOCALE_KEY = "locale"
 
 
 class _IsModerator(BaseFilter):
@@ -63,19 +67,31 @@ async def _annotate(*, callback: CallbackQuery, note: str) -> None:
     await callback.message.edit_text(html.escape(text), reply_markup=None)
 
 
+# This runs inside the moderator's callback, so the active i18n contextvar holds the
+# moderator's locale. The recipient's locale is passed in explicitly and applied via
+# use_locale so the user is notified in their own language, not the moderator's.
 async def _notify_approved(
     *,
     bot: Bot,
     profile: UserProfile,
     state: FSMContext,
+    i18n: I18n,
+    locale: str,
 ) -> None:
-    with contextlib.suppress(TelegramAPIError):
-        await bot.send_message(chat_id=profile.tg_id, text=_("start.approved"))
-        await send_menu(
-            bot=bot,
-            chat_id=profile.tg_id,
-            state=state,
-            profile=profile,
+    try:
+        with i18n.use_locale(locale):
+            await bot.send_message(chat_id=profile.tg_id, text=_("start.approved"))
+            await send_menu(
+                bot=bot,
+                chat_id=profile.tg_id,
+                state=state,
+                profile=profile,
+            )
+    except TelegramAPIError:
+        logger.exception(
+            "failed to notify approved user profile_id=%s tg_id=%s",
+            profile.id,
+            profile.tg_id,
         )
 
 
@@ -178,6 +194,7 @@ async def approve_user(
     bot: Bot,
     profiles: UserProfileRepository,
     fsm_storage: BaseStorage,
+    i18n: I18n,
 ) -> None:
     try:
         profile = await profiles.approve(
@@ -189,13 +206,20 @@ async def approve_user(
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
     user_state = _user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
+    user_locale = (await user_state.get_data()).get(_LOCALE_KEY) or i18n.default_locale
     await user_state.clear()
     await _annotate(
         callback=callback,
         note=f"#approved by {_moderator_label(callback.from_user)}",
     )
     await callback.answer()
-    await _notify_approved(bot=bot, profile=profile, state=user_state)
+    await _notify_approved(
+        bot=bot,
+        profile=profile,
+        state=user_state,
+        i18n=i18n,
+        locale=user_locale,
+    )
 
 
 @router.callback_query(ModDenyCB.filter(), _is_moderator)

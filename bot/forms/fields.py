@@ -1,5 +1,6 @@
 from collections.abc import Collection, Mapping, Sequence
 from datetime import datetime, time, timedelta, timezone
+from enum import StrEnum
 from typing import Any
 
 from aiogram import Bot
@@ -20,7 +21,7 @@ from bot.keyboards.profile import (
     with_codes_kb,
     works_alone_kb,
 )
-from common.catalog.packages import PACKAGE_PRICE_LIMIT, format_prices, format_prices_table
+from common.catalog.packages import format_prices, format_prices_table
 from common.catalog.tiers import (
     TIER_MAX_AMOUNT,
     Tier,
@@ -29,6 +30,7 @@ from common.catalog.tiers import (
 )
 from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import deactivate_and_notify
 
@@ -47,13 +49,18 @@ def parse_msk_time(raw: str) -> time | None:
     return parsed.timetz()
 
 
-def parse_price(raw: str, *, limit: int) -> int | None:
+class PriceRejection(StrEnum):
+    NOT_A_NUMBER = "not_a_number"
+    OUT_OF_RANGE = "out_of_range"
+
+
+def parse_price(raw: str, *, limit: int) -> int | PriceRejection:
     try:
         value = int(raw.strip())
     except ValueError:
-        return None
+        return PriceRejection.NOT_A_NUMBER
     if value <= 0 or value > limit:
-        return None
+        return PriceRejection.OUT_OF_RANGE
     return value
 
 
@@ -67,6 +74,10 @@ def _fmt_time(value: time | None) -> str:
     if value is None:
         return "-"
     return value.strftime(TIME_FORMAT)
+
+
+def _iso_to_time(value: str | None) -> time | None:
+    return time.fromisoformat(value) if value else None
 
 
 def _fmt_bool(value: bool | None) -> str:
@@ -132,8 +143,8 @@ def _summary(template: str, data: Mapping[str, Any]) -> str:
         packages=_fmt_packages(sorted(prices)),
         prices=format_prices(prices),
         withdrawal_method=data["withdrawal_method"] or "-",
-        work_start=_fmt_time(time.fromisoformat(data["work_start"])),
-        work_end=_fmt_time(time.fromisoformat(data["work_end"])),
+        work_start=_fmt_time(_iso_to_time(data.get("work_start"))),
+        work_end=_fmt_time(_iso_to_time(data.get("work_end"))),
     )
 
 
@@ -224,12 +235,19 @@ async def open_pack_panel(*, callback: CallbackQuery, state: FSMContext, value: 
     await callback.message.edit_text(text, reply_markup=markup)
 
 
-async def prompt_pack_price(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
+async def prompt_pack_price(
+    *,
+    callback: CallbackQuery,
+    state: FSMContext,
+    value: int,
+    pack_price_limits: PackPriceLimitRepository,
+) -> None:
     await state.update_data(
         {_PRICING_SIZE_KEY: value, _PACK_MSG_KEY: callback.message.message_id},
     )
+    limit = await pack_price_limits.get(size=value)
     await callback.message.edit_text(
-        _("registration.ask_pack_price").format(size=value, limit=PACKAGE_PRICE_LIMIT[value]),
+        _("registration.ask_pack_price").format(size=value, limit=limit),
         reply_markup=pack_price_kb(cancel_text=_("registration.btn_cancel_pack")),
     )
 
@@ -246,16 +264,25 @@ async def cancel_pack(*, callback: CallbackQuery, state: FSMContext) -> None:
     await show_packages_grid(target=callback, state=state)
 
 
-async def apply_pack_price(*, message: Message, state: FSMContext) -> bool:
+async def apply_pack_price(
+    *,
+    message: Message,
+    state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
+) -> bool:
     data = await state.get_data()
     size = data.get(_PRICING_SIZE_KEY)
     if size is None:
         return False
-    parsed = parse_price(message.text, limit=PACKAGE_PRICE_LIMIT[size])
-    if parsed is None:
-        await message.answer(
-            _("registration.invalid_price").format(limit=PACKAGE_PRICE_LIMIT[size]),
+    limit = await pack_price_limits.get(size=size)
+    parsed = parse_price(message.text, limit=limit)
+    if isinstance(parsed, PriceRejection):
+        rejection_key = (
+            "registration.price_too_high"
+            if parsed is PriceRejection.OUT_OF_RANGE
+            else "registration.invalid_price"
         )
+        await message.answer(_(rejection_key).format(size=size, limit=limit))
         return False
     prices = _prices_map(data)
     prices[size] = parsed

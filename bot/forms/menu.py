@@ -42,8 +42,7 @@ async def build_menu_context(
     moderator_ids: frozenset[int],
     bot_switch: BotSwitchService,
 ) -> MenuContext:
-    user = target.from_user
-    for_admin = user is not None and user.id in admin_ids
+    for_admin = profile is not None and profile.id in admin_ids
     return MenuContext(
         target=target,
         state=state,

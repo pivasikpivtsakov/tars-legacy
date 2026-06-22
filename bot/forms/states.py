@@ -34,6 +34,10 @@ class Moderation(StatesGroup):
     prices = State()
 
 
+class PackPriceLimits(StatesGroup):
+    awaiting_value = State()
+
+
 REGISTRATION_INPUT_STATES = (
     Registration.works_alone,
     Registration.with_codes,

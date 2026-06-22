@@ -9,13 +9,13 @@ from common.db import create_pool
 from common.environment import (
     DISPATCH_BACKSTOP_SECONDS,
     DISPATCH_BATCH_LIMIT,
-    MODERATOR_USER_IDS,
     OFFER_RECONCILE_GRACE_SECONDS,
     OFFER_TTL_SECONDS,
     TELEGRAM_BOT_TOKEN,
 )
 from common.logging_config import setup_logging
 from common.redis import create_redis
+from common.repositories.user_roles import UserRole, UserRoleRepository
 from common.services.dispatch_signal import DispatchSignal
 from common.services.order_fanout import FanoutContext, build_fanout_context, sweep_and_fan_out
 
@@ -42,11 +42,12 @@ async def main() -> None:
         redis = create_redis()
         bot = create_bot(token=TELEGRAM_BOT_TOKEN)
         signal = DispatchSignal(redis=redis)
+        moderator_ids = await UserRoleRepository(redis=redis).get(role=UserRole.MODERATOR)
         ctx = build_fanout_context(
             pool=pool,
             redis=redis,
             bot=bot,
-            excluded_user_ids=MODERATOR_USER_IDS,
+            excluded_user_ids=moderator_ids,
         )
         logger.info("starting dispatcher")
         try:
