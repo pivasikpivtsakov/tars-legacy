@@ -9,28 +9,28 @@ from aiogram.fsm.storage.base import BaseStorage, StorageKey
 from aiogram.types import CallbackQuery, User
 from aiogram.utils.i18n import gettext as _
 
+from bot.forms import fields
 from bot.forms.menu import send_menu
+from bot.forms.states import Moderation
+from bot.keyboards.profile import PackagesDoneCB
 from bot.utils.telegram import ignore_not_modified
 from common.catalog.tiers import Tier
 from common.keyboards.moderation import (
     ModApproveCB,
     ModDenyCB,
     ModEditPacksCB,
-    ModPacksCancelCB,
-    ModPacksSaveCB,
-    ModPackToggleCB,
     ModSetTierCB,
     ModToggleCodesCB,
-    mask_to_packages,
     moderation_decision_kb,
-    moderation_packages_kb,
-    packages_to_mask,
 )
 from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.moderation import is_moderator
+from common.services.moderation import is_moderator, render_pending_review
 
 router = Router(name="moderation")
+
+_MOD_PROFILE_ID_KEY = "mod_profile_id"
+_MOD_WITH_CODES_KEY = "mod_with_codes"
 
 
 class _IsModerator(BaseFilter):
@@ -121,89 +121,54 @@ async def set_tier(
 async def open_pack_editor(
     callback: CallbackQuery,
     callback_data: ModEditPacksCB,
+    state: FSMContext,
     profiles: UserProfileRepository,
 ) -> None:
     profile = await profiles.get_by_id(profile_id=callback_data.profile_id)
     if profile is None:
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
-    await callback.message.edit_reply_markup(
-        reply_markup=moderation_packages_kb(
-            profile_id=callback_data.profile_id,
-            with_codes=callback_data.with_codes,
-            tier=callback_data.tier,
-            mask=packages_to_mask(profile.packages or ()),
-        ),
+    await state.set_state(Moderation.packages)
+    await state.update_data(
+        {
+            _MOD_PROFILE_ID_KEY: callback_data.profile_id,
+            _MOD_WITH_CODES_KEY: callback_data.with_codes,
+            "tier": callback_data.tier,
+            "prices": {str(size): price for size, price in (profile.prices or {}).items()},
+        },
     )
+    await fields.show_packages_grid(target=callback, state=state)
     await callback.answer()
 
 
-@router.callback_query(ModPackToggleCB.filter(), _is_moderator)
-async def toggle_pack(
-    callback: CallbackQuery,
-    callback_data: ModPackToggleCB,
-) -> None:
-    new_mask = callback_data.mask ^ (1 << callback_data.idx)
-    await callback.message.edit_reply_markup(
-        reply_markup=moderation_packages_kb(
-            profile_id=callback_data.profile_id,
-            with_codes=callback_data.with_codes,
-            tier=callback_data.tier,
-            mask=new_mask,
-        ),
-    )
-    await callback.answer()
-
-
-@router.callback_query(ModPacksSaveCB.filter(), _is_moderator)
+@router.callback_query(Moderation.packages, PackagesDoneCB.filter(), _is_moderator)
 async def save_packs(
     callback: CallbackQuery,
-    callback_data: ModPacksSaveCB,
+    state: FSMContext,
     profiles: UserProfileRepository,
 ) -> None:
-    if callback_data.mask == 0:
-        await callback.answer(_("moderation.no_packages_selected"), show_alert=True)
+    if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    profile = await profiles.get_by_id(profile_id=callback_data.profile_id)
-    if profile is None:
-        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
-        return
-    selected = set(mask_to_packages(callback_data.mask))
-    trimmed = {size: price for size, price in (profile.prices or {}).items() if size in selected}
-    if not trimmed:
-        await callback.answer(_("moderation.no_packages_selected"), show_alert=True)
-        return
+    data = await state.get_data()
+    profile_id = data[_MOD_PROFILE_ID_KEY]
+    with_codes = data[_MOD_WITH_CODES_KEY]
+    tier = data["tier"]
+    prices = {int(size): int(price) for size, price in data["prices"].items()}
     try:
-        await profiles.set_prices(
-            profile_id=callback_data.profile_id,
-            prices=trimmed,
-        )
+        profile = await profiles.set_prices(profile_id=profile_id, prices=prices)
     except LookupError:
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
-    await callback.message.edit_reply_markup(
+    await state.set_state(None)
+    await callback.message.edit_text(
+        render_pending_review(profile=profile),
         reply_markup=moderation_decision_kb(
-            profile_id=callback_data.profile_id,
-            with_codes=callback_data.with_codes,
-            tier=callback_data.tier,
+            profile_id=profile_id,
+            with_codes=with_codes,
+            tier=tier,
         ),
     )
     await callback.answer(_("moderation.packages_saved"))
-
-
-@router.callback_query(ModPacksCancelCB.filter(), _is_moderator)
-async def cancel_packs(
-    callback: CallbackQuery,
-    callback_data: ModPacksCancelCB,
-) -> None:
-    await callback.message.edit_reply_markup(
-        reply_markup=moderation_decision_kb(
-            profile_id=callback_data.profile_id,
-            with_codes=callback_data.with_codes,
-            tier=callback_data.tier,
-        ),
-    )
-    await callback.answer()
 
 
 @router.callback_query(ModApproveCB.filter(), _is_moderator)

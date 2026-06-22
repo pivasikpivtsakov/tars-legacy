@@ -4,13 +4,12 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, TelegramObject, User
-from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms.fields import begin_registration
 from bot.forms.menu import build_menu_context, open_menu
 from bot.forms.states import REGISTRATION_INPUT_STATES
-from bot.keyboards.menu import MENU_BUTTON_KEY
+from bot.keyboards.menu import MENU_BUTTON_KEY, reply_text_matches
 from common.models.user_profiles import UserProfile
 from common.repositories.user_profiles import UserProfileRepository
 
@@ -23,20 +22,11 @@ def _is_menu_command(text: str) -> bool:
     return head.split("@", 1)[0] == _MENU_COMMAND
 
 
-def _is_menu_button_text(text: str) -> bool:
-    i18n = I18n.get_current(no_error=True)
-    if i18n is None:
-        return False
-    return text in {
-        i18n.gettext(MENU_BUTTON_KEY, locale=locale) for locale in i18n.available_locales
-    }
-
-
 def is_menu_trigger(message: Message) -> bool:
     text = message.text
     if text is None:
         return False
-    return _is_menu_command(text) or _is_menu_button_text(text)
+    return _is_menu_command(text) or reply_text_matches(text, MENU_BUTTON_KEY)
 
 
 class MenuMiddleware(BaseMiddleware):

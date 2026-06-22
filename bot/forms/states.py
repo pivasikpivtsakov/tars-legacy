@@ -29,6 +29,11 @@ class ProfileEdit(StatesGroup):
     work_end = State()
 
 
+class Moderation(StatesGroup):
+    packages = State()
+    prices = State()
+
+
 REGISTRATION_INPUT_STATES = (
     Registration.works_alone,
     Registration.with_codes,
@@ -49,3 +54,17 @@ STATE_BY_FIELD = {
 }
 
 EDIT_FIELD_STATES = tuple(STATE_BY_FIELD.values())
+
+PACKAGES_STATES = (Registration.packages, ProfileEdit.packages, Moderation.packages)
+PRICES_STATES = (Registration.prices, ProfileEdit.prices, Moderation.prices)
+
+PRICES_STATE_BY_PACKAGES = {
+    Registration.packages.state: Registration.prices,
+    ProfileEdit.packages.state: ProfileEdit.prices,
+    Moderation.packages.state: Moderation.prices,
+}
+PACKAGES_STATE_BY_PRICES = {
+    Registration.prices.state: Registration.packages,
+    ProfileEdit.prices.state: ProfileEdit.packages,
+    Moderation.prices.state: Moderation.packages,
+}

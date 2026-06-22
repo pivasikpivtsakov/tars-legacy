@@ -9,7 +9,6 @@ from bot.keyboards.profile import (
     EditFieldCB,
     EditSaveCB,
     PackagesDoneCB,
-    PackageToggleCB,
     WithCodesCB,
     WorksAloneCB,
 )
@@ -70,16 +69,6 @@ async def edit_with_codes(
     await callback.answer()
 
 
-@router.callback_query(ProfileEdit.packages, PackageToggleCB.filter())
-async def edit_package_toggle(
-    callback: CallbackQuery,
-    callback_data: PackageToggleCB,
-    state: FSMContext,
-) -> None:
-    await fields.toggle_and_render(callback=callback, state=state, value=callback_data.value)
-    await callback.answer()
-
-
 @router.callback_query(ProfileEdit.packages, PackagesDoneCB.filter())
 async def edit_packages_done(
     callback: CallbackQuery,
@@ -87,19 +76,8 @@ async def edit_packages_done(
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    await state.set_state(ProfileEdit.prices)
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await fields.begin_pricing(message=callback.message, state=state)
+    await fields.show_edit_menu(target=callback, state=state)
     await callback.answer()
-
-
-@router.message(ProfileEdit.prices, F.text)
-async def edit_pack_price(message: Message, state: FSMContext) -> None:
-    if not await fields.apply_pack_price(message=message, state=state):
-        return
-    if await fields.prompt_next_pack_price(message=message, state=state):
-        return
-    await fields.show_edit_menu(target=message, state=state)
 
 
 @router.message(ProfileEdit.withdrawal_method, F.text)

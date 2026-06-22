@@ -7,7 +7,6 @@ from bot.forms import fields
 from bot.forms.states import Registration
 from bot.keyboards.profile import (
     PackagesDoneCB,
-    PackageToggleCB,
     ProfileField,
     WithCodesCB,
     WorksAloneCB,
@@ -40,17 +39,7 @@ async def process_with_codes(
     await fields.apply_with_codes(state=state, value=callback_data.value)
     await state.set_state(Registration.packages)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await fields.send_prompt(callback.message, ProfileField.packages, selected=())
-    await callback.answer()
-
-
-@router.callback_query(Registration.packages, PackageToggleCB.filter())
-async def process_package_toggle(
-    callback: CallbackQuery,
-    callback_data: PackageToggleCB,
-    state: FSMContext,
-) -> None:
-    await fields.toggle_and_render(callback=callback, state=state, value=callback_data.value)
+    await fields.show_packages_grid(target=callback.message, state=state)
     await callback.answer()
 
 
@@ -61,20 +50,10 @@ async def process_packages_done(
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    await state.set_state(Registration.prices)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await fields.begin_pricing(message=callback.message, state=state)
-    await callback.answer()
-
-
-@router.message(Registration.prices, F.text)
-async def process_pack_price(message: Message, state: FSMContext) -> None:
-    if not await fields.apply_pack_price(message=message, state=state):
-        return
-    if await fields.prompt_next_pack_price(message=message, state=state):
-        return
     await state.set_state(Registration.withdrawal_method)
-    await fields.send_prompt(message, ProfileField.withdrawal_method)
+    await fields.send_prompt(callback.message, ProfileField.withdrawal_method)
+    await callback.answer()
 
 
 @router.message(Registration.withdrawal_method, F.text)

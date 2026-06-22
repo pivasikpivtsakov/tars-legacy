@@ -1,5 +1,5 @@
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import BaseFilter, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
@@ -11,9 +11,16 @@ from bot.forms.menu import (
     menu_available,
     open_menu,
     render_menu,
+    send_online_state,
     show_back_panel,
+    show_panel,
 )
-from bot.keyboards.start import BackCB, OpenZoneCB, StartZone
+from bot.keyboards.menu import (
+    ONLINE_STATE_OFF_KEY,
+    ONLINE_STATE_ON_KEY,
+    reply_text_matches,
+)
+from bot.keyboards.start import BackCB, OpenZoneCB, StartZone, balance_kb
 from bot.middlewares.profile import require_active_profile
 from common.catalog.packages import format_prices_table
 from common.models.rating import RatingStats
@@ -24,6 +31,17 @@ from common.repositories.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
 
 router = Router(name="start")
+
+
+class _IsOnlineToggle(BaseFilter):
+    async def __call__(self, message: Message) -> bool:
+        text = message.text
+        if text is None:
+            return False
+        return reply_text_matches(text, ONLINE_STATE_ON_KEY, ONLINE_STATE_OFF_KEY)
+
+
+_is_online_toggle = _IsOnlineToggle()
 
 
 @router.message(CommandStart())
@@ -40,7 +58,11 @@ async def cmd_start(
         await fields.begin_registration(message=message, state=state)
         return
     if menu_available(profile):
-        await install_menu_button(message=message)
+        await install_menu_button(
+            message=message,
+            profile=profile,
+            is_moderator=profile.id in moderator_ids,
+        )
     context = await build_menu_context(
         target=message,
         state=state,
@@ -52,31 +74,20 @@ async def cmd_start(
     await render_menu(context)
 
 
-@router.callback_query(OpenZoneCB.filter(F.value == StartZone.ONLINE))
+@router.message(_is_online_toggle)
 @require_active_profile
-async def open_online(
-    callback: CallbackQuery,
-    state: FSMContext,
+async def toggle_online(
+    message: Message,
     profiles: UserProfileRepository,
     online_price_index: OnlinePriceIndex,
     profile: UserProfile,
-    admin_ids: frozenset[int],
     moderator_ids: frozenset[int],
-    bot_switch: BotSwitchService,
 ) -> None:
+    if profile.id in moderator_ids:
+        return
     profile = await profiles.toggle_is_online_and_get(profile_id=profile.id)
     await online_price_index.sync(profile=profile)
-    alert = _("start.online_now_on") if profile.is_online else _("start.online_now_off")
-    await callback.answer(alert, show_alert=False)
-    context = await build_menu_context(
-        target=callback,
-        state=state,
-        profile=profile,
-        admin_ids=admin_ids,
-        moderator_ids=moderator_ids,
-        bot_switch=bot_switch,
-    )
-    await render_menu(context)
+    await send_online_state(message=message, profile=profile)
 
 
 def _order_stats(stats: RatingStats) -> tuple[int, int, int, int]:
@@ -120,9 +131,13 @@ async def open_balance(
     profile: UserProfile | None,
 ) -> None:
     balance = profile.balance if profile is not None else 0
-    await show_back_panel(
+    await show_panel(
         callback=callback,
         text=_("start.balance").format(balance=balance),
+        markup=balance_kb(
+            withdraw_text=_("start.btn_withdraw"),
+            back_text=_("start.btn_back"),
+        ),
     )
 
 

@@ -12,6 +12,7 @@ from bot.handlers import (
     fallback,
     moderation,
     orders,
+    packages,
     registration,
     withdraw,
 )
@@ -112,6 +113,7 @@ def build_dispatcher(
     dispatcher.include_router(orders.router)
     dispatcher.include_router(registration.router)
     dispatcher.include_router(editing.router)
+    dispatcher.include_router(packages.router)
     dispatcher.include_router(fallback.router)
 
     return dispatcher

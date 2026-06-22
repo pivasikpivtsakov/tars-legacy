@@ -10,14 +10,14 @@ msgstr ""
 msgid "start.welcome"
 msgstr "Добро пожаловать! Выбери раздел ниже."
 
-msgid "start.btn_online_on"
-msgstr "Войти онлайн"
+msgid "start.btn_online_state_on"
+msgstr "🟢 Онлайн"
 
-msgid "start.btn_online_off"
-msgstr "Выйти оффлайн"
+msgid "start.btn_online_state_off"
+msgstr "⚪ Оффлайн"
 
 msgid "start.btn_balance"
-msgstr "Баланс"
+msgstr "Баланс и вывод"
 
 msgid "start.btn_withdraw"
 msgstr "Вывод денег"
@@ -89,7 +89,28 @@ msgid "registration.ask_with_codes"
 msgstr "Ты работаешь с кодами?"
 
 msgid "registration.ask_packages"
-msgstr "Какие пакеты ты делаешь? Отметь сколько нужно и нажми «Готово»."
+msgstr "Какие пакеты ты делаешь? Нажми на пак, чтобы указать цену, добавь сколько нужно и нажми «Готово»."
+
+msgid "registration.your_packs"
+msgstr "Твои паки и цены:\nпакет  цена\n{prices}"
+
+msgid "registration.pack_confirm"
+msgstr "Делаешь пак {size} UC? Нажми «Указать цену», чтобы добавить его."
+
+msgid "registration.pack_manage"
+msgstr "Пак {size} UC — текущая цена: {price}."
+
+msgid "registration.btn_set_price"
+msgstr "✅ Указать цену"
+
+msgid "registration.btn_change_price"
+msgstr "✏️ Изменить цену"
+
+msgid "registration.btn_remove_pack"
+msgstr "🗑 Удалить"
+
+msgid "registration.btn_cancel_pack"
+msgstr "✖ Отмена"
 
 msgid "registration.btn_done"
 msgstr "Готово"
@@ -170,7 +191,7 @@ msgid "admin.bot_disabled"
 msgstr "Бот отключён."
 
 msgid "admin.bot_online_announcement"
-msgstr "Бот включён. Нажми «Войти онлайн», чтобы начать получать заказы."
+msgstr "Бот включён. Нажми кнопку онлайн внизу, чтобы начать получать заказы."
 
 msgid "admin.bot_disabled_announcement"
 msgstr "Бот сейчас отключён. Заказы больше недоступны."

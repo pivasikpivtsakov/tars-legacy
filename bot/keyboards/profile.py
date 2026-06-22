@@ -8,8 +8,20 @@ from bot.keyboards.start import BackCB
 from common.keyboards.packages import package_toggle_rows
 
 
-class PackageToggleCB(CallbackData, prefix="pkg"):
+class PackTapCB(CallbackData, prefix="pkg_tap"):
     value: int
+
+
+class PackPriceCB(CallbackData, prefix="pkg_price"):
+    value: int
+
+
+class PackRemoveCB(CallbackData, prefix="pkg_rm"):
+    value: int
+
+
+class PackCancelCB(CallbackData, prefix="pkg_cancel"):
+    pass
 
 
 class WorksAloneCB(CallbackData, prefix="wa"):
@@ -39,13 +51,6 @@ class EditFieldCB(CallbackData, prefix="ef"):
 
 class EditSaveCB(CallbackData, prefix="ef_save"):
     pass
-
-
-def package_rows(selected: Iterable[int]) -> list[list[InlineKeyboardButton]]:
-    return package_toggle_rows(
-        selected=selected,
-        callback_factory=lambda size: PackageToggleCB(value=size).pack(),
-    )
 
 
 def _bool_kb(
@@ -83,8 +88,11 @@ def with_codes_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
     )
 
 
-def packages_kb(*, selected: Iterable[int], done_text: str) -> InlineKeyboardMarkup:
-    rows = package_rows(selected)
+def packages_grid_kb(*, selected: Iterable[int], done_text: str) -> InlineKeyboardMarkup:
+    rows = package_toggle_rows(
+        selected=selected,
+        callback_factory=lambda size: PackTapCB(value=size).pack(),
+    )
     rows.append(
         [
             InlineKeyboardButton(
@@ -94,6 +102,65 @@ def packages_kb(*, selected: Iterable[int], done_text: str) -> InlineKeyboardMar
         ],
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def pack_confirm_kb(*, value: int, yes_text: str, cancel_text: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=yes_text,
+                    callback_data=PackPriceCB(value=value).pack(),
+                ),
+                InlineKeyboardButton(
+                    text=cancel_text,
+                    callback_data=PackCancelCB().pack(),
+                ),
+            ],
+        ],
+    )
+
+
+def pack_manage_kb(
+    *,
+    value: int,
+    change_text: str,
+    remove_text: str,
+    cancel_text: str,
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=change_text,
+                    callback_data=PackPriceCB(value=value).pack(),
+                ),
+                InlineKeyboardButton(
+                    text=remove_text,
+                    callback_data=PackRemoveCB(value=value).pack(),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=cancel_text,
+                    callback_data=PackCancelCB().pack(),
+                ),
+            ],
+        ],
+    )
+
+
+def pack_price_kb(*, cancel_text: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=cancel_text,
+                    callback_data=PackCancelCB().pack(),
+                ),
+            ],
+        ],
+    )
 
 
 def edit_menu_kb(

@@ -1,8 +1,9 @@
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from datetime import datetime, time, timedelta, timezone
 from typing import Any
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
@@ -12,11 +13,14 @@ from bot.forms.states import STATE_BY_FIELD, ProfileEdit, Registration
 from bot.keyboards.profile import (
     ProfileField,
     edit_menu_kb,
-    packages_kb,
+    pack_confirm_kb,
+    pack_manage_kb,
+    pack_price_kb,
+    packages_grid_kb,
     with_codes_kb,
     works_alone_kb,
 )
-from common.catalog.packages import PACKAGE_PRICE_LIMIT, format_prices
+from common.catalog.packages import PACKAGE_PRICE_LIMIT, format_prices, format_prices_table
 from common.catalog.tiers import (
     TIER_MAX_AMOUNT,
     Tier,
@@ -27,6 +31,9 @@ from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import deactivate_and_notify
+
+_PACK_MSG_KEY = "pack_msg_id"
+_PRICING_SIZE_KEY = "pricing_size"
 
 MSK_TZ = timezone(timedelta(hours=3))
 TIME_FORMAT = "%H:%M"
@@ -72,10 +79,6 @@ def is_valid_work_hours(*, start: time, end: time) -> bool:
     return end > start
 
 
-def packages_markup(selected: Iterable[int]) -> InlineKeyboardMarkup:
-    return packages_kb(selected=selected, done_text=_("registration.btn_done"))
-
-
 _TEXT_PROMPT_KEYS = {
     ProfileField.withdrawal_method: "registration.ask_withdrawal_method",
     ProfileField.work_start: "registration.ask_work_start",
@@ -83,11 +86,7 @@ _TEXT_PROMPT_KEYS = {
 }
 
 
-def field_prompt(
-    field: ProfileField,
-    *,
-    selected: Iterable[int] = (),
-) -> tuple[str, InlineKeyboardMarkup | None]:
+def field_prompt(field: ProfileField) -> tuple[str, InlineKeyboardMarkup | None]:
     if field is ProfileField.works_alone:
         return _("registration.ask_works_alone"), works_alone_kb(
             yes_text=_("registration.btn_yes"),
@@ -98,18 +97,11 @@ def field_prompt(
             yes_text=_("registration.btn_yes"),
             no_text=_("registration.btn_no"),
         )
-    if field is ProfileField.packages:
-        return _("registration.ask_packages"), packages_markup(selected)
     return _(_TEXT_PROMPT_KEYS[field]), None
 
 
-async def send_prompt(
-    message: Message,
-    field: ProfileField,
-    *,
-    selected: Iterable[int] = (),
-) -> None:
-    text, markup = field_prompt(field, selected=selected)
+async def send_prompt(message: Message, field: ProfileField) -> None:
+    text, markup = field_prompt(field)
     await message.answer(text, reply_markup=markup)
 
 
@@ -124,12 +116,21 @@ def _edit_labels() -> dict[ProfileField, str]:
     }
 
 
+def _prices_map(data: Mapping[str, Any]) -> dict[int, int]:
+    return {int(size): int(price) for size, price in (data.get("prices") or {}).items()}
+
+
+def _store_prices(prices: Mapping[int, int]) -> dict[str, int]:
+    return {str(size): price for size, price in prices.items()}
+
+
 def _summary(template: str, data: Mapping[str, Any]) -> str:
+    prices = _prices_map(data)
     return template.format(
         works_alone=_fmt_bool(data["works_alone"]),
         with_codes=_fmt_bool(data["with_codes"]),
-        packages=_fmt_packages(data["packages"]),
-        prices=format_prices(data["prices"]),
+        packages=_fmt_packages(sorted(prices)),
+        prices=format_prices(prices),
         withdrawal_method=data["withdrawal_method"] or "-",
         work_start=_fmt_time(time.fromisoformat(data["work_start"])),
         work_end=_fmt_time(time.fromisoformat(data["work_end"])),
@@ -141,7 +142,6 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
         "works_alone": profile.works_alone,
         "with_codes": profile.with_codes,
         "tier": int(profile.tier),
-        "packages": list(profile.packages or ()),
         "prices": {str(size): price for size, price in (profile.prices or {}).items()},
         "withdrawal_method": profile.withdrawal_method,
         "work_start": profile.work_start.isoformat() if profile.work_start else None,
@@ -168,47 +168,121 @@ async def apply_withdrawal(*, state: FSMContext, text: str) -> None:
     await state.update_data(withdrawal_method=text)
 
 
-def _next_unpriced_size(data: Mapping[str, Any]) -> int | None:
-    prices = data.get("prices") or {}
-    for size in data.get("packages") or ():
-        if str(size) not in prices:
-            return size
-    return None
+def _packages_text(*, prices: Mapping[int, int], tier: int | None) -> str:
+    parts = [_("registration.ask_packages")]
+    if prices:
+        parts.append(_("registration.your_packs").format(prices=format_prices_table(prices)))
+    if tier is not None:
+        parts.append(_package_above_tier_message(tier))
+    return "\n\n".join(parts)
 
 
-async def begin_pricing(*, message: Message, state: FSMContext) -> None:
-    await state.update_data(prices={})
-    await prompt_next_pack_price(message=message, state=state)
+def _packages_markup(prices: Mapping[int, int]) -> InlineKeyboardMarkup:
+    return packages_grid_kb(selected=sorted(prices), done_text=_("registration.btn_done"))
 
 
-async def prompt_next_pack_price(*, message: Message, state: FSMContext) -> bool:
-    size = _next_unpriced_size(await state.get_data())
-    if size is None:
-        return False
-    await message.answer(
-        _("registration.ask_pack_price").format(
-            size=size,
-            limit=PACKAGE_PRICE_LIMIT[size],
-        ),
+async def show_packages_grid(*, target: Message | CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    prices = _prices_map(data)
+    text = _packages_text(prices=prices, tier=data.get("tier"))
+    markup = _packages_markup(prices)
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(text, reply_markup=markup)
+        message_id = target.message.message_id
+    else:
+        sent = await target.answer(text, reply_markup=markup)
+        message_id = sent.message_id
+    await state.update_data({_PACK_MSG_KEY: message_id, _PRICING_SIZE_KEY: None})
+
+
+async def open_pack_panel(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
+    data = await state.get_data()
+    prices = _prices_map(data)
+    tier = data.get("tier")
+    if (
+        value not in prices
+        and tier is not None
+        and value not in allowed_packages_for_tier(Tier(tier))
+    ):
+        await callback.answer(_package_above_tier_message(tier), show_alert=True)
+        return
+    if value in prices:
+        text = _("registration.pack_manage").format(size=value, price=prices[value])
+        markup = pack_manage_kb(
+            value=value,
+            change_text=_("registration.btn_change_price"),
+            remove_text=_("registration.btn_remove_pack"),
+            cancel_text=_("registration.btn_cancel_pack"),
+        )
+    else:
+        text = _("registration.pack_confirm").format(size=value)
+        markup = pack_confirm_kb(
+            value=value,
+            yes_text=_("registration.btn_set_price"),
+            cancel_text=_("registration.btn_cancel_pack"),
+        )
+    await callback.message.edit_text(text, reply_markup=markup)
+
+
+async def prompt_pack_price(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
+    await state.update_data(
+        {_PRICING_SIZE_KEY: value, _PACK_MSG_KEY: callback.message.message_id},
     )
-    return True
+    await callback.message.edit_text(
+        _("registration.ask_pack_price").format(size=value, limit=PACKAGE_PRICE_LIMIT[value]),
+        reply_markup=pack_price_kb(cancel_text=_("registration.btn_cancel_pack")),
+    )
+
+
+async def remove_pack(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
+    data = await state.get_data()
+    prices = _prices_map(data)
+    prices.pop(value, None)
+    await state.update_data(prices=_store_prices(prices))
+    await show_packages_grid(target=callback, state=state)
+
+
+async def cancel_pack(*, callback: CallbackQuery, state: FSMContext) -> None:
+    await show_packages_grid(target=callback, state=state)
 
 
 async def apply_pack_price(*, message: Message, state: FSMContext) -> bool:
     data = await state.get_data()
-    size = _next_unpriced_size(data)
+    size = data.get(_PRICING_SIZE_KEY)
     if size is None:
-        return True
+        return False
     parsed = parse_price(message.text, limit=PACKAGE_PRICE_LIMIT[size])
     if parsed is None:
         await message.answer(
             _("registration.invalid_price").format(limit=PACKAGE_PRICE_LIMIT[size]),
         )
         return False
-    prices = dict(data.get("prices") or {})
-    prices[str(size)] = parsed
-    await state.update_data(prices=prices)
+    prices = _prices_map(data)
+    prices[size] = parsed
+    await state.update_data(prices=_store_prices(prices), **{_PRICING_SIZE_KEY: None})
+    await _rerender_packages_grid(message=message, state=state)
     return True
+
+
+async def _rerender_packages_grid(*, message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    prices = _prices_map(data)
+    text = _packages_text(prices=prices, tier=data.get("tier"))
+    markup = _packages_markup(prices)
+    message_id = data.get(_PACK_MSG_KEY)
+    if message_id is not None:
+        try:
+            await message.bot.edit_message_text(
+                text=text,
+                chat_id=message.chat.id,
+                message_id=message_id,
+                reply_markup=markup,
+            )
+            return
+        except TelegramBadRequest:
+            pass
+    sent = await message.answer(text, reply_markup=markup)
+    await state.update_data({_PACK_MSG_KEY: sent.message_id})
 
 
 async def _apply_work_time(
@@ -254,47 +328,20 @@ async def apply_work_end(*, message: Message, state: FSMContext) -> bool:
     )
 
 
-def _toggle_packages(selected: Iterable[int], value: int) -> list[int]:
-    result = set(selected)
-    if value in result:
-        result.discard(value)
-    else:
-        result.add(value)
-    return sorted(result)
-
-
-async def toggle_and_render(
-    *,
-    callback: CallbackQuery,
-    state: FSMContext,
-    value: int,
-) -> None:
-    data = await state.get_data()
-    current = data.get("packages", [])
-    tier = data.get("tier")
-    adding = value not in current
-    if tier is not None and adding and value not in allowed_packages_for_tier(Tier(tier)):
-        await callback.answer(_package_above_tier_message(tier), show_alert=True)
-        return
-    selected = _toggle_packages(current, value)
-    await state.update_data(packages=selected)
-    await callback.message.edit_reply_markup(reply_markup=packages_markup(selected))
-
-
 async def ensure_packages_selected(
     *,
     callback: CallbackQuery,
     state: FSMContext,
 ) -> bool:
     data = await state.get_data()
-    selected = data.get("packages")
-    if not selected:
+    prices = _prices_map(data)
+    if not prices:
         await callback.answer(_("registration.no_packages_selected"), show_alert=True)
         return False
     tier = data.get("tier")
     if tier is not None:
         allowed = set(allowed_packages_for_tier(Tier(tier)))
-        if any(size not in allowed for size in selected):
+        if any(size not in allowed for size in prices):
             await callback.answer(_package_above_tier_message(tier), show_alert=True)
             return False
     return True
@@ -392,11 +439,10 @@ async def begin_field_edit(
     field: ProfileField,
 ) -> None:
     await state.set_state(STATE_BY_FIELD[field])
-    data = await state.get_data()
-    text, markup = field_prompt(field, selected=data["packages"])
-    tier = data.get("tier")
-    if field is ProfileField.packages and tier is not None:
-        text = f"{text}\n\n{_package_above_tier_message(tier)}"
+    if field is ProfileField.packages:
+        await show_packages_grid(target=callback, state=state)
+        return
+    text, markup = field_prompt(field)
     await callback.message.edit_text(text, reply_markup=markup)
 
 

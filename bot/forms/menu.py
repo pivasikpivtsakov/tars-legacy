@@ -81,7 +81,6 @@ def menu_inline_view(
 ) -> tuple[str, InlineKeyboardMarkup | None]:
     if profile is not None and profile.status is UserProfileStatus.ACTIVE:
         markup = full_menu_kb(
-            profile=profile,
             for_admin=for_admin,
             bot_enabled=bot_enabled,
             is_moderator=is_moderator,
@@ -134,23 +133,46 @@ async def send_menu(
     await bot.send_message(
         chat_id=chat_id,
         text=_("start.menu_hint"),
-        reply_markup=menu_button_markup(),
+        reply_markup=menu_button_markup(profile=profile),
     )
     text, markup = menu_inline_view(profile)
     sent = await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
     await _remember_menu_message(state=state, message_id=sent.message_id)
 
 
-async def show_back_panel(*, callback: CallbackQuery, text: str) -> None:
-    await callback.message.edit_text(
-        text,
-        reply_markup=back_kb(back_text=_("start.btn_back")),
-    )
+async def show_panel(
+    *,
+    callback: CallbackQuery,
+    text: str,
+    markup: InlineKeyboardMarkup,
+) -> None:
+    await callback.message.edit_text(text, reply_markup=markup)
     await callback.answer()
 
 
-async def install_menu_button(*, message: Message) -> None:
-    await message.answer(_("start.menu_hint"), reply_markup=menu_button_markup())
+async def show_back_panel(*, callback: CallbackQuery, text: str) -> None:
+    await show_panel(
+        callback=callback,
+        text=text,
+        markup=back_kb(back_text=_("start.btn_back")),
+    )
+
+
+async def install_menu_button(
+    *,
+    message: Message,
+    profile: UserProfile,
+    is_moderator: bool,
+) -> None:
+    await message.answer(
+        _("start.menu_hint"),
+        reply_markup=menu_button_markup(profile=profile, is_moderator=is_moderator),
+    )
+
+
+async def send_online_state(*, message: Message, profile: UserProfile) -> None:
+    text = _("start.online_now_on") if profile.is_online else _("start.online_now_off")
+    await message.answer(text, reply_markup=menu_button_markup(profile=profile))
 
 
 async def open_menu(context: MenuContext) -> None:

@@ -12,7 +12,6 @@ from aiogram.types import (
 
 class StartZone(StrEnum):
     # for everyone
-    ONLINE = "online"
     BALANCE = "balance"
     WITHDRAW = "withdraw"
     PRIORITY = "priority"
@@ -55,9 +54,32 @@ def back_kb(*, back_text: str) -> InlineKeyboardMarkup:
     )
 
 
-def reply_menu_kb(*, menu_text: str) -> ReplyKeyboardMarkup:
+def balance_kb(*, withdraw_text: str, back_text: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=withdraw_text,
+                    callback_data=OpenZoneCB(value=StartZone.WITHDRAW).pack(),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=back_text,
+                    callback_data=BackCB().pack(),
+                ),
+            ],
+        ],
+    )
+
+
+def reply_menu_kb(*, menu_text: str, online_text: str | None = None) -> ReplyKeyboardMarkup:
+    keyboard = []
+    if online_text is not None:
+        keyboard.append([KeyboardButton(text=online_text)])
+    keyboard.append([KeyboardButton(text=menu_text)])
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=menu_text)]],
+        keyboard=keyboard,
         resize_keyboard=True,
         is_persistent=True,
     )
