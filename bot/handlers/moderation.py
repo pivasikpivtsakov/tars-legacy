@@ -15,7 +15,7 @@ from bot.forms.menu import send_menu
 from bot.forms.states import Moderation
 from bot.keyboards.profile import PackagesDoneCB
 from bot.utils.telegram import ignore_not_modified
-from common.catalog.tiers import Tier
+from common.catalog.tiers import Tier, tier_for_packages
 from common.keyboards.moderation import (
     ModApproveCB,
     ModDenyCB,
@@ -168,20 +168,20 @@ async def save_packs(
     data = await state.get_data()
     profile_id = data[_MOD_PROFILE_ID_KEY]
     with_codes = data[_MOD_WITH_CODES_KEY]
-    tier = data["tier"]
     prices = {int(size): int(price) for size, price in data["prices"].items()}
     try:
         profile = await profiles.set_prices(profile_id=profile_id, prices=prices)
     except LookupError:
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
+    tier = max(Tier(data["tier"]), tier_for_packages(prices))
     await state.set_state(None)
     await callback.message.edit_text(
-        render_pending_review(profile=profile),
+        render_pending_review(profile=profile, tier=tier),
         reply_markup=moderation_decision_kb(
             profile_id=profile_id,
             with_codes=with_codes,
-            tier=tier,
+            tier=int(tier),
         ),
     )
     await callback.answer(_("moderation.packages_saved"))

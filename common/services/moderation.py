@@ -7,7 +7,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
 from common.catalog.packages import format_prices
-from common.catalog.tiers import Tier, tier_cap_label
+from common.catalog.tiers import Tier, tier_cap_label, tier_for_packages
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
 from common.repositories.online_price_index import OnlinePriceIndex
@@ -36,13 +36,13 @@ def _fmt_tier(tier: Tier) -> str:
     return f"{int(tier)} ({tier_cap_label(tier)})"
 
 
-def render_pending_review(*, profile: UserProfile) -> str:
+def render_pending_review(*, profile: UserProfile, tier: Tier) -> str:
     text = (
         "#pending user awaiting moderation\n"
         f"tg_id: {profile.tg_id}\n"
         f"works alone: {_fmt_yes_no(profile.works_alone)}\n"
         f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
-        f"tier: {_fmt_tier(profile.tier)}\n"
+        f"tier: {_fmt_tier(tier)}\n"
         f"packages: {_fmt_packages(profile.packages)}\n"
         f"prices: {format_prices(profile.prices)}\n"
         f"withdrawal: {profile.withdrawal_method or '-'}\n"
@@ -58,11 +58,15 @@ async def _broadcast(
     profiles: UserProfileRepository,
     profile: UserProfile,
 ) -> None:
-    text = render_pending_review(profile=profile)
+    # On first registration the stored tier is still the BASIC default, so this
+    # resolves to the tier required by the user's largest pack; an already-assigned
+    # higher tier (e.g. a prior approval) is preserved instead.
+    tier = max(profile.tier, tier_for_packages(profile.packages or ()))
+    text = render_pending_review(profile=profile, tier=tier)
     markup = moderation_decision_kb(
         profile_id=profile.id,
         with_codes=profile.with_codes,
-        tier=int(profile.tier),
+        tier=int(tier),
     )
     tg_ids = await profiles.get_tg_ids(profile_ids=moderator_ids)
     for moderator_id in moderator_ids:

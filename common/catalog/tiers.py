@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from enum import IntEnum
 
 from common.catalog.packages import PACKAGE_SIZES
@@ -28,6 +29,12 @@ def required_tier(amount: int) -> Tier:
         if tier_allows(tier=tier, amount=amount):
             return tier
     return Tier.UNLIMITED
+
+
+def tier_for_packages(packages: Collection[int]) -> Tier:
+    if not packages:
+        return TIER_DEFAULT
+    return required_tier(max(packages))
 
 
 def allowed_packages_for_tier(tier: Tier) -> tuple[int, ...]:
