@@ -18,8 +18,7 @@ from bot.keyboards.pack_limits import (
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.catalog.packages import format_prices_table
 from common.repositories.pack_price_limits import PackPriceLimitRepository
-from common.repositories.user_profiles import UserProfileRepository
-from common.services.moderation import is_staff
+from common.services.moderation import ModerationService
 
 router = Router(name="pack_limits")
 
@@ -34,13 +33,12 @@ class _IsStaff(BaseFilter):
         event: Message | CallbackQuery,
         admin_ids: frozenset[int],
         moderator_ids: frozenset[int],
-        profiles: UserProfileRepository,
+        moderation: ModerationService,
     ) -> bool:
         user = event.from_user
         if user is None:
             return False
-        return await is_staff(
-            profiles=profiles,
+        return await moderation.is_staff(
             admin_ids=admin_ids,
             moderator_ids=moderator_ids,
             tg_id=user.id,

@@ -25,8 +25,9 @@ from common.keyboards.moderation import (
     moderation_decision_kb,
 )
 from common.models.user_profiles import UserProfile
+from common.rendering.moderation import render_pending_review
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.moderation import is_moderator, render_pending_review
+from common.services.moderation import ModerationService
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +43,12 @@ class _IsModerator(BaseFilter):
         self,
         callback: CallbackQuery,
         moderator_ids: frozenset[int],
-        profiles: UserProfileRepository,
+        moderation: ModerationService,
     ) -> bool:
         user = callback.from_user
         if user is None:
             return False
-        return await is_moderator(
-            profiles=profiles,
+        return await moderation.is_moderator(
             moderator_ids=moderator_ids,
             tg_id=user.id,
         )

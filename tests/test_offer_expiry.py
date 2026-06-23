@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import Sequence
 
 from common.repositories.offer_deadlines import OfferDeadline
-from common.services.offer_expiry import expire_offers
+from common.services.offer_expiry import OfferExpiryService
 
 
 class _FakeOffers:
@@ -78,16 +78,14 @@ def _run(
     dispatch: _FakeDispatch,
     deadlines: Sequence[OfferDeadline],
 ) -> None:
-    asyncio.run(
-        expire_offers(
-            offers=offers,
-            rating=rating,
-            pending=pending,
-            bot=bot,
-            dispatch=dispatch,
-            deadlines=deadlines,
-        ),
+    service = OfferExpiryService(
+        offers=offers,
+        rating=rating,
+        pending=pending,
+        bot=bot,
+        dispatch=dispatch,
     )
+    asyncio.run(service.expire_offers(deadlines=deadlines))
 
 
 def test_expire_offers_batches_release_and_wakes_once() -> None:

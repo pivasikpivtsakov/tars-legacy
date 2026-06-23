@@ -11,23 +11,31 @@ from common.environment import (
     DISPATCH_BATCH_LIMIT,
     OFFER_RECONCILE_GRACE_SECONDS,
     OFFER_TTL_SECONDS,
+    RATING_SPEED_WINDOW,
     TELEGRAM_BOT_TOKEN,
 )
 from common.logging_config import setup_logging
 from common.redis import create_redis
+from common.repositories.offer_deadlines import OfferDeadlineQueue
+from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.order_offers import OrderOfferRepository
+from common.repositories.orders import OrderRepository
+from common.repositories.pending_orders import PendingOrdersRepository
+from common.repositories.rating import RatingRepository
+from common.repositories.user_profiles import UserProfileRepository
 from common.repositories.user_roles import UserRole, UserRoleRepository
 from common.services.dispatch_signal import DispatchSignal
-from common.services.order_fanout import FanoutContext, build_fanout_context, sweep_and_fan_out
+from common.services.order_fanout import OrderFanoutService
+from common.services.order_processing import OrderManager
 
 logger = logging.getLogger(__name__)
 
 _RECONNECT_DELAY_SECONDS = 1.0
 
 
-async def _safe_sweep(*, ctx: FanoutContext, stale_after_seconds: int) -> None:
+async def _safe_sweep(*, service: OrderFanoutService, stale_after_seconds: int) -> None:
     try:
-        await sweep_and_fan_out(
-            ctx=ctx,
+        await service.sweep_and_fan_out(
             stale_after_seconds=stale_after_seconds,
             limit=DISPATCH_BATCH_LIMIT,
         )
@@ -43,11 +51,20 @@ async def main() -> None:
         bot = create_bot(token=TELEGRAM_BOT_TOKEN)
         signal = DispatchSignal(redis=redis)
         moderator_ids = await UserRoleRepository(redis=redis).get(role=UserRole.MODERATOR)
-        ctx = build_fanout_context(
-            pool=pool,
-            redis=redis,
+        rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
+        service = OrderFanoutService(
             bot=bot,
-            excluded_user_ids=moderator_ids,
+            orders=OrderRepository(pool=pool),
+            offers=OrderOfferRepository(pool=pool),
+            profiles=UserProfileRepository(pool=pool),
+            order_manager=OrderManager(
+                online_price_index=OnlinePriceIndex(redis=redis),
+                rating=rating,
+            ),
+            rating=rating,
+            pending=PendingOrdersRepository(redis=redis),
+            deadlines=OfferDeadlineQueue(redis=redis),
+            excluded_user_ids=frozenset(moderator_ids),
         )
         logger.info("starting dispatcher")
         try:
@@ -55,10 +72,10 @@ async def main() -> None:
                 try:
                     async with signal.subscribe() as wakes:
                         # Sweep once on (re)connect to drain backlog before waiting.
-                        await _safe_sweep(ctx=ctx, stale_after_seconds=stale_after)
+                        await _safe_sweep(service=service, stale_after_seconds=stale_after)
                         while True:
                             await wakes.wait(timeout_seconds=DISPATCH_BACKSTOP_SECONDS)
-                            await _safe_sweep(ctx=ctx, stale_after_seconds=stale_after)
+                            await _safe_sweep(service=service, stale_after_seconds=stale_after)
                 except RedisError:
                     logger.warning("dispatch wake channel dropped; reconnecting", exc_info=True)
                     await asyncio.sleep(_RECONNECT_DELAY_SECONDS)

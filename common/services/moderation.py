@@ -1,139 +1,98 @@
-import html
 import logging
 from collections.abc import Collection
-from datetime import time
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
-from common.catalog.packages import format_prices
-from common.catalog.tiers import Tier, tier_cap_label, tier_for_packages
+from common.catalog.tiers import tier_for_packages
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
+from common.rendering.moderation import render_pending_review
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
 
 logger = logging.getLogger(__name__)
 
-_TIME_FORMAT = "%H:%M"
 
+class ModerationService:
+    def __init__(
+        self,
+        *,
+        profiles: UserProfileRepository,
+        online_price_index: OnlinePriceIndex,
+    ) -> None:
+        self._profiles = profiles
+        self._online_price_index = online_price_index
 
-def _fmt_time(value: time | None) -> str:
-    return value.strftime(_TIME_FORMAT) if value is not None else "-"
+    async def is_moderator(self, *, moderator_ids: Collection[int], tg_id: int) -> bool:
+        if not moderator_ids:
+            return False
+        profile = await self._profiles.get_by_tg_id(tg_id=tg_id)
+        return profile is not None and profile.id in moderator_ids
 
+    async def is_staff(
+        self,
+        *,
+        admin_ids: Collection[int],
+        moderator_ids: Collection[int],
+        tg_id: int,
+    ) -> bool:
+        if not admin_ids and not moderator_ids:
+            return False
+        profile = await self._profiles.get_by_tg_id(tg_id=tg_id)
+        if profile is None:
+            return False
+        return profile.id in admin_ids or profile.id in moderator_ids
 
-def _fmt_packages(packages: tuple[int, ...] | None) -> str:
-    return ", ".join(str(pkg) for pkg in packages) if packages else "-"
+    async def deactivate_and_notify(
+        self,
+        *,
+        bot: Bot,
+        moderator_ids: Collection[int],
+        profile: UserProfile,
+    ) -> UserProfile:
+        updated = await self._profiles.deactivate(profile_id=profile.id)
+        await self._online_price_index.remove(user_id=updated.id)
+        await self._broadcast(bot=bot, moderator_ids=moderator_ids, profile=updated)
+        return updated
 
-
-def _fmt_yes_no(value: bool | None) -> str:
-    if value is None:
-        return "-"
-    return "yes" if value else "no"
-
-
-def _fmt_tier(tier: Tier) -> str:
-    return f"{int(tier)} ({tier_cap_label(tier)})"
-
-
-def render_pending_review(*, profile: UserProfile, tier: Tier) -> str:
-    text = (
-        "#pending user awaiting moderation\n"
-        f"tg_id: {profile.tg_id}\n"
-        f"works alone: {_fmt_yes_no(profile.works_alone)}\n"
-        f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
-        f"tier: {_fmt_tier(tier)}\n"
-        f"packages: {_fmt_packages(profile.packages)}\n"
-        f"prices: {format_prices(profile.prices)}\n"
-        f"withdrawal: {profile.withdrawal_method or '-'}\n"
-        f"work hours: {_fmt_time(profile.work_start)}-{_fmt_time(profile.work_end)}"
-    )
-    return html.escape(text)
-
-
-async def _broadcast(
-    *,
-    bot: Bot,
-    moderator_ids: Collection[int],
-    profiles: UserProfileRepository,
-    profile: UserProfile,
-) -> None:
-    # On first registration the stored tier is still the BASIC default, so this
-    # resolves to the tier required by the user's largest pack; an already-assigned
-    # higher tier (e.g. a prior approval) is preserved instead.
-    tier = max(profile.tier, tier_for_packages(profile.packages or ()))
-    text = render_pending_review(profile=profile, tier=tier)
-    markup = moderation_decision_kb(
-        profile_id=profile.id,
-        with_codes=profile.with_codes,
-        tier=int(tier),
-    )
-    tg_ids = await profiles.get_tg_ids(profile_ids=moderator_ids)
-    for moderator_id in moderator_ids:
-        tg_id = tg_ids.get(moderator_id)
-        if tg_id is None:
-            logger.warning(
-                "cannot resolve tg_id for moderator_id=%s profile_id=%s",
-                moderator_id,
-                profile.id,
-            )
-            continue
-        try:
-            await bot.send_message(
-                chat_id=tg_id,
-                text=text,
-                reply_markup=markup,
-            )
-        except TelegramAPIError:
-            logger.exception(
-                "failed to notify moderator_id=%s tg_id=%s profile_id=%s",
-                moderator_id,
-                tg_id,
-                profile.id,
-            )
-
-
-async def is_moderator(
-    *,
-    profiles: UserProfileRepository,
-    moderator_ids: Collection[int],
-    tg_id: int,
-) -> bool:
-    if not moderator_ids:
-        return False
-    profile = await profiles.get_by_tg_id(tg_id=tg_id)
-    return profile is not None and profile.id in moderator_ids
-
-
-async def is_staff(
-    *,
-    profiles: UserProfileRepository,
-    admin_ids: Collection[int],
-    moderator_ids: Collection[int],
-    tg_id: int,
-) -> bool:
-    if not admin_ids and not moderator_ids:
-        return False
-    profile = await profiles.get_by_tg_id(tg_id=tg_id)
-    if profile is None:
-        return False
-    return profile.id in admin_ids or profile.id in moderator_ids
-
-
-async def deactivate_and_notify(
-    *,
-    bot: Bot,
-    moderator_ids: Collection[int],
-    profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
-    profile: UserProfile,
-) -> UserProfile:
-    updated = await profiles.deactivate(profile_id=profile.id)
-    await online_price_index.remove(user_id=updated.id)
-    await _broadcast(
-        bot=bot,
-        moderator_ids=moderator_ids,
-        profiles=profiles,
-        profile=updated,
-    )
-    return updated
+    async def _broadcast(
+        self,
+        *,
+        bot: Bot,
+        moderator_ids: Collection[int],
+        profile: UserProfile,
+    ) -> None:
+        # On first registration the stored tier is still the BASIC default, so this
+        # resolves to the tier required by the user's largest pack; an already-assigned
+        # higher tier (e.g. a prior approval) is preserved instead.
+        tier = max(profile.tier, tier_for_packages(profile.packages or ()))
+        text = render_pending_review(profile=profile, tier=tier)
+        markup = moderation_decision_kb(
+            profile_id=profile.id,
+            with_codes=profile.with_codes,
+            tier=int(tier),
+        )
+        tg_ids = await self._profiles.get_tg_ids(profile_ids=moderator_ids)
+        for moderator_id in moderator_ids:
+            tg_id = tg_ids.get(moderator_id)
+            if tg_id is None:
+                logger.warning(
+                    "cannot resolve tg_id for moderator_id=%s profile_id=%s",
+                    moderator_id,
+                    profile.id,
+                )
+                continue
+            try:
+                await bot.send_message(
+                    chat_id=tg_id,
+                    text=text,
+                    reply_markup=markup,
+                )
+            except TelegramAPIError:
+                logger.exception(
+                    "failed to notify moderator_id=%s tg_id=%s profile_id=%s",
+                    moderator_id,
+                    tg_id,
+                    profile.id,
+                )

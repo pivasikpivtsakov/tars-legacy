@@ -29,10 +29,9 @@ from common.catalog.tiers import (
     max_package_for_tier,
 )
 from common.models.user_profiles import UserProfile
-from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.moderation import deactivate_and_notify
+from common.services.moderation import ModerationService
 
 _PACK_MSG_KEY = "pack_msg_id"
 _PRICING_SIZE_KEY = "pricing_size"
@@ -381,7 +380,7 @@ async def save_profile_from_data(
     data: Mapping[str, Any],
     bot: Bot,
     profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
+    moderation: ModerationService,
     moderator_ids: Collection[int],
 ) -> UserProfile:
     prices = {int(size): price for size, price in (data["prices"] or {}).items()}
@@ -394,11 +393,9 @@ async def save_profile_from_data(
         work_start=time.fromisoformat(data["work_start"]),
         work_end=time.fromisoformat(data["work_end"]),
     )
-    await deactivate_and_notify(
+    await moderation.deactivate_and_notify(
         bot=bot,
         moderator_ids=moderator_ids,
-        profiles=profiles,
-        online_price_index=online_price_index,
         profile=profile,
     )
     return profile
@@ -410,7 +407,7 @@ async def finish_registration(
     state: FSMContext,
     bot: Bot,
     profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
+    moderation: ModerationService,
     moderator_ids: Collection[int],
 ) -> None:
     data = await state.get_data()
@@ -419,7 +416,7 @@ async def finish_registration(
         data=data,
         bot=bot,
         profiles=profiles,
-        online_price_index=online_price_index,
+        moderation=moderation,
         moderator_ids=moderator_ids,
     )
     await state.set_state(Registration.finished_filling)
@@ -474,7 +471,7 @@ async def save_edits(
     state: FSMContext,
     bot: Bot,
     profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
+    moderation: ModerationService,
     moderator_ids: Collection[int],
 ) -> None:
     updated = await save_profile_from_data(
@@ -482,7 +479,7 @@ async def save_edits(
         data=await state.get_data(),
         bot=bot,
         profiles=profiles,
-        online_price_index=online_price_index,
+        moderation=moderation,
         moderator_ids=moderator_ids,
     )
     await state.clear()

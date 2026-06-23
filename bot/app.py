@@ -38,6 +38,7 @@ from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService
 from common.services.dispatch_signal import DispatchSignal
 from common.services.external_order_api import ExternalOrderApi
+from common.services.moderation import ModerationService
 from common.services.order_processing import OrderLifecycle
 from common.services.request_service import RequestService
 from common.services.user_profiles import UserProfileService
@@ -92,6 +93,10 @@ def build_dispatcher(
     dispatcher["roles"] = roles
     dispatcher["bot_switch"] = bot_switch
     dispatcher["broadcast"] = broadcast
+    dispatcher["moderation"] = ModerationService(
+        profiles=profiles,
+        online_price_index=online_price_index,
+    )
     dispatcher.update.outer_middleware(LoggingContextMiddleware())
     dispatcher.update.outer_middleware(RoleContextMiddleware(roles=roles))
     dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))

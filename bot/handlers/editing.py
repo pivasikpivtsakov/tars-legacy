@@ -15,8 +15,8 @@ from bot.keyboards.profile import (
 from bot.keyboards.start import OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.user_profiles import UserProfile
-from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.user_profiles import UserProfileRepository
+from common.services.moderation import ModerationService
 
 router = Router(name="editing")
 
@@ -106,7 +106,7 @@ async def save_edit(
     state: FSMContext,
     bot: Bot,
     profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
+    moderation: ModerationService,
     moderator_ids: frozenset[int],
 ) -> None:
     await fields.save_edits(
@@ -114,6 +114,6 @@ async def save_edit(
         state=state,
         bot=bot,
         profiles=profiles,
-        online_price_index=online_price_index,
+        moderation=moderation,
         moderator_ids=moderator_ids,
     )

@@ -17,7 +17,7 @@ from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.services.dispatch_signal import DispatchSignal
-from common.services.offer_expiry import expire_offers
+from common.services.offer_expiry import OfferExpiryService
 
 logger = logging.getLogger(__name__)
 
@@ -34,20 +34,20 @@ async def main() -> None:
         pending = PendingOrdersRepository(redis=redis)
         deadlines = OfferDeadlineQueue(redis=redis)
         dispatch = DispatchSignal(redis=redis)
+        expiry = OfferExpiryService(
+            offers=offers,
+            rating=rating,
+            pending=pending,
+            bot=bot,
+            dispatch=dispatch,
+        )
 
         logger.info("starting offer expirer")
         try:
             while True:
                 due = await deadlines.claim_due(now_ts=time.time(), limit=_CLAIM_BATCH)
                 try:
-                    await expire_offers(
-                        offers=offers,
-                        rating=rating,
-                        pending=pending,
-                        bot=bot,
-                        dispatch=dispatch,
-                        deadlines=due,
-                    )
+                    await expiry.expire_offers(deadlines=due)
                 except Exception:
                     logger.exception("offer expiry batch failed (count=%d)", len(due))
                 await asyncio.sleep(OFFER_EXPIRY_POLL_SECONDS)

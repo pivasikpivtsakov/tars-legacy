@@ -3,12 +3,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from common.models.orders import Order, OrderStatus
-from common.services import order_fanout
-from common.services.order_fanout import (
-    FanoutContext,
-    offer_order_to_next_user,
-    sweep_and_fan_out,
-)
+from common.services.order_fanout import OrderFanoutService
 from common.services.order_processing import RankedCandidate
 
 
@@ -191,7 +186,7 @@ class _FakeDeadlines:
         )
 
 
-def _ctx(**overrides: object) -> FanoutContext:
+def _service(**overrides: object) -> OrderFanoutService:
     defaults: dict[str, object] = {
         "bot": _FakeBot(),
         "orders": _FakeOrders(),
@@ -204,15 +199,15 @@ def _ctx(**overrides: object) -> FanoutContext:
         "excluded_user_ids": frozenset(),
     }
     defaults.update(overrides)
-    return FanoutContext(**defaults)
+    return OrderFanoutService(**defaults)
 
 
 def test_release_not_taken_is_noop_on_empty() -> None:
     rating = _FakeRating()
     pending = _FakePending()
-    ctx = _ctx(rating=rating, pending=pending)
+    service = _service(rating=rating, pending=pending)
 
-    asyncio.run(order_fanout._release_not_taken(ctx=ctx, user_ids=[]))
+    asyncio.run(service._release_not_taken(user_ids=[]))
 
     assert rating.not_taken == []
     assert pending.released_many == []
@@ -224,9 +219,9 @@ def test_sweep_recovers_orphan_then_offers() -> None:
     orders = _FakeOrders(due=[order])
     rating = _FakeRating()
     pending = _FakePending()
-    ctx = _ctx(offers=offers, orders=orders, rating=rating, pending=pending)
+    service = _service(offers=offers, orders=orders, rating=rating, pending=pending)
 
-    asyncio.run(sweep_and_fan_out(ctx=ctx, stale_after_seconds=45, limit=100))
+    asyncio.run(service.sweep_and_fan_out(stale_after_seconds=45, limit=100))
 
     assert orders.due_calls == [(45, 100)]
     assert offers.expire_offered_calls == [5, 5]  # recovery cleanup + no-candidates branch
@@ -254,7 +249,7 @@ def test_offer_order_to_next_user_offers_and_records_deadline() -> None:
     profiles = _FakeProfiles(tg_id=chat_id)
     order_manager = _FakeOrderManager(candidates=[_candidate(user_id=user_id)])
     deadlines = _FakeDeadlines()
-    ctx = _ctx(
+    service = _service(
         offers=offers,
         pending=pending,
         orders=orders,
@@ -265,7 +260,7 @@ def test_offer_order_to_next_user_offers_and_records_deadline() -> None:
     )
 
     order = _order(status=OrderStatus.PENDING, order_id=order_id)
-    asyncio.run(offer_order_to_next_user(ctx=ctx, order=order))
+    asyncio.run(service.offer_order_to_next_user(order=order))
 
     assert offers.record_offer_calls == [(order_id, user_id)]
     assert [reserved for reserved, _ in pending.reserved] == [user_id]
@@ -290,7 +285,7 @@ def test_offer_order_rolls_back_when_tg_id_missing() -> None:
     profiles = _FakeProfiles(tg_id=None)
     order_manager = _FakeOrderManager(candidates=[_candidate(user_id=user_id)])
     deadlines = _FakeDeadlines()
-    ctx = _ctx(
+    service = _service(
         offers=offers,
         pending=pending,
         orders=orders,
@@ -300,7 +295,7 @@ def test_offer_order_rolls_back_when_tg_id_missing() -> None:
     )
 
     order = _order(status=OrderStatus.PENDING, order_id=order_id)
-    asyncio.run(offer_order_to_next_user(ctx=ctx, order=order))
+    asyncio.run(service.offer_order_to_next_user(order=order))
 
     assert offers.record_offer_calls == [(order_id, user_id)]
     assert offers.expire_one_calls == [(order_id, user_id)]  # rollback expired the offer
