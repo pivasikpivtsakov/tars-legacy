@@ -118,6 +118,9 @@ msgstr "✖ Cancel"
 msgid "registration.btn_done"
 msgstr "Done"
 
+msgid "registration.pack_use_buttons"
+msgstr "To set a price, tap a pack and then “Set price” or “Change price” — don't type the price here directly."
+
 msgid "registration.no_packages_selected"
 msgstr "Pick at least one package."
 

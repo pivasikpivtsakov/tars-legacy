@@ -118,6 +118,9 @@ msgstr "✖ Отмена"
 msgid "registration.btn_done"
 msgstr "Готово"
 
+msgid "registration.pack_use_buttons"
+msgstr "Чтобы указать цену, нажми на пак, а затем «Указать цену» или «Изменить цену» — не вводи цену здесь напрямую."
+
 msgid "registration.no_packages_selected"
 msgstr "Выбери хотя бы один пакет."
 

@@ -2,6 +2,7 @@ from aiogram import F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.i18n import gettext as _
 
 from bot.forms import fields
 from bot.forms.states import (
@@ -65,6 +66,11 @@ async def pack_cancel(callback: CallbackQuery, state: FSMContext) -> None:
         await state.set_state(packages_state)
     await fields.cancel_pack(callback=callback, state=state)
     await callback.answer()
+
+
+@router.message(StateFilter(*PACKAGES_STATES), F.text)
+async def pack_text_reminder(message: Message) -> None:
+    await message.answer(_("registration.pack_use_buttons"))
 
 
 @router.message(StateFilter(*PRICES_STATES), F.text)

@@ -4,7 +4,6 @@ from enum import StrEnum
 from typing import Any
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
@@ -21,6 +20,7 @@ from bot.keyboards.profile import (
     with_codes_kb,
     works_alone_kb,
 )
+from bot.utils.telegram import ignore_message_gone
 from common.catalog.packages import format_prices, format_prices_table
 from common.catalog.tiers import (
     TIER_MAX_AMOUNT,
@@ -296,18 +296,13 @@ async def _rerender_packages_grid(*, message: Message, state: FSMContext) -> Non
     prices = _prices_map(data)
     text = _packages_text(prices=prices, tier=data.get("tier"))
     markup = _packages_markup(prices)
-    message_id = data.get(_PACK_MSG_KEY)
-    if message_id is not None:
-        try:
-            await message.bot.edit_message_text(
-                text=text,
+    old_message_id = data.get(_PACK_MSG_KEY)
+    if old_message_id is not None:
+        with ignore_message_gone():
+            await message.bot.delete_message(
                 chat_id=message.chat.id,
-                message_id=message_id,
-                reply_markup=markup,
+                message_id=old_message_id,
             )
-            return
-        except TelegramBadRequest:
-            pass
     sent = await message.answer(text, reply_markup=markup)
     await state.update_data({_PACK_MSG_KEY: sent.message_id})
 
