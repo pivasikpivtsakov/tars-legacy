@@ -1,8 +1,10 @@
 import html
 from datetime import time
 
+from aiogram.utils.i18n import gettext as _
+
 from common.catalog.packages import format_prices
-from common.catalog.tiers import Tier, tier_cap_label
+from common.catalog.tiers import TIER_NAME_KEY, Tier, tier_cap_label
 from common.models.user_profiles import UserProfile
 
 _TIME_FORMAT = "%H:%M"
@@ -23,14 +25,14 @@ def _fmt_yes_no(value: bool | None) -> str:
 
 
 def _fmt_tier(tier: Tier) -> str:
-    return f"{int(tier)} ({tier_cap_label(tier)})"
+    return f"{_(TIER_NAME_KEY[tier])} ({tier_cap_label(tier)})"
 
 
 def render_pending_review(*, profile: UserProfile, tier: Tier) -> str:
     text = (
         "#pending user awaiting moderation\n"
         f"tg_id: {profile.tg_id}\n"
-        f"works alone: {_fmt_yes_no(profile.works_alone)}\n"
+        f"chat addable: {_fmt_yes_no(profile.chat_addable)}\n"
         f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
         f"tier: {_fmt_tier(tier)}\n"
         f"packages: {_fmt_packages(profile.packages)}\n"

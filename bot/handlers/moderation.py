@@ -1,12 +1,13 @@
 import html
 import logging
+from decimal import Decimal
 
-from aiogram import Bot, Router
+from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import BaseStorage, StorageKey
-from aiogram.types import CallbackQuery, User
+from aiogram.types import CallbackQuery, Message, User
 from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
@@ -26,6 +27,7 @@ from common.keyboards.moderation import (
 )
 from common.models.user_profiles import UserProfile
 from common.rendering.moderation import render_pending_review
+from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import ModerationService
 
@@ -41,11 +43,11 @@ _LOCALE_KEY = "locale"
 class _IsModerator(BaseFilter):
     async def __call__(
         self,
-        callback: CallbackQuery,
+        event: Message | CallbackQuery,
         moderator_ids: frozenset[int],
         moderation: ModerationService,
     ) -> bool:
-        user = callback.from_user
+        user = event.from_user
         if user is None:
             return False
         return await moderation.is_moderator(
@@ -150,7 +152,7 @@ async def open_pack_editor(
             _MOD_PROFILE_ID_KEY: callback_data.profile_id,
             _MOD_WITH_CODES_KEY: callback_data.with_codes,
             "tier": callback_data.tier,
-            "prices": {str(size): price for size, price in (profile.prices or {}).items()},
+            "prices": {str(size): str(price) for size, price in (profile.prices or {}).items()},
         },
     )
     await fields.show_packages_grid(target=callback, state=state)
@@ -158,25 +160,46 @@ async def open_pack_editor(
 
 
 @router.callback_query(Moderation.packages, PackagesDoneCB.filter(), _is_moderator)
-async def save_packs(
+async def start_pack_pricing(
     callback: CallbackQuery,
     state: FSMContext,
-    profiles: UserProfileRepository,
+    pack_price_limits: PackPriceLimitRepository,
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
+        return
+    await fields.start_price_entry(
+        callback=callback,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    )
+    await callback.answer()
+
+
+@router.message(Moderation.prices, F.text, _is_moderator)
+async def save_packs(
+    message: Message,
+    state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
+    profiles: UserProfileRepository,
+) -> None:
+    if not await fields.submit_pack_price(
+        message=message,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    ):
         return
     data = await state.get_data()
     profile_id = data[_MOD_PROFILE_ID_KEY]
     with_codes = data[_MOD_WITH_CODES_KEY]
-    prices = {int(size): int(price) for size, price in data["prices"].items()}
+    prices = {int(size): Decimal(str(price)) for size, price in data["prices"].items()}
     try:
         profile = await profiles.set_prices(profile_id=profile_id, prices=prices)
     except LookupError:
-        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
+        await message.answer(_("moderation.profile_not_found"))
         return
     tier = max(Tier(data["tier"]), tier_for_packages(prices))
     await state.set_state(None)
-    await callback.message.edit_text(
+    await message.answer(
         render_pending_review(profile=profile, tier=tier),
         reply_markup=moderation_decision_kb(
             profile_id=profile_id,
@@ -184,7 +207,6 @@ async def save_packs(
             tier=int(tier),
         ),
     )
-    await callback.answer(_("moderation.packages_saved"))
 
 
 @router.callback_query(ModApproveCB.filter(), _is_moderator)

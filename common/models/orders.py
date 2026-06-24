@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -46,7 +47,7 @@ class Order:
     closed_at: datetime | None
     taken_at: datetime | None
     taken_by: int | None
-    taken_price: int | None
+    taken_price: Decimal | None
     created_at: datetime
     updated_at: datetime
     external_status: ExternalOrderStatus

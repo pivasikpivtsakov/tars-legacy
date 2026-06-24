@@ -79,8 +79,8 @@ msgstr "Your profile is on moderation. Please wait for approval."
 msgid "withdraw.placeholder"
 msgstr "Withdrawal flow is not wired yet. Tap Back to return."
 
-msgid "registration.ask_works_alone"
-msgstr "Do you work alone?"
+msgid "registration.ask_chat_addable"
+msgstr "Do you want to add the bot to a group chat with several people?"
 
 msgid "registration.btn_yes"
 msgstr "Yes"
@@ -89,28 +89,13 @@ msgid "registration.btn_no"
 msgstr "No"
 
 msgid "registration.ask_with_codes"
-msgstr "Do you work with codes?"
+msgstr "Do you work with our codes, or on your own?"
 
 msgid "registration.ask_packages"
-msgstr "Which packages do you make? Tap a pack to set its price, add as many as you want, then press Done."
+msgstr "Which packs do you make? Tap the packs to select them, then press Done to set prices."
 
 msgid "registration.your_packs"
 msgstr "Your packs and prices:\npack   price\n{prices}"
-
-msgid "registration.pack_confirm"
-msgstr "Do you make the {size} UC pack? Tap “Set price” to add it."
-
-msgid "registration.pack_manage"
-msgstr "Pack {size} UC — current price: {price}."
-
-msgid "registration.btn_set_price"
-msgstr "✅ Set price"
-
-msgid "registration.btn_change_price"
-msgstr "✏️ Change price"
-
-msgid "registration.btn_remove_pack"
-msgstr "🗑 Remove"
 
 msgid "registration.btn_cancel_pack"
 msgstr "✖ Cancel"
@@ -119,25 +104,25 @@ msgid "registration.btn_done"
 msgstr "Done"
 
 msgid "registration.pack_use_buttons"
-msgstr "To set a price, tap a pack and then “Set price” or “Change price” — don't type the price here directly."
+msgstr "Tap the packs to select them, then press Done — don't type here."
 
 msgid "registration.no_packages_selected"
 msgstr "Pick at least one package."
 
 msgid "registration.package_above_tier"
-msgstr "Your tier allows orders up to {cap}. The largest package you can select is {max_package}."
+msgstr "The {max_package} UC pack is the largest you can offer on your {tier} tier."
 
 msgid "registration.ask_pack_price"
-msgstr "What is your price for the {size} UC pack? Send a whole number (1-{limit})."
+msgstr "Your price for the <code>{size}</code> UC pack?\nPrevious: <code>{prev}</code>\nMaximum: <code>{limit}</code>\nSend a number, up to 2 decimals (e.g. 10.50)."
 
 msgid "registration.invalid_price"
-msgstr "I couldn't parse that. Please send a whole number between 1 and {limit}."
+msgstr "I couldn't parse that. Please send a positive number up to <code>{limit}</code>, with at most 2 decimals."
 
 msgid "registration.price_too_high"
-msgstr "That price is too high — the maximum for the {size} UC pack is {limit}. Send a whole number between 1 and {limit}."
+msgstr "That price is too high — the maximum for the <code>{size}</code> UC pack is <code>{limit}</code>. Send a positive number up to <code>{limit}</code>."
 
 msgid "registration.ask_withdrawal_method"
-msgstr "How do you withdraw your money?"
+msgstr "Enter only TRC20 wallets. Don't use exchange wallets — they can be frozen."
 
 msgid "registration.ask_work_start"
 msgstr "What time do you start working? (HH:MM, Moscow time)"
@@ -152,16 +137,16 @@ msgid "registration.work_end_before_start"
 msgstr "End time must be later than start time. Please send the end time again."
 
 msgid "registration.done"
-msgstr "Got it: solo={works_alone}, with codes={with_codes}, packages={packages}, prices={prices}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
+msgstr "Got it: group chat={chat_addable}, with codes={with_codes}, packages={packages}, prices={prices}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
 
 msgid "registration.finished_filling"
 msgstr "Registration already finished. Use /start to open the menu."
 
 msgid "edit.title"
-msgstr "Edit your profile, then press Save.\n\nWork alone: {works_alone}\nWith codes: {with_codes}\nPackages: {packages}\nPrices: {prices}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
+msgstr "Edit your profile, then press Save.\n\nAdd to group chat: {chat_addable}\nWith codes: {with_codes}\nPackages: {packages}\nPrices: {prices}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
 
-msgid "edit.field_works_alone"
-msgstr "Work alone"
+msgid "edit.field_chat_addable"
+msgstr "Add to group chat"
 
 msgid "edit.field_with_codes"
 msgstr "With codes"
@@ -212,13 +197,22 @@ msgid "admin.btn_pack_limits_reset"
 msgstr "Reset to defaults"
 
 msgid "admin.pack_limits_prompt"
-msgstr "Send the new max price for the {size} UC pack (current: {current}). Whole number."
+msgstr "Send the new max price for the {size} UC pack (current: {current}). Up to 2 decimals."
 
 msgid "admin.pack_limits_invalid"
-msgstr "I couldn't parse that. Please send a whole number between 1 and {max}."
+msgstr "I couldn't parse that. Please send a positive number up to {max}, with at most 2 decimals."
 
 msgid "admin.pack_limits_reset_done"
 msgstr "Limits reset to defaults."
+
+msgid "tier.basic"
+msgstr "Basic"
+
+msgid "tier.standard"
+msgstr "Standard"
+
+msgid "tier.unlimited"
+msgstr "Unlimited"
 
 msgid "moderation.profile_not_found"
 msgstr "user not found"

@@ -1,15 +1,21 @@
 from collections.abc import Collection, Mapping
 from datetime import time
+from decimal import Decimal
 
 import asyncpg
 
 from common.catalog.tiers import Tier
 from common.models.user_profiles import UserProfile, UserProfileStatus
 
+
+def _dump_prices(prices: Mapping[int, Decimal]) -> dict[str, str]:
+    return {str(size): str(price) for size, price in prices.items()}
+
+
 _TABLE = "user_profiles"
 
 _SELECT_COLUMNS = (
-    "id, tg_id, works_alone, prices, withdrawal_method, "
+    "id, tg_id, chat_addable, prices, withdrawal_method, "
     "work_start, work_end, is_online, with_codes, status, balance, tier"
 )
 
@@ -81,32 +87,32 @@ class UserProfileRepository:
         self,
         *,
         profile_id: int,
-        prices: Mapping[int, int],
+        prices: Mapping[int, Decimal],
     ) -> UserProfile:
         return await self._update_field(
             profile_id=profile_id,
             column="prices",
-            value=dict(prices),
+            value=_dump_prices(prices),
         )
 
     async def create_or_update(
         self,
         *,
         tg_id: int,
-        works_alone: bool,
+        chat_addable: bool,
         with_codes: bool,
-        prices: Mapping[int, int],
+        prices: Mapping[int, Decimal],
         withdrawal_method: str,
         work_start: time,
         work_end: time,
     ) -> UserProfile:
         row = await self._pool.fetchrow(
             f"INSERT INTO {_TABLE} "
-            f"(tg_id, works_alone, with_codes, prices, "
+            f"(tg_id, chat_addable, with_codes, prices, "
             f"withdrawal_method, work_start, work_end) "
             f"VALUES ($1, $2, $3, $4, $5, $6, $7) "
             f"ON CONFLICT (tg_id) DO UPDATE SET "
-            f"works_alone = EXCLUDED.works_alone, "
+            f"chat_addable = EXCLUDED.chat_addable, "
             f"with_codes = EXCLUDED.with_codes, "
             f"prices = EXCLUDED.prices, "
             f"withdrawal_method = EXCLUDED.withdrawal_method, "
@@ -116,9 +122,9 @@ class UserProfileRepository:
             f"updated_at = NOW() "
             f"RETURNING {_SELECT_COLUMNS}",
             tg_id,
-            works_alone,
+            chat_addable,
             with_codes,
-            dict(prices),
+            _dump_prices(prices),
             withdrawal_method,
             work_start,
             work_end,
@@ -192,7 +198,7 @@ class UserProfileRepository:
         self,
         *,
         profile_id: int,
-        amount: int,
+        amount: Decimal,
         conn: asyncpg.Connection | None = None,
     ) -> None:
         await (conn or self._pool).execute(

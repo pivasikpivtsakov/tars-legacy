@@ -6,24 +6,25 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms import fields
 from bot.forms.states import Registration
 from bot.keyboards.profile import (
+    ChatAddableCB,
     PackagesDoneCB,
     ProfileField,
     WithCodesCB,
-    WorksAloneCB,
 )
+from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import ModerationService
 
 router = Router(name="registration")
 
 
-@router.callback_query(Registration.works_alone, WorksAloneCB.filter())
-async def process_works_alone(
+@router.callback_query(Registration.chat_addable, ChatAddableCB.filter())
+async def process_chat_addable(
     callback: CallbackQuery,
-    callback_data: WorksAloneCB,
+    callback_data: ChatAddableCB,
     state: FSMContext,
 ) -> None:
-    await fields.apply_works_alone(state=state, value=callback_data.value)
+    await fields.apply_chat_addable(state=state, value=callback_data.value)
     await state.set_state(Registration.with_codes)
     await callback.message.edit_reply_markup(reply_markup=None)
     await fields.send_prompt(callback.message, ProfileField.with_codes)
@@ -46,13 +47,32 @@ async def process_with_codes(
 async def process_packages_done(
     callback: CallbackQuery,
     state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await state.set_state(Registration.withdrawal_method)
-    await fields.send_prompt(callback.message, ProfileField.withdrawal_method)
+    await fields.start_price_entry(
+        callback=callback,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    )
     await callback.answer()
+
+
+@router.message(Registration.prices, F.text)
+async def process_pack_price(
+    message: Message,
+    state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
+) -> None:
+    if not await fields.submit_pack_price(
+        message=message,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    ):
+        return
+    await state.set_state(Registration.withdrawal_method)
+    await fields.send_prompt(message, ProfileField.withdrawal_method)
 
 
 @router.message(Registration.withdrawal_method, F.text)

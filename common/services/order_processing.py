@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import StrEnum
 
 import asyncpg
@@ -23,7 +24,7 @@ from common.services.dispatch_signal import DispatchSignal
 logger = logging.getLogger(__name__)
 
 _PACKAGE_SIZES_DESC: tuple[int, ...] = tuple(sorted(PACKAGE_UNIT_COUNT, reverse=True))
-_PRICE_TOLERANCE = 0.01
+_PRICE_TOLERANCE = Decimal("0.01")
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +39,7 @@ class PackageDecomposition:
 @dataclass(frozen=True, slots=True)
 class RankedCandidate:
     user_id: int
-    full_price: int
+    full_price: Decimal
     speed_seconds: int | None
     refusal_rate: float
     complete: int
@@ -73,8 +74,11 @@ def decompose_amount(amount: int) -> PackageDecomposition:
     return PackageDecomposition(counts=tuple(sorted(counts)))
 
 
-def full_price_for(*, prices: Mapping[int, int], counts: Mapping[int, int]) -> int:
-    return sum(prices[size] * count for size, count in counts.items())
+def full_price_for(*, prices: Mapping[int, Decimal], counts: Mapping[int, int]) -> Decimal:
+    return sum(
+        (prices[size] * count for size, count in counts.items()),
+        Decimal(0),
+    )
 
 
 async def forward_to_third_party(*, original_id: int) -> None:
@@ -102,7 +106,7 @@ def _cheapest_price_bucket(rows: Sequence[PricedCandidate]) -> list[PricedCandid
     return [row for row in rows if row.full_price <= threshold]
 
 
-def _ranking_key(candidate: RankedCandidate) -> tuple[float, float, int, int, int]:
+def _ranking_key(candidate: RankedCandidate) -> tuple[float, float, int, Decimal, int]:
     return (
         _speed_rank(candidate.speed_seconds),
         candidate.refusal_rate,

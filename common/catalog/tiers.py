@@ -18,6 +18,12 @@ TIER_MAX_AMOUNT: dict[Tier, int | None] = {
     Tier.UNLIMITED: None,
 }
 
+TIER_NAME_KEY: dict[Tier, str] = {
+    Tier.BASIC: "tier.basic",
+    Tier.STANDARD: "tier.standard",
+    Tier.UNLIMITED: "tier.unlimited",
+}
+
 
 def tier_allows(*, tier: Tier, amount: int) -> bool:
     cap = TIER_MAX_AMOUNT[tier]

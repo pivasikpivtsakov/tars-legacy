@@ -1,16 +1,18 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 
 from redis.asyncio import Redis
 
 from common.catalog.packages import PACKAGE_SIZES
 from common.models.user_profiles import UserProfile, UserProfileStatus
+from common.money import from_minor_units, to_minor_units
 
 
 @dataclass(frozen=True, slots=True)
 class PricedCandidate:
     user_id: int
-    full_price: int
+    full_price: Decimal
 
 
 _WITH_CODES_KEY = "rank:with_codes"
@@ -37,7 +39,7 @@ class OnlinePriceIndex:
         for size in PACKAGE_SIZES:
             price = prices.get(size) if prices is not None else None
             if price is not None:
-                pipe.zadd(_pkg_key(size), {member: price})
+                pipe.zadd(_pkg_key(size), {member: to_minor_units(price)})
             else:
                 pipe.zrem(_pkg_key(size), member)
         if eligible and profile.with_codes:
@@ -76,7 +78,8 @@ class OnlinePriceIndex:
         keys = {_pkg_key(size): count for size, count in package_counts.items()}
         pairs = await self._redis.zinter(keys, aggregate="SUM", withscores=True)
         return [
-            PricedCandidate(user_id=int(member), full_price=int(score)) for member, score in pairs
+            PricedCandidate(user_id=int(member), full_price=from_minor_units(int(score)))
+            for member, score in pairs
         ]
 
     async def filter_with_codes(self, *, user_ids: Sequence[int]) -> set[int]:

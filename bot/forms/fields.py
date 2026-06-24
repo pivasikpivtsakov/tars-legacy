@@ -1,5 +1,6 @@
 from collections.abc import Collection, Mapping, Sequence
 from datetime import datetime, time, timedelta, timezone
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -9,32 +10,37 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms.menu import MenuContext, render_menu
-from bot.forms.states import STATE_BY_FIELD, ProfileEdit, Registration
+from bot.forms.states import (
+    PRICES_STATE_BY_PACKAGES,
+    STATE_BY_FIELD,
+    ProfileEdit,
+    Registration,
+)
 from bot.keyboards.profile import (
     ProfileField,
+    chat_addable_kb,
     edit_menu_kb,
-    pack_confirm_kb,
-    pack_manage_kb,
     pack_price_kb,
     packages_grid_kb,
     with_codes_kb,
-    works_alone_kb,
 )
 from bot.utils.telegram import ignore_message_gone
 from common.catalog.packages import format_prices, format_prices_table
 from common.catalog.tiers import (
-    TIER_MAX_AMOUNT,
+    TIER_NAME_KEY,
     Tier,
     allowed_packages_for_tier,
     max_package_for_tier,
 )
 from common.models.user_profiles import UserProfile
+from common.money import format_money, parse_money
 from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import ModerationService
 
 _PACK_MSG_KEY = "pack_msg_id"
-_PRICING_SIZE_KEY = "pricing_size"
+_SELECTED_KEY = "selected"
+_PRICE_QUEUE_KEY = "price_queue"
 
 MSK_TZ = timezone(timedelta(hours=3))
 TIME_FORMAT = "%H:%M"
@@ -53,10 +59,9 @@ class PriceRejection(StrEnum):
     OUT_OF_RANGE = "out_of_range"
 
 
-def parse_price(raw: str, *, limit: int) -> int | PriceRejection:
-    try:
-        value = int(raw.strip())
-    except ValueError:
+def parse_price(raw: str, *, limit: Decimal) -> Decimal | PriceRejection:
+    value = parse_money(raw)
+    if value is None:
         return PriceRejection.NOT_A_NUMBER
     if value <= 0 or value > limit:
         return PriceRejection.OUT_OF_RANGE
@@ -97,8 +102,8 @@ _TEXT_PROMPT_KEYS = {
 
 
 def field_prompt(field: ProfileField) -> tuple[str, InlineKeyboardMarkup | None]:
-    if field is ProfileField.works_alone:
-        return _("registration.ask_works_alone"), works_alone_kb(
+    if field is ProfileField.chat_addable:
+        return _("registration.ask_chat_addable"), chat_addable_kb(
             yes_text=_("registration.btn_yes"),
             no_text=_("registration.btn_no"),
         )
@@ -117,7 +122,7 @@ async def send_prompt(message: Message, field: ProfileField) -> None:
 
 def _edit_labels() -> dict[ProfileField, str]:
     return {
-        ProfileField.works_alone: _("edit.field_works_alone"),
+        ProfileField.chat_addable: _("edit.field_chat_addable"),
         ProfileField.with_codes: _("edit.field_with_codes"),
         ProfileField.packages: _("edit.field_packages"),
         ProfileField.withdrawal_method: _("edit.field_withdrawal"),
@@ -126,18 +131,22 @@ def _edit_labels() -> dict[ProfileField, str]:
     }
 
 
-def _prices_map(data: Mapping[str, Any]) -> dict[int, int]:
-    return {int(size): int(price) for size, price in (data.get("prices") or {}).items()}
+def _prices_map(data: Mapping[str, Any]) -> dict[int, Decimal]:
+    return {int(size): Decimal(str(price)) for size, price in (data.get("prices") or {}).items()}
 
 
-def _store_prices(prices: Mapping[int, int]) -> dict[str, int]:
-    return {str(size): price for size, price in prices.items()}
+def _store_prices(prices: Mapping[int, Decimal]) -> dict[str, str]:
+    return {str(size): str(price) for size, price in prices.items()}
+
+
+def _selected_set(data: Mapping[str, Any]) -> set[int]:
+    return {int(size) for size in (data.get(_SELECTED_KEY) or [])}
 
 
 def _summary(template: str, data: Mapping[str, Any]) -> str:
     prices = _prices_map(data)
     return template.format(
-        works_alone=_fmt_bool(data["works_alone"]),
+        chat_addable=_fmt_bool(data["chat_addable"]),
         with_codes=_fmt_bool(data["with_codes"]),
         packages=_fmt_packages(sorted(prices)),
         prices=format_prices(prices),
@@ -149,10 +158,10 @@ def _summary(template: str, data: Mapping[str, Any]) -> str:
 
 def _profile_data(profile: UserProfile) -> dict[str, Any]:
     return {
-        "works_alone": profile.works_alone,
+        "chat_addable": profile.chat_addable,
         "with_codes": profile.with_codes,
         "tier": int(profile.tier),
-        "prices": {str(size): price for size, price in (profile.prices or {}).items()},
+        "prices": {str(size): str(price) for size, price in (profile.prices or {}).items()},
         "withdrawal_method": profile.withdrawal_method,
         "work_start": profile.work_start.isoformat() if profile.work_start else None,
         "work_end": profile.work_end.isoformat() if profile.work_end else None,
@@ -161,13 +170,13 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
 
 def _package_above_tier_message(tier: int) -> str:
     return _("registration.package_above_tier").format(
-        cap=TIER_MAX_AMOUNT[Tier(tier)],
+        tier=_(TIER_NAME_KEY[Tier(tier)]),
         max_package=max_package_for_tier(Tier(tier)),
     )
 
 
-async def apply_works_alone(*, state: FSMContext, value: bool) -> None:
-    await state.update_data(works_alone=value)
+async def apply_chat_addable(*, state: FSMContext, value: bool) -> None:
+    await state.update_data(chat_addable=value)
 
 
 async def apply_with_codes(*, state: FSMContext, value: bool) -> None:
@@ -178,101 +187,153 @@ async def apply_withdrawal(*, state: FSMContext, text: str) -> None:
     await state.update_data(withdrawal_method=text)
 
 
-def _packages_text(*, prices: Mapping[int, int], tier: int | None) -> str:
+def _packages_text(
+    *,
+    selected: Collection[int],
+    prices: Mapping[int, Decimal],
+    tier: int | None,
+) -> str:
     parts = [_("registration.ask_packages")]
-    if prices:
-        parts.append(_("registration.your_packs").format(prices=format_prices_table(prices)))
+    known = {size: prices[size] for size in sorted(selected) if size in prices}
+    if known:
+        parts.append(_("registration.your_packs").format(prices=format_prices_table(known)))
     if tier is not None:
         parts.append(_package_above_tier_message(tier))
     return "\n\n".join(parts)
 
 
-def _packages_markup(prices: Mapping[int, int]) -> InlineKeyboardMarkup:
-    return packages_grid_kb(selected=sorted(prices), done_text=_("registration.btn_done"))
+def _packages_markup(selected: Collection[int]) -> InlineKeyboardMarkup:
+    return packages_grid_kb(selected=sorted(selected), done_text=_("registration.btn_done"))
 
 
-async def show_packages_grid(*, target: Message | CallbackQuery, state: FSMContext) -> None:
+async def _render_grid(*, target: Message | CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    prices = _prices_map(data)
-    text = _packages_text(prices=prices, tier=data.get("tier"))
-    markup = _packages_markup(prices)
+    selected = _selected_set(data)
+    text = _packages_text(selected=selected, prices=_prices_map(data), tier=data.get("tier"))
+    markup = _packages_markup(selected)
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(text, reply_markup=markup)
         message_id = target.message.message_id
     else:
         sent = await target.answer(text, reply_markup=markup)
         message_id = sent.message_id
-    await state.update_data({_PACK_MSG_KEY: message_id, _PRICING_SIZE_KEY: None})
+    await state.update_data({_PACK_MSG_KEY: message_id})
 
 
-async def open_pack_panel(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
+async def show_packages_grid(*, target: Message | CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    prices = _prices_map(data)
+    await state.update_data({_SELECTED_KEY: sorted(_prices_map(data))})
+    await _render_grid(target=target, state=state)
+
+
+async def toggle_pack(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
+    data = await state.get_data()
+    selected = _selected_set(data)
     tier = data.get("tier")
     if (
-        value not in prices
+        value not in selected
         and tier is not None
         and value not in allowed_packages_for_tier(Tier(tier))
     ):
         await callback.answer(_package_above_tier_message(tier), show_alert=True)
         return
-    if value in prices:
-        text = _("registration.pack_manage").format(size=value, price=prices[value])
-        markup = pack_manage_kb(
-            value=value,
-            change_text=_("registration.btn_change_price"),
-            remove_text=_("registration.btn_remove_pack"),
-            cancel_text=_("registration.btn_cancel_pack"),
-        )
+    if value in selected:
+        selected.discard(value)
     else:
-        text = _("registration.pack_confirm").format(size=value)
-        markup = pack_confirm_kb(
-            value=value,
-            yes_text=_("registration.btn_set_price"),
-            cancel_text=_("registration.btn_cancel_pack"),
-        )
-    await callback.message.edit_text(text, reply_markup=markup)
-
-
-async def prompt_pack_price(
-    *,
-    callback: CallbackQuery,
-    state: FSMContext,
-    value: int,
-    pack_price_limits: PackPriceLimitRepository,
-) -> None:
-    await state.update_data(
-        {_PRICING_SIZE_KEY: value, _PACK_MSG_KEY: callback.message.message_id},
-    )
-    limit = await pack_price_limits.get(size=value)
-    await callback.message.edit_text(
-        _("registration.ask_pack_price").format(size=value, limit=limit),
-        reply_markup=pack_price_kb(cancel_text=_("registration.btn_cancel_pack")),
-    )
-
-
-async def remove_pack(*, callback: CallbackQuery, state: FSMContext, value: int) -> None:
-    data = await state.get_data()
-    prices = _prices_map(data)
-    prices.pop(value, None)
-    await state.update_data(prices=_store_prices(prices))
-    await show_packages_grid(target=callback, state=state)
+        selected.add(value)
+    await state.update_data({_SELECTED_KEY: sorted(selected)})
+    await _render_grid(target=callback, state=state)
 
 
 async def cancel_pack(*, callback: CallbackQuery, state: FSMContext) -> None:
-    await show_packages_grid(target=callback, state=state)
+    await state.update_data({_PRICE_QUEUE_KEY: []})
+    await _render_grid(target=callback, state=state)
 
 
-async def apply_pack_price(
+async def ensure_packages_selected(
+    *,
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> bool:
+    data = await state.get_data()
+    selected = _selected_set(data)
+    if not selected:
+        await callback.answer(_("registration.no_packages_selected"), show_alert=True)
+        return False
+    tier = data.get("tier")
+    if tier is not None:
+        allowed = set(allowed_packages_for_tier(Tier(tier)))
+        if any(size not in allowed for size in selected):
+            await callback.answer(_package_above_tier_message(tier), show_alert=True)
+            return False
+    return True
+
+
+async def start_price_entry(
+    *,
+    callback: CallbackQuery,
+    state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
+) -> None:
+    await state.set_state(PRICES_STATE_BY_PACKAGES[await state.get_state()])
+    data = await state.get_data()
+    queue = sorted(_selected_set(data))
+    await state.update_data(
+        {_PRICE_QUEUE_KEY: queue, _PACK_MSG_KEY: callback.message.message_id},
+    )
+    await _prompt_next_price(
+        message=callback.message,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    )
+
+
+async def _prompt_next_price(
+    *,
+    message: Message,
+    state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
+) -> None:
+    data = await state.get_data()
+    size = int(data[_PRICE_QUEUE_KEY][0])
+    limit = await pack_price_limits.get(size=size)
+    prev = _prices_map(data).get(size)
+    text = _("registration.ask_pack_price").format(
+        size=size,
+        prev=format_money(prev) if prev is not None else "-",
+        limit=format_money(limit),
+    )
+    await _replace_pack_message(message=message, state=state, text=text)
+
+
+async def _replace_pack_message(
+    *,
+    message: Message,
+    state: FSMContext,
+    text: str,
+) -> None:
+    old_message_id = (await state.get_data()).get(_PACK_MSG_KEY)
+    if old_message_id is not None:
+        with ignore_message_gone():
+            await message.bot.delete_message(chat_id=message.chat.id, message_id=old_message_id)
+    sent = await message.answer(
+        text,
+        reply_markup=pack_price_kb(cancel_text=_("registration.btn_cancel_pack")),
+    )
+    await state.update_data({_PACK_MSG_KEY: sent.message_id})
+
+
+async def submit_pack_price(
     *,
     message: Message,
     state: FSMContext,
     pack_price_limits: PackPriceLimitRepository,
 ) -> bool:
     data = await state.get_data()
-    size = data.get(_PRICING_SIZE_KEY)
-    if size is None:
+    queue = [int(size) for size in (data.get(_PRICE_QUEUE_KEY) or [])]
+    if not queue:
         return False
+    size = queue[0]
     limit = await pack_price_limits.get(size=size)
     parsed = parse_price(message.text, limit=limit)
     if isinstance(parsed, PriceRejection):
@@ -281,29 +342,31 @@ async def apply_pack_price(
             if parsed is PriceRejection.OUT_OF_RANGE
             else "registration.invalid_price"
         )
-        await message.answer(_(rejection_key).format(size=size, limit=limit))
+        await message.answer(_(rejection_key).format(size=size, limit=format_money(limit)))
         return False
     prices = _prices_map(data)
     prices[size] = parsed
-    await state.update_data(prices=_store_prices(prices), **{_PRICING_SIZE_KEY: None})
-    await _rerender_packages_grid(message=message, state=state)
-    return True
-
-
-async def _rerender_packages_grid(*, message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    prices = _prices_map(data)
-    text = _packages_text(prices=prices, tier=data.get("tier"))
-    markup = _packages_markup(prices)
+    remaining = queue[1:]
+    if remaining:
+        await state.update_data(
+            {"prices": _store_prices(prices), _PRICE_QUEUE_KEY: remaining},
+        )
+        await _prompt_next_price(
+            message=message,
+            state=state,
+            pack_price_limits=pack_price_limits,
+        )
+        return False
+    selected = _selected_set(data)
+    pruned = {pack: prices[pack] for pack in sorted(selected) if pack in prices}
     old_message_id = data.get(_PACK_MSG_KEY)
     if old_message_id is not None:
         with ignore_message_gone():
-            await message.bot.delete_message(
-                chat_id=message.chat.id,
-                message_id=old_message_id,
-            )
-    sent = await message.answer(text, reply_markup=markup)
-    await state.update_data({_PACK_MSG_KEY: sent.message_id})
+            await message.bot.delete_message(chat_id=message.chat.id, message_id=old_message_id)
+    await state.update_data(
+        {"prices": _store_prices(pruned), _PRICE_QUEUE_KEY: [], _PACK_MSG_KEY: None},
+    )
+    return True
 
 
 async def _apply_work_time(
@@ -349,29 +412,10 @@ async def apply_work_end(*, message: Message, state: FSMContext) -> bool:
     )
 
 
-async def ensure_packages_selected(
-    *,
-    callback: CallbackQuery,
-    state: FSMContext,
-) -> bool:
-    data = await state.get_data()
-    prices = _prices_map(data)
-    if not prices:
-        await callback.answer(_("registration.no_packages_selected"), show_alert=True)
-        return False
-    tier = data.get("tier")
-    if tier is not None:
-        allowed = set(allowed_packages_for_tier(Tier(tier)))
-        if any(size not in allowed for size in prices):
-            await callback.answer(_package_above_tier_message(tier), show_alert=True)
-            return False
-    return True
-
-
 async def begin_registration(*, message: Message, state: FSMContext) -> None:
     await state.clear()
-    await state.set_state(Registration.works_alone)
-    await send_prompt(message, ProfileField.works_alone)
+    await state.set_state(Registration.chat_addable)
+    await send_prompt(message, ProfileField.chat_addable)
 
 
 async def save_profile_from_data(
@@ -383,10 +427,10 @@ async def save_profile_from_data(
     moderation: ModerationService,
     moderator_ids: Collection[int],
 ) -> UserProfile:
-    prices = {int(size): price for size, price in (data["prices"] or {}).items()}
+    prices = {int(size): Decimal(str(price)) for size, price in (data["prices"] or {}).items()}
     profile = await profiles.create_or_update(
         tg_id=tg_id,
-        works_alone=data["works_alone"],
+        chat_addable=data["chat_addable"],
         with_codes=data["with_codes"],
         prices=prices,
         withdrawal_method=data["withdrawal_method"],

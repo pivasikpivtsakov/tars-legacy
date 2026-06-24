@@ -6,15 +6,16 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms import fields
 from bot.forms.states import ProfileEdit
 from bot.keyboards.profile import (
+    ChatAddableCB,
     EditFieldCB,
     EditSaveCB,
     PackagesDoneCB,
     WithCodesCB,
-    WorksAloneCB,
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.user_profiles import UserProfile
+from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.moderation import ModerationService
 
@@ -47,13 +48,13 @@ async def open_field(
     await callback.answer()
 
 
-@router.callback_query(ProfileEdit.works_alone, WorksAloneCB.filter())
-async def edit_works_alone(
+@router.callback_query(ProfileEdit.chat_addable, ChatAddableCB.filter())
+async def edit_chat_addable(
     callback: CallbackQuery,
-    callback_data: WorksAloneCB,
+    callback_data: ChatAddableCB,
     state: FSMContext,
 ) -> None:
-    await fields.apply_works_alone(state=state, value=callback_data.value)
+    await fields.apply_chat_addable(state=state, value=callback_data.value)
     await fields.show_edit_menu(target=callback, state=state)
     await callback.answer()
 
@@ -73,11 +74,31 @@ async def edit_with_codes(
 async def edit_packages_done(
     callback: CallbackQuery,
     state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
 ) -> None:
     if not await fields.ensure_packages_selected(callback=callback, state=state):
         return
-    await fields.show_edit_menu(target=callback, state=state)
+    await fields.start_price_entry(
+        callback=callback,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    )
     await callback.answer()
+
+
+@router.message(ProfileEdit.prices, F.text)
+async def edit_pack_price(
+    message: Message,
+    state: FSMContext,
+    pack_price_limits: PackPriceLimitRepository,
+) -> None:
+    if not await fields.submit_pack_price(
+        message=message,
+        state=state,
+        pack_price_limits=pack_price_limits,
+    ):
+        return
+    await fields.show_edit_menu(target=message, state=state)
 
 
 @router.message(ProfileEdit.withdrawal_method, F.text)

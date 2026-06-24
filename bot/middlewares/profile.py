@@ -26,7 +26,7 @@ def _is_profile_complete(profile: UserProfile | None) -> bool:
     if profile is None:
         return False
     return (
-        profile.works_alone is not None
+        profile.chat_addable is not None
         and bool(profile.prices)
         and profile.withdrawal_method is not None
         and profile.work_start is not None

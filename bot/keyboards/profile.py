@@ -12,19 +12,11 @@ class PackTapCB(CallbackData, prefix="pkg_tap"):
     value: int
 
 
-class PackPriceCB(CallbackData, prefix="pkg_price"):
-    value: int
-
-
-class PackRemoveCB(CallbackData, prefix="pkg_rm"):
-    value: int
-
-
 class PackCancelCB(CallbackData, prefix="pkg_cancel"):
     pass
 
 
-class WorksAloneCB(CallbackData, prefix="wa"):
+class ChatAddableCB(CallbackData, prefix="ca"):
     value: bool
 
 
@@ -37,7 +29,7 @@ class PackagesDoneCB(CallbackData, prefix="pkg_done"):
 
 
 class ProfileField(StrEnum):
-    works_alone = "works_alone"
+    chat_addable = "chat_addable"
     with_codes = "with_codes"
     packages = "packages"
     withdrawal_method = "withdrawal_method"
@@ -70,12 +62,12 @@ def _bool_kb(
     )
 
 
-def works_alone_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
+def chat_addable_kb(*, yes_text: str, no_text: str) -> InlineKeyboardMarkup:
     return _bool_kb(
         yes_text=yes_text,
         no_text=no_text,
-        yes_callback=WorksAloneCB(value=True).pack(),
-        no_callback=WorksAloneCB(value=False).pack(),
+        yes_callback=ChatAddableCB(value=True).pack(),
+        no_callback=ChatAddableCB(value=False).pack(),
     )
 
 
@@ -102,52 +94,6 @@ def packages_grid_kb(*, selected: Iterable[int], done_text: str) -> InlineKeyboa
         ],
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-def pack_confirm_kb(*, value: int, yes_text: str, cancel_text: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=yes_text,
-                    callback_data=PackPriceCB(value=value).pack(),
-                ),
-                InlineKeyboardButton(
-                    text=cancel_text,
-                    callback_data=PackCancelCB().pack(),
-                ),
-            ],
-        ],
-    )
-
-
-def pack_manage_kb(
-    *,
-    value: int,
-    change_text: str,
-    remove_text: str,
-    cancel_text: str,
-) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=change_text,
-                    callback_data=PackPriceCB(value=value).pack(),
-                ),
-                InlineKeyboardButton(
-                    text=remove_text,
-                    callback_data=PackRemoveCB(value=value).pack(),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text=cancel_text,
-                    callback_data=PackCancelCB().pack(),
-                ),
-            ],
-        ],
-    )
 
 
 def pack_price_kb(*, cancel_text: str) -> InlineKeyboardMarkup:

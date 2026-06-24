@@ -1,7 +1,9 @@
 import json
 from collections.abc import Callable
+from decimal import Decimal
 
 from common.models.orders import Order
+from common.money import format_money
 
 
 def _decode_codes(codes: str | None) -> dict[str, object]:
@@ -11,13 +13,13 @@ def _decode_codes(codes: str | None) -> dict[str, object]:
 def render_offer_text(
     *,
     order: Order,
-    full_price: int,
+    full_price: Decimal,
     gettext: Callable[[str], str],
 ) -> str:
     return gettext("order.offer").format(
         order_id=order.id,
         amount=order.amount,
-        full_price=full_price,
+        full_price=format_money(full_price),
     )
 
 

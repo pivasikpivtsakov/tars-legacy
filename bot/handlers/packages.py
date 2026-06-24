@@ -8,16 +8,9 @@ from bot.forms import fields
 from bot.forms.states import (
     PACKAGES_STATE_BY_PRICES,
     PACKAGES_STATES,
-    PRICES_STATE_BY_PACKAGES,
     PRICES_STATES,
 )
-from bot.keyboards.profile import (
-    PackCancelCB,
-    PackPriceCB,
-    PackRemoveCB,
-    PackTapCB,
-)
-from common.repositories.pack_price_limits import PackPriceLimitRepository
+from bot.keyboards.profile import PackCancelCB, PackTapCB
 
 router = Router(name="packages")
 
@@ -28,34 +21,7 @@ async def pack_tap(
     callback_data: PackTapCB,
     state: FSMContext,
 ) -> None:
-    await fields.open_pack_panel(callback=callback, state=state, value=callback_data.value)
-    await callback.answer()
-
-
-@router.callback_query(StateFilter(*PACKAGES_STATES), PackPriceCB.filter())
-async def pack_set_price(
-    callback: CallbackQuery,
-    callback_data: PackPriceCB,
-    state: FSMContext,
-    pack_price_limits: PackPriceLimitRepository,
-) -> None:
-    await state.set_state(PRICES_STATE_BY_PACKAGES[await state.get_state()])
-    await fields.prompt_pack_price(
-        callback=callback,
-        state=state,
-        value=callback_data.value,
-        pack_price_limits=pack_price_limits,
-    )
-    await callback.answer()
-
-
-@router.callback_query(StateFilter(*PACKAGES_STATES), PackRemoveCB.filter())
-async def pack_remove(
-    callback: CallbackQuery,
-    callback_data: PackRemoveCB,
-    state: FSMContext,
-) -> None:
-    await fields.remove_pack(callback=callback, state=state, value=callback_data.value)
+    await fields.toggle_pack(callback=callback, state=state, value=callback_data.value)
     await callback.answer()
 
 
@@ -71,18 +37,3 @@ async def pack_cancel(callback: CallbackQuery, state: FSMContext) -> None:
 @router.message(StateFilter(*PACKAGES_STATES), F.text)
 async def pack_text_reminder(message: Message) -> None:
     await message.answer(_("registration.pack_use_buttons"))
-
-
-@router.message(StateFilter(*PRICES_STATES), F.text)
-async def pack_price_input(
-    message: Message,
-    state: FSMContext,
-    pack_price_limits: PackPriceLimitRepository,
-) -> None:
-    if not await fields.apply_pack_price(
-        message=message,
-        state=state,
-        pack_price_limits=pack_price_limits,
-    ):
-        return
-    await state.set_state(PACKAGES_STATE_BY_PRICES[await state.get_state()])

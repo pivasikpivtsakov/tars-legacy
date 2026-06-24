@@ -8,7 +8,7 @@ class UserSession(StatesGroup):
 
 
 class Registration(StatesGroup):
-    works_alone = State()
+    chat_addable = State()
     with_codes = State()
     packages = State()
     prices = State()
@@ -20,7 +20,7 @@ class Registration(StatesGroup):
 
 class ProfileEdit(StatesGroup):
     menu = State()
-    works_alone = State()
+    chat_addable = State()
     with_codes = State()
     packages = State()
     prices = State()
@@ -39,7 +39,7 @@ class PackPriceLimits(StatesGroup):
 
 
 REGISTRATION_INPUT_STATES = (
-    Registration.works_alone,
+    Registration.chat_addable,
     Registration.with_codes,
     Registration.packages,
     Registration.prices,
@@ -49,7 +49,7 @@ REGISTRATION_INPUT_STATES = (
 )
 
 STATE_BY_FIELD = {
-    ProfileField.works_alone: ProfileEdit.works_alone,
+    ProfileField.chat_addable: ProfileEdit.chat_addable,
     ProfileField.with_codes: ProfileEdit.with_codes,
     ProfileField.packages: ProfileEdit.packages,
     ProfileField.withdrawal_method: ProfileEdit.withdrawal_method,

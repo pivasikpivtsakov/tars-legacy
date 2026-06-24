@@ -79,8 +79,8 @@ msgstr "Твой профиль на модерации. Дождись подт
 msgid "withdraw.placeholder"
 msgstr "Вывод средств пока не подключён. Нажми «Назад», чтобы вернуться."
 
-msgid "registration.ask_works_alone"
-msgstr "Ты работаешь один?"
+msgid "registration.ask_chat_addable"
+msgstr "Хотите ли вы добавить бота в чат с несколькими людьми?"
 
 msgid "registration.btn_yes"
 msgstr "Да"
@@ -89,28 +89,13 @@ msgid "registration.btn_no"
 msgstr "Нет"
 
 msgid "registration.ask_with_codes"
-msgstr "Ты работаешь с кодами?"
+msgstr "Работаете ли вы с нашими кодами или самостоятельно?"
 
 msgid "registration.ask_packages"
-msgstr "Какие пакеты ты делаешь? Нажми на пак, чтобы указать цену, добавь сколько нужно и нажми «Готово»."
+msgstr "Какие паки ты делаешь? Отметь нужные паки и нажми «Готово», чтобы указать цены."
 
 msgid "registration.your_packs"
 msgstr "Твои паки и цены:\nпакет  цена\n{prices}"
-
-msgid "registration.pack_confirm"
-msgstr "Делаешь пак {size} UC? Нажми «Указать цену», чтобы добавить его."
-
-msgid "registration.pack_manage"
-msgstr "Пак {size} UC — текущая цена: {price}."
-
-msgid "registration.btn_set_price"
-msgstr "✅ Указать цену"
-
-msgid "registration.btn_change_price"
-msgstr "✏️ Изменить цену"
-
-msgid "registration.btn_remove_pack"
-msgstr "🗑 Удалить"
 
 msgid "registration.btn_cancel_pack"
 msgstr "✖ Отмена"
@@ -119,25 +104,25 @@ msgid "registration.btn_done"
 msgstr "Готово"
 
 msgid "registration.pack_use_buttons"
-msgstr "Чтобы указать цену, нажми на пак, а затем «Указать цену» или «Изменить цену» — не вводи цену здесь напрямую."
+msgstr "Отмечай паки кнопками, затем нажми «Готово» — не пиши сюда."
 
 msgid "registration.no_packages_selected"
 msgstr "Выбери хотя бы один пакет."
 
 msgid "registration.package_above_tier"
-msgstr "Твой тариф позволяет заказы до {cap}. Самый большой пакет, который ты можешь выбрать, — {max_package}."
+msgstr "Пак {max_package} UC — максимальный на твоём тарифе {tier}."
 
 msgid "registration.ask_pack_price"
-msgstr "Какая твоя цена за пак {size} UC? Пришли целое число (1-{limit})."
+msgstr "Твоя цена за пак <code>{size}</code> UC?\nПредыдущая: <code>{prev}</code>\nМаксимум: <code>{limit}</code>\nПришли число, до 2 знаков после точки (например, 10.50)."
 
 msgid "registration.invalid_price"
-msgstr "Не получилось распознать цену. Пришли целое число от 1 до {limit}."
+msgstr "Не получилось распознать цену. Пришли положительное число до <code>{limit}</code>, не более 2 знаков после точки."
 
 msgid "registration.price_too_high"
-msgstr "Эта цена слишком высокая — максимум для пака {size} UC составляет {limit}. Пришли целое число от 1 до {limit}."
+msgstr "Эта цена слишком высокая — максимум для пака <code>{size}</code> UC составляет <code>{limit}</code>. Пришли положительное число до <code>{limit}</code>."
 
 msgid "registration.ask_withdrawal_method"
-msgstr "Каким способом ты выводишь деньги?"
+msgstr "Введите только кошельки TRC20. Не давайте кошельки бирж — их могут заморозить."
 
 msgid "registration.ask_work_start"
 msgstr "Во сколько ты начинаешь работу? (формат HH:MM, по МСК)"
@@ -152,16 +137,16 @@ msgid "registration.work_end_before_start"
 msgstr "Время окончания должно быть позже времени начала. Пришли время окончания ещё раз."
 
 msgid "registration.done"
-msgstr "Записал: один={works_alone}, с кодами={with_codes}, пакеты={packages}, цены={prices}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
+msgstr "Записал: чат={chat_addable}, с кодами={with_codes}, пакеты={packages}, цены={prices}, вывод={withdrawal_method}, работа={work_start}-{work_end} МСК."
 
 msgid "registration.finished_filling"
 msgstr "Регистрация уже завершена. Отправь /start, чтобы открыть меню."
 
 msgid "edit.title"
-msgstr "Измени профиль и нажми «Сохранить».\n\nРаботаю один: {works_alone}\nС кодами: {with_codes}\nПакеты: {packages}\nЦены: {prices}\nВывод: {withdrawal_method}\nЧасы работы: {work_start}-{work_end} МСК"
+msgstr "Измени профиль и нажми «Сохранить».\n\nДобавлять в чат: {chat_addable}\nС кодами: {with_codes}\nПакеты: {packages}\nЦены: {prices}\nВывод: {withdrawal_method}\nЧасы работы: {work_start}-{work_end} МСК"
 
-msgid "edit.field_works_alone"
-msgstr "Работаю один"
+msgid "edit.field_chat_addable"
+msgstr "Добавлять в чат"
 
 msgid "edit.field_with_codes"
 msgstr "Работаю с кодами"
@@ -212,13 +197,22 @@ msgid "admin.btn_pack_limits_reset"
 msgstr "Сбросить по умолчанию"
 
 msgid "admin.pack_limits_prompt"
-msgstr "Пришли новую максимальную цену за пак {size} UC (текущая: {current}). Целое число."
+msgstr "Пришли новую максимальную цену за пак {size} UC (текущая: {current}). До 2 знаков после точки."
 
 msgid "admin.pack_limits_invalid"
-msgstr "Не получилось распознать значение. Пришли целое число от 1 до {max}."
+msgstr "Не получилось распознать значение. Пришли положительное число до {max}, не более 2 знаков после точки."
 
 msgid "admin.pack_limits_reset_done"
 msgstr "Лимиты сброшены по умолчанию."
+
+msgid "tier.basic"
+msgstr "Базовый"
+
+msgid "tier.standard"
+msgstr "Стандартный"
+
+msgid "tier.unlimited"
+msgstr "Безлимитный"
 
 msgid "moderation.profile_not_found"
 msgstr "пользователь не найден"

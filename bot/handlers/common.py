@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from aiogram import F, Router
 from aiogram.filters import BaseFilter, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -25,6 +27,7 @@ from bot.middlewares.profile import require_active_profile
 from common.catalog.packages import format_prices_table
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
+from common.money import format_money
 from common.repositories.online_price_index import OnlinePriceIndex
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
@@ -130,10 +133,10 @@ async def open_balance(
     callback: CallbackQuery,
     profile: UserProfile | None,
 ) -> None:
-    balance = profile.balance if profile is not None else 0
+    balance = profile.balance if profile is not None else Decimal(0)
     await show_panel(
         callback=callback,
-        text=_("start.balance").format(balance=balance),
+        text=_("start.balance").format(balance=format_money(balance)),
         markup=balance_kb(
             withdraw_text=_("start.btn_withdraw"),
             back_text=_("start.btn_back"),

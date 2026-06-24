@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from decimal import Decimal
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -17,6 +18,7 @@ from bot.keyboards.pack_limits import (
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.catalog.packages import format_prices_table
+from common.money import format_money, parse_money
 from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.services.moderation import ModerationService
 
@@ -24,7 +26,7 @@ router = Router(name="pack_limits")
 
 _LIMIT_SIZE_KEY = "pack_limit_size"
 _LIMIT_MSG_KEY = "pack_limit_msg_id"
-_MAX_PACK_LIMIT = 1_000_000
+_MAX_PACK_LIMIT = Decimal(1_000_000)
 
 
 class _IsStaff(BaseFilter):
@@ -48,17 +50,14 @@ class _IsStaff(BaseFilter):
 _is_staff = _IsStaff()
 
 
-def _parse_limit(raw: str) -> int | None:
-    try:
-        value = int(raw.strip())
-    except ValueError:
-        return None
-    if value <= 0 or value > _MAX_PACK_LIMIT:
+def _parse_limit(raw: str) -> Decimal | None:
+    value = parse_money(raw)
+    if value is None or value <= 0 or value > _MAX_PACK_LIMIT:
         return None
     return value
 
 
-def _panel_view(limits: Mapping[int, int]) -> tuple[str, InlineKeyboardMarkup]:
+def _panel_view(limits: Mapping[int, Decimal]) -> tuple[str, InlineKeyboardMarkup]:
     return (
         _("admin.pack_limits_title").format(limits=format_prices_table(limits)),
         pack_limits_kb(
@@ -102,7 +101,10 @@ async def prompt_pack_limit(
         {_LIMIT_SIZE_KEY: callback_data.size, _LIMIT_MSG_KEY: callback.message.message_id},
     )
     await callback.message.edit_text(
-        _("admin.pack_limits_prompt").format(size=callback_data.size, current=current),
+        _("admin.pack_limits_prompt").format(
+            size=callback_data.size,
+            current=format_money(current),
+        ),
         reply_markup=pack_limit_prompt_kb(cancel_text=_("registration.btn_cancel_pack")),
     )
     await callback.answer()
@@ -137,7 +139,9 @@ async def apply_pack_limit(
 ) -> None:
     value = _parse_limit(message.text)
     if value is None:
-        await message.answer(_("admin.pack_limits_invalid").format(max=_MAX_PACK_LIMIT))
+        await message.answer(
+            _("admin.pack_limits_invalid").format(max=format_money(_MAX_PACK_LIMIT)),
+        )
         return
     data = await state.get_data()
     # Caps are non-retroactive: they're only enforced at price-input time

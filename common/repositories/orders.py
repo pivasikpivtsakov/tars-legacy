@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from decimal import Decimal
 from typing import Any
 
 import asyncpg
@@ -246,7 +247,7 @@ class OrderRepository:
         *,
         order_id: int,
         user_id: int,
-        taken_price: int,
+        taken_price: Decimal,
         conn: asyncpg.Connection | None = None,
     ) -> Order | None:
         row = await (conn or self._pool).fetchrow(

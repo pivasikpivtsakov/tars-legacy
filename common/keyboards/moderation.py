@@ -1,7 +1,8 @@
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.i18n import gettext as _
 
-from common.catalog.tiers import Tier, tier_cap_label
+from common.catalog.tiers import TIER_NAME_KEY, Tier, tier_cap_label
 
 _CODES_ON = "\u2611 with codes"
 _CODES_OFF = "\u2610 with codes"
@@ -49,7 +50,7 @@ def _tier_choice_row(
     return [
         InlineKeyboardButton(
             text=f"{_TIER_SELECTED if int(option) == tier else _TIER_UNSELECTED} "
-            f"{tier_cap_label(option)}",
+            f"{_(TIER_NAME_KEY[option])} ({tier_cap_label(option)})",
             callback_data=ModSetTierCB(
                 profile_id=profile_id,
                 with_codes=with_codes,
