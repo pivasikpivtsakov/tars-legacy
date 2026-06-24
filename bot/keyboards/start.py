@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 
 from aiogram.filters.callback_data import CallbackData
@@ -75,10 +76,16 @@ def balance_kb(*, withdraw_text: str, back_text: str) -> InlineKeyboardMarkup:
     )
 
 
-def reply_menu_kb(*, menu_text: str, online_text: str | None = None) -> ReplyKeyboardMarkup:
+@dataclass(frozen=True, slots=True)
+class OnlineButton:
+    text: str
+    style: str | None = None
+
+
+def reply_menu_kb(*, menu_text: str, online_button: OnlineButton | None = None) -> ReplyKeyboardMarkup:
     keyboard = []
-    if online_text is not None:
-        keyboard.append([KeyboardButton(text=online_text)])
+    if online_button is not None:
+        keyboard.append([KeyboardButton(text=online_button.text, style=online_button.style)])
     keyboard.append([KeyboardButton(text=menu_text)])
     return ReplyKeyboardMarkup(
         keyboard=keyboard,

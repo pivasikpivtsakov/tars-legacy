@@ -2,12 +2,13 @@ from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup
 from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
-from bot.keyboards.start import StartZone, reply_menu_kb, welcome_kb
+from bot.keyboards.start import OnlineButton, StartZone, reply_menu_kb, welcome_kb
 from common.models.user_profiles import UserProfile
 
 MENU_BUTTON_KEY = "start.btn_menu"
 ONLINE_STATE_ON_KEY = "start.btn_online_state_on"
 ONLINE_STATE_OFF_KEY = "start.btn_online_state_off"
+ONLINE_STYLE_GREEN = "success"
 
 
 def reply_text_matches(text: str, *keys: str) -> bool:
@@ -54,9 +55,10 @@ def menu_button_markup(
     profile: UserProfile | None = None,
     is_moderator: bool = False,
 ) -> ReplyKeyboardMarkup:
-    online_text = (
-        online_toggle_text(is_online=profile.is_online)
-        if profile is not None and not is_moderator
-        else None
-    )
-    return reply_menu_kb(menu_text=_(MENU_BUTTON_KEY), online_text=online_text)
+    online_button = None
+    if profile is not None and not is_moderator:
+        online_button = OnlineButton(
+            text=online_toggle_text(is_online=profile.is_online),
+            style=ONLINE_STYLE_GREEN if profile.is_online else None,
+        )
+    return reply_menu_kb(menu_text=_(MENU_BUTTON_KEY), online_button=online_button)
