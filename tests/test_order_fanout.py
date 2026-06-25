@@ -1,10 +1,11 @@
 import asyncio
 from datetime import UTC, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 
 from common.models.orders import Order, OrderStatus
 from common.services.order_fanout import OrderFanoutService
-from common.services.order_processing import RankedCandidate
+from common.services.ranking import RankedCandidate
 
 
 def _order(*, status: OrderStatus, order_id: int = 1) -> Order:
@@ -231,13 +232,7 @@ def test_sweep_recovers_orphan_then_offers() -> None:
 
 
 def _candidate(*, user_id: int) -> RankedCandidate:
-    return RankedCandidate(
-        user_id=user_id,
-        full_price=120,
-        speed_seconds=10,
-        refusal_rate=0.0,
-        complete=0,
-    )
+    return RankedCandidate(user_id=user_id, full_price=Decimal(120))
 
 
 def test_offer_order_to_next_user_offers_and_records_deadline() -> None:

@@ -22,16 +22,28 @@ from bot.keyboards.menu import (
     ONLINE_STATE_ON_KEY,
     reply_text_matches,
 )
-from bot.keyboards.start import BackCB, OpenZoneCB, StartZone, balance_kb
+from bot.keyboards.start import (
+    BackCB,
+    HistoryPageCB,
+    OpenZoneCB,
+    StartZone,
+    balance_kb,
+    history_kb,
+)
 from bot.middlewares.profile import require_active_profile
 from common.catalog.packages import format_prices_table
+from common.catalog.tiers import tier_range_label
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
 from common.money import format_money
-from common.repositories.online_price_index import OnlinePriceIndex
+from common.rendering.orders import render_transaction_history
+from common.repositories.online_index import OnlineIndexRouter
 from common.repositories.rating import RatingRepository
+from common.repositories.transactions import TransactionsRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
+
+_HISTORY_PAGE_SIZE = 10
 
 router = Router(name="start")
 
@@ -82,7 +94,7 @@ async def cmd_start(
 async def toggle_online(
     message: Message,
     profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
+    online_price_index: OnlineIndexRouter,
     profile: UserProfile,
     moderator_ids: frozenset[int],
 ) -> None:
@@ -107,6 +119,14 @@ async def open_priority(
     rating: RatingRepository,
     profile: UserProfile | None,
 ) -> None:
+    if profile is not None and profile.with_codes:
+        online = _("registration.btn_yes") if profile.is_online else _("registration.btn_no")
+        text = _("start.priority_codes").format(
+            tier=tier_range_label(profile.tier),
+            online=online,
+        )
+        await show_back_panel(callback=callback, text=text)
+        return
     stats = (
         await rating.get(user_id=profile.id)
         if profile is not None
@@ -132,15 +152,74 @@ async def open_priority(
 async def open_balance(
     callback: CallbackQuery,
     profile: UserProfile | None,
+    transactions: TransactionsRepository,
 ) -> None:
-    balance = profile.balance if profile is not None else Decimal(0)
+    balance = (
+        await transactions.balance_of(profile_id=profile.id)
+        if profile is not None
+        else Decimal(0)
+    )
     await show_panel(
         callback=callback,
         text=_("start.balance").format(balance=format_money(balance)),
         markup=balance_kb(
             withdraw_text=_("start.btn_withdraw"),
+            history_text=_("start.btn_history"),
             back_text=_("start.btn_back"),
         ),
+    )
+
+
+async def _show_history(
+    *,
+    callback: CallbackQuery,
+    profile: UserProfile | None,
+    transactions: TransactionsRepository,
+    offset: int,
+) -> None:
+    if profile is None:
+        groups, has_next = [], False
+    else:
+        groups, has_next = await transactions.history(
+            profile_id=profile.id,
+            limit=_HISTORY_PAGE_SIZE,
+            offset=offset,
+        )
+    await show_panel(
+        callback=callback,
+        text=render_transaction_history(groups, has_next=has_next, gettext=_),
+        markup=history_kb(
+            offset=offset,
+            limit=_HISTORY_PAGE_SIZE,
+            has_next=has_next,
+            prev_text=_("start.btn_prev"),
+            next_text=_("start.btn_next"),
+            back_text=_("start.btn_back"),
+        ),
+    )
+
+
+@router.callback_query(OpenZoneCB.filter(F.value == StartZone.HISTORY))
+async def open_history(
+    callback: CallbackQuery,
+    profile: UserProfile | None,
+    transactions: TransactionsRepository,
+) -> None:
+    await _show_history(callback=callback, profile=profile, transactions=transactions, offset=0)
+
+
+@router.callback_query(HistoryPageCB.filter())
+async def page_history(
+    callback: CallbackQuery,
+    callback_data: HistoryPageCB,
+    profile: UserProfile | None,
+    transactions: TransactionsRepository,
+) -> None:
+    await _show_history(
+        callback=callback,
+        profile=profile,
+        transactions=transactions,
+        offset=max(callback_data.offset, 0),
     )
 
 

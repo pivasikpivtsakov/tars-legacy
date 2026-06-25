@@ -4,7 +4,7 @@ from datetime import time
 from aiogram.utils.i18n import gettext as _
 
 from common.catalog.packages import format_prices
-from common.catalog.tiers import TIER_NAME_KEY, Tier, tier_cap_label
+from common.catalog.tiers import Tier, tier_range_label
 from common.models.user_profiles import UserProfile
 
 _TIME_FORMAT = "%H:%M"
@@ -24,20 +24,20 @@ def _fmt_yes_no(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
-def _fmt_tier(tier: Tier) -> str:
-    return f"{_(TIER_NAME_KEY[tier])} ({tier_cap_label(tier)})"
-
-
-def render_pending_review(*, profile: UserProfile, tier: Tier) -> str:
-    text = (
-        "#pending user awaiting moderation\n"
-        f"tg_id: {profile.tg_id}\n"
-        f"chat addable: {_fmt_yes_no(profile.chat_addable)}\n"
-        f"with codes: {_fmt_yes_no(profile.with_codes)}\n"
-        f"tier: {_fmt_tier(tier)}\n"
-        f"packages: {_fmt_packages(profile.packages)}\n"
-        f"prices: {format_prices(profile.prices)}\n"
-        f"withdrawal: {profile.withdrawal_method or '-'}\n"
-        f"work hours: {_fmt_time(profile.work_start)}-{_fmt_time(profile.work_end)}"
-    )
-    return html.escape(text)
+def render_pending_review(*, profile: UserProfile, tier: Tier, with_codes: bool) -> str:
+    lines = [
+        "#pending user awaiting moderation",
+        f"tg_id: {profile.tg_id}",
+        f"chat addable: {_fmt_yes_no(profile.chat_addable)}",
+        f"with codes: {_fmt_yes_no(with_codes)}",
+        f"tier: {tier_range_label(tier)}",
+    ]
+    if not with_codes:
+        lines.append(f"packages: {_fmt_packages(profile.packages)}")
+        lines.append(f"prices: {format_prices(profile.prices)}")
+    lines.append(f"withdrawal: {profile.withdrawal_method or '-'}")
+    lines.append(f"work hours: {_fmt_time(profile.work_start)}-{_fmt_time(profile.work_end)}")
+    text = html.escape("\n".join(lines))
+    if with_codes != profile.with_codes:
+        text = f"{text}\n{html.escape(_('moderation.with_codes_changed'))}"
+    return text

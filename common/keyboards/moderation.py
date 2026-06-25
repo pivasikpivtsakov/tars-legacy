@@ -1,8 +1,7 @@
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.i18n import gettext as _
 
-from common.catalog.tiers import TIER_NAME_KEY, Tier, tier_cap_label
+from common.catalog.tiers import Tier, tier_range_label
 
 _CODES_ON = "\u2611 with codes"
 _CODES_OFF = "\u2610 with codes"
@@ -50,7 +49,7 @@ def _tier_choice_row(
     return [
         InlineKeyboardButton(
             text=f"{_TIER_SELECTED if int(option) == tier else _TIER_UNSELECTED} "
-            f"{_(TIER_NAME_KEY[option])} ({tier_cap_label(option)})",
+            f"{tier_range_label(option)}",
             callback_data=ModSetTierCB(
                 profile_id=profile_id,
                 with_codes=with_codes,
@@ -67,19 +66,21 @@ def moderation_decision_kb(
     with_codes: bool,
     tier: int,
 ) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=_CODES_ON if with_codes else _CODES_OFF,
-                    callback_data=ModToggleCodesCB(
-                        profile_id=profile_id,
-                        with_codes=with_codes,
-                        tier=tier,
-                    ).pack(),
-                ),
-            ],
-            _tier_choice_row(profile_id=profile_id, with_codes=with_codes, tier=tier),
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=_CODES_ON if with_codes else _CODES_OFF,
+                callback_data=ModToggleCodesCB(
+                    profile_id=profile_id,
+                    with_codes=with_codes,
+                    tier=tier,
+                ).pack(),
+            ),
+        ],
+        _tier_choice_row(profile_id=profile_id, with_codes=with_codes, tier=tier),
+    ]
+    if not with_codes:
+        rows.append(
             [
                 InlineKeyboardButton(
                     text=_EDIT_PACKS,
@@ -90,19 +91,21 @@ def moderation_decision_kb(
                     ).pack(),
                 ),
             ],
-            [
-                InlineKeyboardButton(
-                    text=_APPROVE,
-                    callback_data=ModApproveCB(
-                        profile_id=profile_id,
-                        with_codes=with_codes,
-                        tier=tier,
-                    ).pack(),
-                ),
-                InlineKeyboardButton(
-                    text=_DECLINE,
-                    callback_data=ModDenyCB(profile_id=profile_id).pack(),
-                ),
-            ],
+        )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=_APPROVE,
+                callback_data=ModApproveCB(
+                    profile_id=profile_id,
+                    with_codes=with_codes,
+                    tier=tier,
+                ).pack(),
+            ),
+            InlineKeyboardButton(
+                text=_DECLINE,
+                callback_data=ModDenyCB(profile_id=profile_id).pack(),
+            ),
         ],
     )
+    return InlineKeyboardMarkup(inline_keyboard=rows)

@@ -16,7 +16,7 @@ _TABLE = "user_profiles"
 
 _SELECT_COLUMNS = (
     "id, tg_id, chat_addable, prices, withdrawal_method, "
-    "work_start, work_end, is_online, with_codes, status, balance, tier"
+    "work_start, work_end, is_online, with_codes, status, tier"
 )
 
 _MODERATION_RESET = "status = 'inactive', is_online = FALSE"
@@ -71,7 +71,8 @@ class UserProfileRepository:
 
     async def approve(self, *, profile_id: int, with_codes: bool, tier: Tier) -> UserProfile:
         row = await self._pool.fetchrow(
-            f"UPDATE {_TABLE} SET status = $2, with_codes = $3, tier = $4, updated_at = NOW() "
+            f"UPDATE {_TABLE} SET status = $2, with_codes = $3, tier = $4, "
+            f"prices = CASE WHEN $3 THEN '{{}}'::jsonb ELSE prices END, updated_at = NOW() "
             f"WHERE id = $1 RETURNING {_SELECT_COLUMNS}",
             profile_id,
             UserProfileStatus.ACTIVE.value,
@@ -194,19 +195,6 @@ class UserProfileRepository:
             profile_id,
         )
 
-    async def credit_balance(
-        self,
-        *,
-        profile_id: int,
-        amount: Decimal,
-        conn: asyncpg.Connection | None = None,
-    ) -> None:
-        await (conn or self._pool).execute(
-            f"UPDATE {_TABLE} SET balance = balance + $2, updated_at = NOW() WHERE id = $1",
-            profile_id,
-            amount,
-        )
-
     async def list_rankable(self) -> list[UserProfile]:
         rows = await self._pool.fetch(
             f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
@@ -214,6 +202,16 @@ class UserProfileRepository:
             "AND status = $1 "
             "AND prices IS NOT NULL "
             "AND prices <> '{}'::jsonb",
+            UserProfileStatus.ACTIVE.value,
+        )
+        return [UserProfile.from_row(row) for row in rows]
+
+    async def list_online_code_users(self) -> list[UserProfile]:
+        rows = await self._pool.fetch(
+            f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
+            "WHERE is_online = TRUE "
+            "AND status = $1 "
+            "AND with_codes = TRUE",
             UserProfileStatus.ACTIVE.value,
         )
         return [UserProfile.from_row(row) for row in rows]

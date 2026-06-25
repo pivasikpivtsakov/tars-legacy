@@ -22,6 +22,15 @@ msgstr "Balance & withdrawal"
 msgid "start.btn_withdraw"
 msgstr "Withdraw"
 
+msgid "start.btn_history"
+msgstr "History"
+
+msgid "start.btn_prev"
+msgstr "« Prev"
+
+msgid "start.btn_next"
+msgstr "Next »"
+
 msgid "start.btn_priority"
 msgstr "Stats"
 
@@ -55,8 +64,23 @@ msgstr "You are now offline."
 msgid "start.priority"
 msgstr "Order stats:\ntotal: <code>{total}</code>\ncompleted: <code>{complete}</code>\nrefusals: <code>{incomplete}</code>\n\nYour ranking params:\naverage task completion time: <code>{speed}</code>\nprices:\npack   price\n{prices}\ncompleted (incl. not-picked): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
+msgid "start.priority_codes"
+msgstr "Your accepted UC range: <code>{tier}</code>\nOnline: <code>{online}</code>"
+
 msgid "start.balance"
 msgstr "Your balance: {balance}"
+
+msgid "history.title"
+msgstr "Your credit history:"
+
+msgid "history.empty"
+msgstr "No credits yet."
+
+msgid "history.line_pack"
+msgstr "📦 {items} — +{total} ({date})"
+
+msgid "history.line_code"
+msgstr "🎟 {items} — +{total} ({date})"
 
 msgid "start.profile_required"
 msgstr "Finish registration first."
@@ -139,11 +163,17 @@ msgstr "End time must be later than start time. Please send the end time again."
 msgid "registration.done"
 msgstr "Got it: group chat={chat_addable}, with codes={with_codes}, packages={packages}, prices={prices}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
 
+msgid "registration.done_codes"
+msgstr "Got it: group chat={chat_addable}, with codes={with_codes}, withdrawal={withdrawal_method}, work={work_start}-{work_end} MSK."
+
 msgid "registration.finished_filling"
 msgstr "Registration already finished. Use /start to open the menu."
 
 msgid "edit.title"
 msgstr "Edit your profile, then press Save.\n\nAdd to group chat: {chat_addable}\nWith codes: {with_codes}\nPackages: {packages}\nPrices: {prices}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
+
+msgid "edit.title_codes"
+msgstr "Edit your profile, then press Save.\n\nAdd to group chat: {chat_addable}\nWith codes: {with_codes}\nWithdrawal: {withdrawal_method}\nWork hours: {work_start}-{work_end} MSK"
 
 msgid "edit.field_chat_addable"
 msgstr "Add to group chat"
@@ -225,6 +255,9 @@ msgstr "packages saved"
 
 msgid "moderation.not_order_taker"
 msgstr "Moderators cannot register as order-takers."
+
+msgid "moderation.with_codes_changed"
+msgstr "⚠️ with_codes changed by moderator"
 
 msgid "order.offer"
 msgstr "<b>New order</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPrice: <b>{full_price}</b>"

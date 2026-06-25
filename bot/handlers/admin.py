@@ -12,7 +12,7 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms.menu import MenuContext, render_menu
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.i18n import DOMAIN, LOCALES_DIR
-from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.online_index import OnlineIndexRouter
 from common.repositories.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService
@@ -100,7 +100,7 @@ async def cmd_full_restart(
     message: Message,
     state: FSMContext,
     profiles: UserProfileRepository,
-    online_price_index: OnlinePriceIndex,
+    online_price_index: OnlineIndexRouter,
 ) -> None:
     profile = await profiles.get_by_tg_id(tg_id=message.from_user.id)
     if profile is not None:

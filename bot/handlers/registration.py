@@ -38,8 +38,13 @@ async def process_with_codes(
     state: FSMContext,
 ) -> None:
     await fields.apply_with_codes(state=state, value=callback_data.value)
-    await state.set_state(Registration.packages)
-    await fields.show_packages_grid(target=callback, state=state)
+    if callback_data.value:
+        await state.set_state(Registration.withdrawal_method)
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await fields.send_prompt(callback.message, ProfileField.withdrawal_method)
+    else:
+        await state.set_state(Registration.packages)
+        await fields.show_packages_grid(target=callback, state=state)
     await callback.answer()
 
 

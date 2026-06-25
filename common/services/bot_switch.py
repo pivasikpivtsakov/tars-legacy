@@ -1,5 +1,5 @@
 from common.repositories.bot_switch import BotSwitchRepository
-from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.online_index import OnlineIndexRouter
 from common.repositories.user_profiles import UserProfileRepository
 
 
@@ -9,7 +9,7 @@ class BotSwitchService:
         *,
         repo: BotSwitchRepository,
         profiles: UserProfileRepository,
-        online_price_index: OnlinePriceIndex,
+        online_price_index: OnlineIndexRouter,
     ) -> None:
         self._repo = repo
         self._profiles = profiles

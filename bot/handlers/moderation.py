@@ -16,7 +16,7 @@ from bot.forms.menu import send_menu
 from bot.forms.states import Moderation
 from bot.keyboards.profile import PackagesDoneCB
 from bot.utils.telegram import ignore_not_modified
-from common.catalog.tiers import Tier, tier_for_packages
+from common.catalog.tiers import TIER_DEFAULT, Tier, required_tier
 from common.keyboards.moderation import (
     ModApproveCB,
     ModDenyCB,
@@ -106,14 +106,22 @@ def _user_state(*, storage: BaseStorage, bot: Bot, tg_id: int) -> FSMContext:
 async def toggle_with_codes(
     callback: CallbackQuery,
     callback_data: ModToggleCodesCB,
+    profiles: UserProfileRepository,
 ) -> None:
-    await callback.message.edit_reply_markup(
-        reply_markup=moderation_decision_kb(
-            profile_id=callback_data.profile_id,
-            with_codes=not callback_data.with_codes,
-            tier=callback_data.tier,
-        ),
-    )
+    profile = await profiles.get_by_id(profile_id=callback_data.profile_id)
+    if profile is None:
+        await callback.answer(_("moderation.profile_not_found"), show_alert=True)
+        return
+    with_codes = not callback_data.with_codes
+    with ignore_not_modified():
+        await callback.message.edit_text(
+            render_pending_review(profile=profile, tier=TIER_DEFAULT, with_codes=with_codes),
+            reply_markup=moderation_decision_kb(
+                profile_id=callback_data.profile_id,
+                with_codes=with_codes,
+                tier=int(TIER_DEFAULT),
+            ),
+        )
     await callback.answer()
 
 
@@ -197,10 +205,11 @@ async def save_packs(
     except LookupError:
         await message.answer(_("moderation.profile_not_found"))
         return
-    tier = max(Tier(data["tier"]), tier_for_packages(prices))
+    implied = required_tier(list(prices))
+    tier = max(Tier(data["tier"]), implied if implied is not None else TIER_DEFAULT)
     await state.set_state(None)
     await message.answer(
-        render_pending_review(profile=profile, tier=tier),
+        render_pending_review(profile=profile, tier=tier, with_codes=with_codes),
         reply_markup=moderation_decision_kb(
             profile_id=profile_id,
             with_codes=with_codes,

@@ -4,11 +4,11 @@ from collections.abc import Collection
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
-from common.catalog.tiers import tier_for_packages
+from common.catalog.tiers import TIER_DEFAULT, required_tier
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
 from common.rendering.moderation import render_pending_review
-from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.online_index import OnlineIndexRouter
 from common.repositories.user_profiles import UserProfileRepository
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class ModerationService:
         self,
         *,
         profiles: UserProfileRepository,
-        online_price_index: OnlinePriceIndex,
+        online_price_index: OnlineIndexRouter,
     ) -> None:
         self._profiles = profiles
         self._online_price_index = online_price_index
@@ -63,11 +63,12 @@ class ModerationService:
         moderator_ids: Collection[int],
         profile: UserProfile,
     ) -> None:
-        # On first registration the stored tier is still the BASIC default, so this
-        # resolves to the tier required by the user's largest pack; an already-assigned
-        # higher tier (e.g. a prior approval) is preserved instead.
-        tier = max(profile.tier, tier_for_packages(profile.packages or ()))
-        text = render_pending_review(profile=profile, tier=tier)
+        if profile.with_codes:
+            tier = profile.tier
+        else:
+            implied = required_tier(profile.packages or ())
+            tier = max(profile.tier, implied if implied is not None else TIER_DEFAULT)
+        text = render_pending_review(profile=profile, tier=tier, with_codes=profile.with_codes)
         markup = moderation_decision_kb(
             profile_id=profile.id,
             with_codes=profile.with_codes,

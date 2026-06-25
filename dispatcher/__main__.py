@@ -17,16 +17,22 @@ from common.environment import (
 from common.logging_config import setup_logging
 from common.redis import create_redis
 from common.repositories.offer_deadlines import OfferDeadlineQueue
-from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.online_index import (
+    CodeOnlineIndex,
+    OnlineIndexRouter,
+    PackOnlineIndex,
+)
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
+from common.repositories.transactions import TransactionsRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.repositories.user_roles import UserRole, UserRoleRepository
 from common.services.dispatch_signal import DispatchSignal
 from common.services.order_fanout import OrderFanoutService
 from common.services.order_processing import OrderManager
+from common.services.ranking import build_strategies
 
 logger = logging.getLogger(__name__)
 
@@ -52,15 +58,23 @@ async def main() -> None:
         signal = DispatchSignal(redis=redis)
         moderator_ids = await UserRoleRepository(redis=redis).get(role=UserRole.MODERATOR)
         rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
+        online_index = OnlineIndexRouter(
+            pack=PackOnlineIndex(redis=redis),
+            code=CodeOnlineIndex(redis=redis),
+        )
+        order_manager = OrderManager(
+            strategies=build_strategies(
+                online_index=online_index,
+                rating=rating,
+                transactions=TransactionsRepository(pool=pool),
+            ),
+        )
         service = OrderFanoutService(
             bot=bot,
             orders=OrderRepository(pool=pool),
             offers=OrderOfferRepository(pool=pool),
             profiles=UserProfileRepository(pool=pool),
-            order_manager=OrderManager(
-                online_price_index=OnlinePriceIndex(redis=redis),
-                rating=rating,
-            ),
+            order_manager=order_manager,
             rating=rating,
             pending=PendingOrdersRepository(redis=redis),
             deadlines=OfferDeadlineQueue(redis=redis),

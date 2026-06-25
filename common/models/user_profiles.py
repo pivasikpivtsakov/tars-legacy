@@ -26,7 +26,6 @@ class UserProfile:
     is_online: bool
     with_codes: bool
     status: UserProfileStatus
-    balance: Decimal
     tier: Tier
 
     @property
@@ -54,6 +53,5 @@ class UserProfile:
             is_online=row["is_online"],
             with_codes=row["with_codes"],
             status=UserProfileStatus(row["status"]),
-            balance=row["balance"],
             tier=Tier(row["tier"]),
         )

@@ -1,59 +1,49 @@
-from collections.abc import Collection
+from collections.abc import Sequence
 from enum import IntEnum
 
 from common.catalog.packages import PACKAGE_SIZES
 
 
 class Tier(IntEnum):
-    BASIC = 0
-    STANDARD = 1
-    UNLIMITED = 2
+    T0 = 0
+    T1 = 1
+    T2 = 2
 
 
-TIER_DEFAULT = Tier.BASIC
-
-TIER_MAX_AMOUNT: dict[Tier, int | None] = {
-    Tier.BASIC: 720,
-    Tier.STANDARD: 16200,
-    Tier.UNLIMITED: None,
+TIER_RANGES: dict[Tier, tuple[int, int]] = {
+    Tier(0): (60, 325),
+    Tier(1): (60, 1800),
+    Tier(2): (60, 8100),
 }
 
-TIER_NAME_KEY: dict[Tier, str] = {
-    Tier.BASIC: "tier.basic",
-    Tier.STANDARD: "tier.standard",
-    Tier.UNLIMITED: "tier.unlimited",
-}
+TIER_DEFAULT = Tier(0)
 
 
-def tier_allows(*, tier: Tier, amount: int) -> bool:
-    cap = TIER_MAX_AMOUNT[tier]
-    return cap is None or amount <= cap
+def tier_allows_unit(*, tier: Tier, amount: int) -> bool:
+    low, high = TIER_RANGES[tier]
+    return low <= amount <= high
 
 
-def required_tier(amount: int) -> Tier:
+def tier_allows_units(*, tier: Tier, amounts: Sequence[int]) -> bool:
+    return all(tier_allows_unit(tier=tier, amount=amount) for amount in amounts)
+
+
+def required_tier(amounts: Sequence[int]) -> Tier | None:
     for tier in Tier:
-        if tier_allows(tier=tier, amount=amount):
+        if tier_allows_units(tier=tier, amounts=amounts):
             return tier
-    return Tier.UNLIMITED
+    return None
 
 
-def tier_for_packages(packages: Collection[int]) -> Tier:
-    if not packages:
-        return TIER_DEFAULT
-    return required_tier(max(packages))
+def tiers_serving(amounts: Sequence[int]) -> list[Tier]:
+    return [tier for tier in Tier if tier_allows_units(tier=tier, amounts=amounts)]
 
 
-def allowed_packages_for_tier(tier: Tier) -> tuple[int, ...]:
-    cap = TIER_MAX_AMOUNT[tier]
-    if cap is None:
-        return PACKAGE_SIZES
-    return tuple(size for size in PACKAGE_SIZES if size <= cap)
+def allowed_packs_for_tier(tier: Tier) -> tuple[int, ...]:
+    low, high = TIER_RANGES[tier]
+    return tuple(size for size in PACKAGE_SIZES if low <= size <= high)
 
 
-def max_package_for_tier(tier: Tier) -> int:
-    return max(allowed_packages_for_tier(tier))
-
-
-def tier_cap_label(tier: Tier) -> str:
-    cap = TIER_MAX_AMOUNT[tier]
-    return "inf" if cap is None else f"<={cap}"
+def tier_range_label(tier: Tier) -> str:
+    low, high = TIER_RANGES[tier]
+    return f"{low}-{high}"

@@ -25,12 +25,17 @@ from bot.middlewares.roles import RoleContextMiddleware
 from common.environment import RATING_SPEED_WINDOW
 from common.i18n import build_i18n
 from common.repositories.bot_switch import BotSwitchRepository
-from common.repositories.online_price_index import OnlinePriceIndex
+from common.repositories.online_index import (
+    CodeOnlineIndex,
+    OnlineIndexRouter,
+    PackOnlineIndex,
+)
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
 from common.repositories.pack_price_limits import PackPriceLimitRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
+from common.repositories.transactions import TransactionsRepository
 from common.repositories.user_profiles import UserProfileRepository
 from common.repositories.user_roles import UserRoleRepository
 from common.services.anti_fraud import AntiFraudService
@@ -40,6 +45,7 @@ from common.services.dispatch_signal import DispatchSignal
 from common.services.external_order_api import ExternalOrderApi
 from common.services.moderation import ModerationService
 from common.services.order_processing import OrderLifecycle
+from common.services.ranking import build_strategies
 from common.services.request_service import RequestService
 from common.services.user_profiles import UserProfileService
 
@@ -59,7 +65,16 @@ def build_dispatcher(
     orders_repo = OrderRepository(pool=pool)
     offers_repo = OrderOfferRepository(pool=pool)
     rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
-    online_price_index = OnlinePriceIndex(redis=redis)
+    online_price_index = OnlineIndexRouter(
+        pack=PackOnlineIndex(redis=redis),
+        code=CodeOnlineIndex(redis=redis),
+    )
+    transactions = TransactionsRepository(pool=pool)
+    strategies = build_strategies(
+        online_index=online_price_index,
+        rating=rating,
+        transactions=transactions,
+    )
     pending = PendingOrdersRepository(redis=redis)
     dispatch_signal = DispatchSignal(redis=redis)
     bot_switch_repo = BotSwitchRepository(redis=redis)
@@ -74,6 +89,7 @@ def build_dispatcher(
     dispatcher["profiles"] = profiles
     dispatcher["rating"] = rating
     dispatcher["online_price_index"] = online_price_index
+    dispatcher["transactions"] = transactions
     dispatcher["pack_price_limits"] = PackPriceLimitRepository(redis=redis)
     dispatcher["dispatch_signal"] = dispatch_signal
     dispatcher["order_lifecycle"] = OrderLifecycle(
@@ -84,6 +100,7 @@ def build_dispatcher(
         rating=rating,
         pending=pending,
         dispatch_signal=dispatch_signal,
+        strategies=strategies,
     )
     dispatcher["anti_fraud"] = AntiFraudService(
         orders=orders_repo,

@@ -26,12 +26,7 @@ from bot.keyboards.profile import (
 )
 from bot.utils.telegram import ignore_message_gone
 from common.catalog.packages import format_prices, format_prices_table
-from common.catalog.tiers import (
-    TIER_NAME_KEY,
-    Tier,
-    allowed_packages_for_tier,
-    max_package_for_tier,
-)
+from common.catalog.tiers import Tier, allowed_packs_for_tier, tier_range_label
 from common.models.user_profiles import UserProfile
 from common.money import format_money, parse_money
 from common.repositories.pack_price_limits import PackPriceLimitRepository
@@ -120,15 +115,14 @@ async def send_prompt(message: Message, field: ProfileField) -> None:
     await message.answer(text, reply_markup=markup)
 
 
-def _edit_labels() -> dict[ProfileField, str]:
-    return {
-        ProfileField.chat_addable: _("edit.field_chat_addable"),
-        ProfileField.with_codes: _("edit.field_with_codes"),
-        ProfileField.packages: _("edit.field_packages"),
-        ProfileField.withdrawal_method: _("edit.field_withdrawal"),
-        ProfileField.work_start: _("edit.field_work_start"),
-        ProfileField.work_end: _("edit.field_work_end"),
-    }
+def _edit_labels(*, with_codes: bool) -> dict[ProfileField, str]:
+    labels = {ProfileField.chat_addable: _("edit.field_chat_addable")}
+    if not with_codes:
+        labels[ProfileField.packages] = _("edit.field_packages")
+    labels[ProfileField.withdrawal_method] = _("edit.field_withdrawal")
+    labels[ProfileField.work_start] = _("edit.field_work_start")
+    labels[ProfileField.work_end] = _("edit.field_work_end")
+    return labels
 
 
 def _prices_map(data: Mapping[str, Any]) -> dict[int, Decimal]:
@@ -143,16 +137,22 @@ def _selected_set(data: Mapping[str, Any]) -> set[int]:
     return {int(size) for size in (data.get(_SELECTED_KEY) or [])}
 
 
-def _summary(template: str, data: Mapping[str, Any]) -> str:
+def _summary(*, pack_key: str, code_key: str, data: Mapping[str, Any]) -> str:
+    with_codes = data["with_codes"]
+    common = {
+        "chat_addable": _fmt_bool(data["chat_addable"]),
+        "with_codes": _fmt_bool(with_codes),
+        "withdrawal_method": data["withdrawal_method"] or "-",
+        "work_start": _fmt_time(_iso_to_time(data.get("work_start"))),
+        "work_end": _fmt_time(_iso_to_time(data.get("work_end"))),
+    }
+    if with_codes:
+        return _(code_key).format(**common)
     prices = _prices_map(data)
-    return template.format(
-        chat_addable=_fmt_bool(data["chat_addable"]),
-        with_codes=_fmt_bool(data["with_codes"]),
+    return _(pack_key).format(
         packages=_fmt_packages(sorted(prices)),
         prices=format_prices(prices),
-        withdrawal_method=data["withdrawal_method"] or "-",
-        work_start=_fmt_time(_iso_to_time(data.get("work_start"))),
-        work_end=_fmt_time(_iso_to_time(data.get("work_end"))),
+        **common,
     )
 
 
@@ -170,8 +170,8 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
 
 def _package_above_tier_message(tier: int) -> str:
     return _("registration.package_above_tier").format(
-        tier=_(TIER_NAME_KEY[Tier(tier)]),
-        max_package=max_package_for_tier(Tier(tier)),
+        tier=tier_range_label(Tier(tier)),
+        max_package=max(allowed_packs_for_tier(Tier(tier))),
     )
 
 
@@ -233,7 +233,7 @@ async def toggle_pack(*, callback: CallbackQuery, state: FSMContext, value: int)
     if (
         value not in selected
         and tier is not None
-        and value not in allowed_packages_for_tier(Tier(tier))
+        and value not in allowed_packs_for_tier(Tier(tier))
     ):
         await callback.answer(_package_above_tier_message(tier), show_alert=True)
         return
@@ -262,7 +262,7 @@ async def ensure_packages_selected(
         return False
     tier = data.get("tier")
     if tier is not None:
-        allowed = set(allowed_packages_for_tier(Tier(tier)))
+        allowed = set(allowed_packs_for_tier(Tier(tier)))
         if any(size not in allowed for size in selected):
             await callback.answer(_package_above_tier_message(tier), show_alert=True)
             return False
@@ -427,11 +427,16 @@ async def save_profile_from_data(
     moderation: ModerationService,
     moderator_ids: Collection[int],
 ) -> UserProfile:
-    prices = {int(size): Decimal(str(price)) for size, price in (data["prices"] or {}).items()}
+    with_codes = data["with_codes"]
+    prices = (
+        {}
+        if with_codes
+        else {int(size): Decimal(str(price)) for size, price in (data.get("prices") or {}).items()}
+    )
     profile = await profiles.create_or_update(
         tg_id=tg_id,
         chat_addable=data["chat_addable"],
-        with_codes=data["with_codes"],
+        with_codes=with_codes,
         prices=prices,
         withdrawal_method=data["withdrawal_method"],
         work_start=time.fromisoformat(data["work_start"]),
@@ -464,7 +469,9 @@ async def finish_registration(
         moderator_ids=moderator_ids,
     )
     await state.set_state(Registration.finished_filling)
-    await message.answer(_summary(_("registration.done"), data))
+    await message.answer(
+        _summary(pack_key="registration.done", code_key="registration.done_codes", data=data),
+    )
     await render_menu(MenuContext(target=message, state=state, profile=profile))
 
 
@@ -483,9 +490,9 @@ async def show_edit_menu(
 ) -> None:
     await state.set_state(ProfileEdit.menu)
     data = await state.get_data()
-    text = _summary(_("edit.title"), data)
+    text = _summary(pack_key="edit.title", code_key="edit.title_codes", data=data)
     markup = edit_menu_kb(
-        labels=_edit_labels(),
+        labels=_edit_labels(with_codes=data["with_codes"]),
         save_text=_("edit.btn_save"),
         cancel_text=_("edit.btn_cancel"),
     )
