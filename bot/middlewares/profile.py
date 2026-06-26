@@ -1,5 +1,4 @@
 from collections.abc import Awaitable, Callable
-from enum import StrEnum
 from typing import Any
 
 from aiogram import BaseMiddleware, flags
@@ -10,37 +9,15 @@ from aiogram.utils.i18n import gettext as _
 from common.models.user_profiles import UserProfile, UserProfileStatus
 from common.repositories.user_profiles import UserProfileRepository
 
-PROFILE_REQUIREMENT_FLAG = "profile_requirement"
+REQUIRE_ACTIVE_PROFILE_FLAG = "require_active_profile"
+
+require_active_profile = flags.require_active_profile
 
 
-class ProfileRequirement(StrEnum):
-    COMPLETE = "complete"
-    ACTIVE = "active"
-
-
-require_complete_profile = flags.profile_requirement(ProfileRequirement.COMPLETE)
-require_active_profile = flags.profile_requirement(ProfileRequirement.ACTIVE)
-
-
-def _is_profile_complete(profile: UserProfile | None) -> bool:
+def _active_gate_alert(profile: UserProfile | None) -> str | None:
     if profile is None:
-        return False
-    return (
-        profile.chat_addable is not None
-        and bool(profile.prices)
-        and profile.withdrawal_method is not None
-        and profile.work_start is not None
-        and profile.work_end is not None
-    )
-
-
-def _requirement_alert(
-    requirement: ProfileRequirement,
-    profile: UserProfile | None,
-) -> str | None:
-    if not _is_profile_complete(profile):
         return _("start.profile_required")
-    if requirement is ProfileRequirement.ACTIVE and profile.status is not UserProfileStatus.ACTIVE:
+    if profile.status is not UserProfileStatus.ACTIVE:
         return _("start.action_needs_active")
     return None
 
@@ -65,9 +42,8 @@ class ProfileMiddleware(BaseMiddleware):
         user: User = data["event_from_user"]
         profile = await self._profiles.get_by_tg_id(tg_id=user.id)
         data["profile"] = profile
-        requirement = get_flag(data, PROFILE_REQUIREMENT_FLAG)
-        if requirement is not None:
-            alert = _requirement_alert(requirement, profile)
+        if get_flag(data, REQUIRE_ACTIVE_PROFILE_FLAG):
+            alert = _active_gate_alert(profile)
             if alert is not None:
                 await _reject(event, alert)
                 return None

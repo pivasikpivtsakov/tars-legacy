@@ -200,7 +200,6 @@ class UserProfileRepository:
             f"SELECT {_SELECT_COLUMNS} FROM {_TABLE} "
             "WHERE is_online = TRUE "
             "AND status = $1 "
-            "AND prices IS NOT NULL "
             "AND prices <> '{}'::jsonb",
             UserProfileStatus.ACTIVE.value,
         )

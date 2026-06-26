@@ -65,7 +65,7 @@ msgid "start.priority"
 msgstr "Order stats:\ntotal: <code>{total}</code>\ncompleted: <code>{complete}</code>\nrefusals: <code>{incomplete}</code>\n\nYour ranking params:\naverage task completion time: <code>{speed}</code>\nprices:\npack   price\n{prices}\ncompleted (incl. not-picked): <code>{rate_full}%</code> (<code>{complete}</code>/<code>{total}</code>)"
 
 msgid "start.priority_codes"
-msgstr "Your accepted UC range: <code>{tier}</code>\nOnline: <code>{online}</code>"
+msgstr "Your tier: <code>{tier}</code>\nOnline: <code>{online}</code>"
 
 msgid "start.balance"
 msgstr "Your balance: {balance}"

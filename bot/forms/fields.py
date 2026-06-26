@@ -26,7 +26,7 @@ from bot.keyboards.profile import (
 )
 from bot.utils.telegram import ignore_message_gone
 from common.catalog.packages import format_prices, format_prices_table
-from common.catalog.tiers import Tier, allowed_packs_for_tier, tier_range_label
+from common.catalog.tiers import Tier, allowed_packs_for_tier, tier_name
 from common.models.user_profiles import UserProfile
 from common.money import format_money, parse_money
 from common.repositories.pack_price_limits import PackPriceLimitRepository
@@ -170,7 +170,7 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
 
 def _package_above_tier_message(tier: int) -> str:
     return _("registration.package_above_tier").format(
-        tier=tier_range_label(Tier(tier)),
+        tier=tier_name(Tier(tier)),
         max_package=max(allowed_packs_for_tier(Tier(tier))),
     )
 

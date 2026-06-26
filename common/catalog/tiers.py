@@ -1,6 +1,8 @@
 from collections.abc import Sequence
 from enum import IntEnum
 
+from aiogram.utils.i18n import gettext as _
+
 from common.catalog.packages import PACKAGE_SIZES
 
 
@@ -14,6 +16,12 @@ TIER_RANGES: dict[Tier, tuple[int, int]] = {
     Tier(0): (60, 325),
     Tier(1): (60, 1800),
     Tier(2): (60, 8100),
+}
+
+TIER_NAME_KEYS: dict[Tier, str] = {
+    Tier(0): "tier.basic",
+    Tier(1): "tier.standard",
+    Tier(2): "tier.unlimited",
 }
 
 TIER_DEFAULT = Tier(0)
@@ -47,3 +55,7 @@ def allowed_packs_for_tier(tier: Tier) -> tuple[int, ...]:
 def tier_range_label(tier: Tier) -> str:
     low, high = TIER_RANGES[tier]
     return f"{low}-{high}"
+
+
+def tier_name(tier: Tier) -> str:
+    return _(TIER_NAME_KEYS[tier])
