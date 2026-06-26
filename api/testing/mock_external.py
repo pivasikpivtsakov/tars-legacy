@@ -25,6 +25,8 @@ type ResponseSpec = tuple[int, Any]
 MOCK_ORDER_AMOUNT = 385
 MOCK_PLAYER_OPEN_ID = "123456"
 MOCK_FRAUD_OPEN_ID = "999999"
+MOCK_DEFAULT_CODE = "CODE-1"
+MOCK_SUCCESS_CODE = "CODE-2"
 
 
 class MockRequestService(RequestService):
@@ -71,25 +73,36 @@ def code_exchange_time_response(
     )
 
 
+def order_get_response(
+    *,
+    codes: Mapping[str, int],
+    unused_codes: Mapping[str, int] | None = None,
+    player_open_id: str = MOCK_PLAYER_OPEN_ID,
+) -> ResponseSpec:
+    return (
+        200,
+        {
+            "status": ExternalOrderStatus.PENDING,
+            "amount": MOCK_ORDER_AMOUNT,
+            "shop_access_key": "mock-shop-access-key",
+            "pubg_id": 123456,
+            "status_reason": None,
+            "codes": dict(codes),
+            "unused_codes": dict(codes if unused_codes is None else unused_codes),
+            "broken_codes": [],
+            "redeemed_codes": [],
+            "additional_data": {"player_open_id": player_open_id},
+        },
+    )
+
+
 def default_external_responses(
     *,
     overrides: Mapping[ResponseKey, ResponseSpec] | None = None,
 ) -> dict[ResponseKey, ResponseSpec]:
     responses: dict[ResponseKey, ResponseSpec] = {
-        (PATH_ORDER_GET, MethodsEnum.GET): (
-            200,
-            {
-                "status": ExternalOrderStatus.PENDING,
-                "amount": MOCK_ORDER_AMOUNT,
-                "shop_access_key": "mock-shop-access-key",
-                "pubg_id": 123456,
-                "status_reason": None,
-                "codes": {"CODE-1": 60},
-                "unused_codes": {"CODE-1": 60},
-                "broken_codes": [],
-                "redeemed_codes": [],
-                "additional_data": {"player_open_id": MOCK_PLAYER_OPEN_ID},
-            },
+        (PATH_ORDER_GET, MethodsEnum.GET): order_get_response(
+            codes={MOCK_DEFAULT_CODE: 60}
         ),
         (PATH_ORDERS_SET_STATUS, MethodsEnum.PATCH): (200, {"success": True}),
         (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(),
@@ -104,6 +117,21 @@ def default_external_responses(
     if overrides:
         responses.update(overrides)
     return responses
+
+
+def success_external_responses() -> dict[ResponseKey, ResponseSpec]:
+    """Unused CODE-2 present in both `codes` and `unused_codes`, not redeemed yet
+    -> processing completes without the `Code already redeemed` path."""
+    return default_external_responses(
+        overrides={
+            (PATH_ORDER_GET, MethodsEnum.GET): order_get_response(
+                codes={MOCK_SUCCESS_CODE: 60}
+            ),
+            (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
+                is_redeemed=False
+            ),
+        }
+    )
 
 
 def fraud_external_responses(
@@ -138,6 +166,6 @@ def enable_mock_external_api(
 ) -> MockRequestService:
     from api.dependencies import get_request_service  # noqa: PLC0415
 
-    mock = MockRequestService(responses=responses or default_external_responses())
+    mock = MockRequestService(responses=responses or success_external_responses())
     app.dependency_overrides[get_request_service] = lambda: mock
     return mock
