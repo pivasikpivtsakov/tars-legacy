@@ -4,7 +4,7 @@ from datetime import time
 from aiogram.utils.i18n import gettext as _
 
 from common.catalog.packages import format_prices
-from common.catalog.tiers import Tier, tier_range_label
+from common.catalog.tiers import Tier
 from common.models.user_profiles import UserProfile
 
 _TIME_FORMAT = "%H:%M"
@@ -24,13 +24,13 @@ def _fmt_yes_no(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
-def render_pending_review(*, profile: UserProfile, tier: Tier, with_codes: bool) -> str:
+def render_pending_review(*, profile: UserProfile, with_codes: bool, tier: Tier) -> str:
     lines = [
         "#pending user awaiting moderation",
         f"tg_id: {profile.tg_id}",
         f"chat addable: {_fmt_yes_no(profile.chat_addable)}",
         f"with codes: {_fmt_yes_no(with_codes)}",
-        f"tier: {tier_range_label(tier)}",
+        f"tier: {tier.range_label()}",
     ]
     if not with_codes:
         lines.append(f"packages: {_fmt_packages(profile.packages)}")

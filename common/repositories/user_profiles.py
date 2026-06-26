@@ -77,7 +77,7 @@ class UserProfileRepository:
             profile_id,
             UserProfileStatus.ACTIVE.value,
             with_codes,
-            tier.value,
+            int(tier),
         )
         if row is None:
             msg = f"no {_TABLE} row to approve for id={profile_id}"

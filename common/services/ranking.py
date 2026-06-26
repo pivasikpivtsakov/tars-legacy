@@ -7,12 +7,7 @@ from decimal import Decimal
 
 import asyncpg
 
-from common.catalog.tiers import (
-    TIER_DEFAULT,
-    required_tier,
-    tier_allows_units,
-    tiers_serving,
-)
+from common.catalog.tiers import CODE_TIERS, PACK_TIERS
 from common.models.orders import Order
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
@@ -187,8 +182,8 @@ class PackRankingStrategy(RankingStrategy):
         rows: list[PricedCandidate],
         pack_sizes: Sequence[int],
     ) -> list[PricedCandidate]:
-        required = required_tier(pack_sizes)
-        if not rows or required is None or required <= TIER_DEFAULT:
+        required = PACK_TIERS.required(pack_sizes)
+        if not rows or required is None or required <= PACK_TIERS.default():
             return rows
         allowed = await self._pack_index.filter_by_min_tier(
             user_ids=[row.user_id for row in rows],
@@ -198,7 +193,7 @@ class PackRankingStrategy(RankingStrategy):
 
     def validate_take(self, *, order: Order, profile: UserProfile) -> bool:
         pack_sizes = list(decompose_amount(order.amount).package_counts)
-        if not tier_allows_units(tier=profile.tier, amounts=pack_sizes):
+        if not profile.tier.allows(pack_sizes):
             return False
         prices = profile.prices
         return bool(prices) and all(size in prices for size in pack_sizes)
@@ -252,7 +247,7 @@ class CodeRankingStrategy(RankingStrategy):
         exclude_user_ids: Collection[int],
     ) -> list[RankedCandidate]:
         code_amounts = _code_amounts(order)
-        tiers = tiers_serving(code_amounts)
+        tiers = CODE_TIERS.serving(code_amounts)
         if not tiers:
             return []
         candidates = await self._sweep.fetch(
@@ -270,7 +265,7 @@ class CodeRankingStrategy(RankingStrategy):
     def validate_take(self, *, order: Order, profile: UserProfile) -> bool:
         if not profile.with_codes:
             return False
-        return tier_allows_units(tier=profile.tier, amounts=_code_amounts(order))
+        return profile.tier.allows(_code_amounts(order))
 
     def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal:  # noqa: ARG002
         return Decimal(sum(_code_amounts(order)))

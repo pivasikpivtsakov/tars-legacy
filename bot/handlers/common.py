@@ -32,7 +32,6 @@ from bot.keyboards.start import (
 )
 from bot.middlewares.profile import require_active_profile
 from common.catalog.packages import format_prices_table
-from common.catalog.tiers import tier_name
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
 from common.money import format_money
@@ -122,7 +121,7 @@ async def open_priority(
     if profile is not None and profile.with_codes:
         online = _("registration.btn_yes") if profile.is_online else _("registration.btn_no")
         text = _("start.priority_codes").format(
-            tier=tier_name(profile.tier),
+            tier=profile.tier.name(),
             online=online,
         )
         await show_back_panel(callback=callback, text=text)

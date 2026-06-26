@@ -53,5 +53,5 @@ class UserProfile:
             is_online=row["is_online"],
             with_codes=row["with_codes"],
             status=UserProfileStatus(row["status"]),
-            tier=Tier(row["tier"]),
+            tier=Tier(with_codes=row["with_codes"], number=row["tier"]),
         )

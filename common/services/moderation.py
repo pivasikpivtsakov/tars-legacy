@@ -4,7 +4,7 @@ from collections.abc import Collection
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
-from common.catalog.tiers import TIER_DEFAULT, required_tier
+from common.catalog.tiers import PACK_TIERS
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
 from common.rendering.moderation import render_pending_review
@@ -66,13 +66,13 @@ class ModerationService:
         if profile.with_codes:
             tier = profile.tier
         else:
-            implied = required_tier(profile.packages or ())
-            tier = max(profile.tier, implied if implied is not None else TIER_DEFAULT)
-        text = render_pending_review(profile=profile, tier=tier, with_codes=profile.with_codes)
+            implied = PACK_TIERS.required(profile.packages or ())
+            tier = max(profile.tier, implied if implied is not None else PACK_TIERS.default())
+        text = render_pending_review(profile=profile, with_codes=profile.with_codes, tier=tier)
         markup = moderation_decision_kb(
             profile_id=profile.id,
             with_codes=profile.with_codes,
-            tier=int(tier),
+            tier=tier,
         )
         tg_ids = await self._profiles.get_tg_ids(profile_ids=moderator_ids)
         for moderator_id in moderator_ids:

@@ -1,7 +1,7 @@
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from common.catalog.tiers import Tier, tier_range_label
+from common.catalog.tiers import Tier, tiers_for
 
 _CODES_ON = "\u2611 with codes"
 _CODES_OFF = "\u2610 with codes"
@@ -44,19 +44,19 @@ def _tier_choice_row(
     *,
     profile_id: int,
     with_codes: bool,
-    tier: int,
+    tier: Tier,
 ) -> list[InlineKeyboardButton]:
     return [
         InlineKeyboardButton(
-            text=f"{_TIER_SELECTED if int(option) == tier else _TIER_UNSELECTED} "
-            f"{tier_range_label(option)}",
+            text=f"{_TIER_SELECTED if option == tier else _TIER_UNSELECTED} "
+            f"{option.range_label()}",
             callback_data=ModSetTierCB(
                 profile_id=profile_id,
                 with_codes=with_codes,
                 tier=int(option),
             ).pack(),
         )
-        for option in Tier
+        for option in tiers_for(with_codes=with_codes).tiers()
     ]
 
 
@@ -64,7 +64,7 @@ def moderation_decision_kb(
     *,
     profile_id: int,
     with_codes: bool,
-    tier: int,
+    tier: Tier,
 ) -> InlineKeyboardMarkup:
     rows = [
         [
@@ -73,7 +73,7 @@ def moderation_decision_kb(
                 callback_data=ModToggleCodesCB(
                     profile_id=profile_id,
                     with_codes=with_codes,
-                    tier=tier,
+                    tier=int(tier),
                 ).pack(),
             ),
         ],
@@ -87,7 +87,7 @@ def moderation_decision_kb(
                     callback_data=ModEditPacksCB(
                         profile_id=profile_id,
                         with_codes=with_codes,
-                        tier=tier,
+                        tier=int(tier),
                     ).pack(),
                 ),
             ],
@@ -99,7 +99,7 @@ def moderation_decision_kb(
                 callback_data=ModApproveCB(
                     profile_id=profile_id,
                     with_codes=with_codes,
-                    tier=tier,
+                    tier=int(tier),
                 ).pack(),
             ),
             InlineKeyboardButton(

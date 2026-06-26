@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from common.catalog.tiers import Tier
+from common.catalog.tiers import Tier, TierNumber
 from common.models.orders import Order, OrderStatus
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile, UserProfileStatus
@@ -85,7 +85,7 @@ def _order(*, amount: int, unused_codes: str | None, is_only_w_codes: bool) -> O
 def _profile(
     *,
     user_id: int = 1,
-    tier: Tier = Tier.T0,
+    tier: TierNumber = TierNumber.T0,
     with_codes: bool = False,
     prices: Mapping[int, str] | None = None,
 ) -> UserProfile:
@@ -101,7 +101,7 @@ def _profile(
         is_online=True,
         with_codes=with_codes,
         status=UserProfileStatus.ACTIVE,
-        tier=tier,
+        tier=Tier(with_codes=with_codes, number=tier),
     )
 
 
@@ -142,6 +142,10 @@ class _FakeCodeIndex:
     async def get_candidates(self, *, tiers: Sequence[Tier]) -> list[CodeCandidate]:
         self.requested_tiers.append(list(tiers))
         return list(self._candidates)
+
+
+def _requested_tier_numbers(calls: Sequence[Sequence[Tier]]) -> list[list[int]]:
+    return [[int(tier) for tier in call] for call in calls]
 
 
 class _FakeRating:
@@ -289,30 +293,32 @@ def test_pack_strategy_filters_below_required_tier() -> None:
     assert [c.user_id for c in result] == [2]
 
 
-def test_pack_strategy_top_tier_order_requires_top_tier() -> None:
+def test_pack_strategy_largest_pack_requires_t1() -> None:
+    # Pack tiers are 60-720 / 60-16200 / 60-unbounded, so the largest current
+    # package (8100) only requires T1; no current pack can require T2.
     pack_index = _FakePackIndex(
         rows=[_priced(1, 100), _priced(2, 100), _priced(3, 100)],
         tiers={1: 0, 2: 1, 3: 2},
     )
-    rating = _FakeRating(stats={3: _stats(speed_seconds=10)})
+    rating = _FakeRating(stats={2: _stats(speed_seconds=20), 3: _stats(speed_seconds=10)})
     strategy = _pack_strategy(pack_index=pack_index, rating=rating)
 
     result = _run(strategy=strategy, order=_pack_order(amount=8100))
 
-    assert pack_index.filter_by_min_tier_calls == [([1, 2, 3], 2)]
-    assert [c.user_id for c in result] == [3]
+    assert pack_index.filter_by_min_tier_calls == [([1, 2, 3], 1)]
+    assert [c.user_id for c in result] == [3, 2]
 
 
 @pytest.mark.parametrize(
     ("tier", "prices", "expected"),
     [
-        (Tier.T0, {60: "10.00"}, True),
-        (Tier.T0, {325: "10.00"}, False),
-        (Tier.T0, None, False),
+        (TierNumber.T0, {60: "10.00"}, True),
+        (TierNumber.T0, {325: "10.00"}, False),
+        (TierNumber.T0, None, False),
     ],
 )
 def test_pack_strategy_validate_take(
-    tier: Tier,
+    tier: TierNumber,
     prices: Mapping[int, str] | None,
     expected: bool,
 ) -> None:
@@ -349,7 +355,7 @@ def test_code_strategy_orders_by_online_time_and_filters_tiers() -> None:
 
     result = _run(strategy=strategy, order=_code_order(codes={"CODE-1": 60, "CODE-2": 325}))
 
-    assert code_index.requested_tiers == [[Tier.T0, Tier.T1, Tier.T2]]
+    assert _requested_tier_numbers(code_index.requested_tiers) == [[0, 1, 2]]
     assert [c.user_id for c in result] == [3, 1, 2]
 
 
@@ -361,7 +367,7 @@ def test_code_strategy_excludes_user_ids() -> None:
 
     result = _run(strategy=strategy, order=_code_order(codes={"CODE-1": 326}), exclude=[1])
 
-    assert code_index.requested_tiers == [[Tier.T1, Tier.T2]]
+    assert _requested_tier_numbers(code_index.requested_tiers) == [[1, 2]]
     assert [c.user_id for c in result] == [3, 2]
 
 
@@ -386,7 +392,7 @@ def test_code_strategy_code_outside_any_tier_yields_no_candidates() -> None:
 
 def test_code_strategy_taken_price_is_sum_of_code_amounts() -> None:
     strategy = _code_strategy(code_index=_FakeCodeIndex(candidates=[]))
-    profile = _profile(tier=Tier.T2, with_codes=True)
+    profile = _profile(tier=TierNumber.T2, with_codes=True)
 
     taken = strategy.taken_price(
         order=_code_order(codes={"CODE-1": 60, "CODE-2": 325}),
@@ -399,12 +405,12 @@ def test_code_strategy_taken_price_is_sum_of_code_amounts() -> None:
 @pytest.mark.parametrize(
     ("tier", "with_codes", "expected"),
     [
-        (Tier.T2, True, True),
-        (Tier.T2, False, False),
-        (Tier.T1, True, False),
+        (TierNumber.T2, True, True),
+        (TierNumber.T2, False, False),
+        (TierNumber.T1, True, False),
     ],
 )
-def test_code_strategy_validate_take(tier: Tier, with_codes: bool, expected: bool) -> None:
+def test_code_strategy_validate_take(tier: TierNumber, with_codes: bool, expected: bool) -> None:
     strategy = _code_strategy(code_index=_FakeCodeIndex(candidates=[]))
     profile = _profile(tier=tier, with_codes=with_codes)
     order = _code_order(codes={"CODE-1": 1801})

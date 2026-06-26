@@ -26,7 +26,7 @@ from bot.keyboards.profile import (
 )
 from bot.utils.telegram import ignore_message_gone
 from common.catalog.packages import format_prices, format_prices_table
-from common.catalog.tiers import Tier, allowed_packs_for_tier, tier_name
+from common.catalog.tiers import PACK_TIERS, TierNumber
 from common.models.user_profiles import UserProfile
 from common.money import format_money, parse_money
 from common.repositories.pack_price_limits import PackPriceLimitRepository
@@ -169,9 +169,10 @@ def _profile_data(profile: UserProfile) -> dict[str, Any]:
 
 
 def _package_above_tier_message(tier: int) -> str:
+    pack_tier = PACK_TIERS.tier(TierNumber(tier))
     return _("registration.package_above_tier").format(
-        tier=tier_name(Tier(tier)),
-        max_package=max(allowed_packs_for_tier(Tier(tier))),
+        tier=pack_tier.name(),
+        max_package=max(pack_tier.allowed_packs()),
     )
 
 
@@ -233,7 +234,7 @@ async def toggle_pack(*, callback: CallbackQuery, state: FSMContext, value: int)
     if (
         value not in selected
         and tier is not None
-        and value not in allowed_packs_for_tier(Tier(tier))
+        and value not in PACK_TIERS.tier(TierNumber(tier)).allowed_packs()
     ):
         await callback.answer(_package_above_tier_message(tier), show_alert=True)
         return
@@ -262,7 +263,7 @@ async def ensure_packages_selected(
         return False
     tier = data.get("tier")
     if tier is not None:
-        allowed = set(allowed_packs_for_tier(Tier(tier)))
+        allowed = set(PACK_TIERS.tier(TierNumber(tier)).allowed_packs())
         if any(size not in allowed for size in selected):
             await callback.answer(_package_above_tier_message(tier), show_alert=True)
             return False

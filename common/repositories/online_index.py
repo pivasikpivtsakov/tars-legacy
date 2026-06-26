@@ -6,7 +6,7 @@ from decimal import Decimal
 from redis.asyncio import Redis
 
 from common.catalog.packages import PACKAGE_SIZES
-from common.catalog.tiers import Tier
+from common.catalog.tiers import Tier, TierNumber
 from common.models.user_profiles import UserProfile, UserProfileStatus
 from common.money import from_minor_units, to_minor_units
 
@@ -17,7 +17,7 @@ def _pkg_key(size: int) -> str:
     return f"rank:pkg:{size}"
 
 
-def _code_tier_key(tier: Tier) -> str:
+def _code_tier_key(tier: Tier | TierNumber) -> str:
     return f"rank:codes:tier:{int(tier)}"
 
 
@@ -96,12 +96,12 @@ class CodeOnlineIndex:
     async def remove(self, *, user_id: int) -> None:
         member = str(user_id)
         pipe = self._redis.pipeline(transaction=True)
-        for tier in Tier:
-            pipe.zrem(_code_tier_key(tier), member)
+        for number in TierNumber:
+            pipe.zrem(_code_tier_key(number), member)
         await pipe.execute()
 
     async def clear(self) -> None:
-        await self._redis.delete(*(_code_tier_key(tier) for tier in Tier))
+        await self._redis.delete(*(_code_tier_key(number) for number in TierNumber))
 
     async def get_candidates(self, *, tiers: Sequence[Tier]) -> list[CodeCandidate]:
         if not tiers:

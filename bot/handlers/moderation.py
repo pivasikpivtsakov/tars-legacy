@@ -16,7 +16,7 @@ from bot.forms.menu import send_menu
 from bot.forms.states import Moderation
 from bot.keyboards.profile import PackagesDoneCB
 from bot.utils.telegram import ignore_not_modified
-from common.catalog.tiers import TIER_DEFAULT, Tier, required_tier
+from common.catalog.tiers import PACK_TIERS, Tier, TierNumber, tiers_for
 from common.keyboards.moderation import (
     ModApproveCB,
     ModDenyCB,
@@ -113,13 +113,14 @@ async def toggle_with_codes(
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
     with_codes = not callback_data.with_codes
+    tier = tiers_for(with_codes=with_codes).default()
     with ignore_not_modified():
         await callback.message.edit_text(
-            render_pending_review(profile=profile, tier=TIER_DEFAULT, with_codes=with_codes),
+            render_pending_review(profile=profile, with_codes=with_codes, tier=tier),
             reply_markup=moderation_decision_kb(
                 profile_id=callback_data.profile_id,
                 with_codes=with_codes,
-                tier=int(TIER_DEFAULT),
+                tier=tier,
             ),
         )
     await callback.answer()
@@ -132,12 +133,13 @@ async def set_tier(
 ) -> None:
     # Re-tapping the already-selected tier yields identical markup, which Telegram
     # rejects with "message is not modified"; ignore that no-op only.
+    tier = Tier(with_codes=callback_data.with_codes, number=callback_data.tier)
     with ignore_not_modified():
         await callback.message.edit_reply_markup(
             reply_markup=moderation_decision_kb(
                 profile_id=callback_data.profile_id,
                 with_codes=callback_data.with_codes,
-                tier=callback_data.tier,
+                tier=tier,
             ),
         )
     await callback.answer()
@@ -205,15 +207,16 @@ async def save_packs(
     except LookupError:
         await message.answer(_("moderation.profile_not_found"))
         return
-    implied = required_tier(list(prices))
-    tier = max(Tier(data["tier"]), implied if implied is not None else TIER_DEFAULT)
+    implied = PACK_TIERS.required(list(prices))
+    selected = PACK_TIERS.tier(TierNumber(data["tier"]))
+    tier = max(selected, implied if implied is not None else PACK_TIERS.default())
     await state.set_state(None)
     await message.answer(
-        render_pending_review(profile=profile, tier=tier, with_codes=with_codes),
+        render_pending_review(profile=profile, with_codes=with_codes, tier=tier),
         reply_markup=moderation_decision_kb(
             profile_id=profile_id,
             with_codes=with_codes,
-            tier=int(tier),
+            tier=tier,
         ),
     )
 
@@ -227,11 +230,12 @@ async def approve_user(
     fsm_storage: BaseStorage,
     i18n: I18n,
 ) -> None:
+    tier = Tier(with_codes=callback_data.with_codes, number=callback_data.tier)
     try:
         profile = await profiles.approve(
             profile_id=callback_data.profile_id,
             with_codes=callback_data.with_codes,
-            tier=Tier(callback_data.tier),
+            tier=tier,
         )
     except LookupError:
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
