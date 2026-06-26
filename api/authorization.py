@@ -52,11 +52,10 @@ class Authorization:
         provided_access_token: str,
     ) -> tuple[int | None, UserRoleEnum | None]:
         logger.debug(
-            "Authorization: %s, Host: %s, Endpoint: %s, Access-Token: %s",
+            "Authorization: %s, Host: %s, Endpoint: %s",
             self.__auth_type,
             host,
             endpoint,
-            provided_access_token,
         )
 
         if self.__auth_type == AuthorizationEnum.INTERNAL:
