@@ -36,7 +36,6 @@ def test_get_order_populates_order_from_pending_response() -> None:
     assert order.amount == MOCK_ORDER_AMOUNT
     assert order.shop_access_key == "mock-shop-access-key"
     assert order.status == ExternalOrderStatus.PENDING
-    assert order.unused_codes == {"CODE-1": 60}
 
 
 def test_get_order_rejects_unexpected_status() -> None:

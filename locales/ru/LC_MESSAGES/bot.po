@@ -268,6 +268,9 @@ msgstr "Взять"
 msgid "order.expired"
 msgstr "<i>Истекло</i>"
 
+msgid "order.timed_out"
+msgstr "<i>Истекло по таймауту</i>"
+
 msgid "order.taken"
 msgstr "<b>Заказ в работе</b>\nID: <code>{order_id}</code>\nUC: <b>{amount}</b>\nPUBG ID: <code>{pubg_id}</code>"
 
@@ -281,7 +284,7 @@ msgid "order.btn_ready"
 msgstr "✓ Готово"
 
 msgid "order.btn_noop"
-msgstr "▫️"
+msgstr "—"
 
 msgid "order.btn_cancel"
 msgstr "✕ Отменить"

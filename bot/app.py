@@ -116,6 +116,7 @@ def build_dispatcher(
     order_timeouts = OrderTimeoutService(
         scheduler=scheduler,
         bot=bot,
+        redis=redis,
         orders=orders_repo,
         lifecycle=order_lifecycle,
         notification_1_delay=ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS,

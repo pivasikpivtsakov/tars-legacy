@@ -32,7 +32,7 @@ async def _render_taken(
     callback: CallbackQuery,
     order: Order,
     profile: UserProfile,
-) -> None:
+) -> str:
     text = render_taken_text(
         order=order,
         with_codes=profile.with_codes,
@@ -48,6 +48,7 @@ async def _render_taken(
                 cancel_text=_("order.btn_cancel"),
             ),
         )
+    return text
 
 
 async def _finalize(*, callback: CallbackQuery, text: str) -> None:
@@ -107,11 +108,13 @@ async def take_order(
     if result.order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
-    await _render_taken(callback=callback, order=result.order, profile=profile)
-    order_timeouts.start(
+    taken_text = await _render_taken(callback=callback, order=result.order, profile=profile)
+    await order_timeouts.start(
         order_id=result.order.id,
         user_id=profile.id,
         chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        timed_out_text=f"{taken_text}\n{_('order.timed_out')}",
     )
     await callback.answer()
 
@@ -195,7 +198,7 @@ async def ready_order(
     if order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
-    order_timeouts.clear(order_id=callback_data.order_id)
+    await order_timeouts.clear(order_id=callback_data.order_id)
     await _finalize(callback=callback, text=_("order.completed").format(order_id=order.id))
     await callback.answer()
 
@@ -218,7 +221,7 @@ async def cancel_order(
     if order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
-    order_timeouts.clear(order_id=callback_data.order_id)
+    await order_timeouts.clear(order_id=callback_data.order_id)
     await _finalize(callback=callback, text=_("order.cancelled").format(order_id=order.id))
     await callback.answer()
 
