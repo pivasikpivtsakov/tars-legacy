@@ -77,8 +77,8 @@ class ExternalOrderApi:
         order.redeemed_codes = res.get("redeemed_codes")
         order.additional_data = res.get("additional_data")
 
-        # added this 'cause it's likely forgotten, rm if breaks the app
-        order.unused_codes = res.get("unused_codes")
+        # was missing in original code, added by Mikhail, uncomment later
+        # order.unused_codes = res.get("unused_codes")
 
         return order
 

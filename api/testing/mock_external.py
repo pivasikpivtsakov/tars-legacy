@@ -59,7 +59,7 @@ class MockRequestService(RequestService):
 
 def code_exchange_time_response(
     *,
-    is_redeemed: bool = True,
+    is_redeemed: bool = False,
     exchange_open_id: str = MOCK_PLAYER_OPEN_ID,
     amount: int = 60,
 ) -> ResponseSpec:
@@ -120,15 +120,11 @@ def default_external_responses(
 
 
 def success_external_responses() -> dict[ResponseKey, ResponseSpec]:
-    """Unused CODE-2 present in both `codes` and `unused_codes`, not redeemed yet
-    -> processing completes without the `Code already redeemed` path."""
+    """Fresh unused code -> order creation completes without admin warnings."""
     return default_external_responses(
         overrides={
             (PATH_ORDER_GET, MethodsEnum.GET): order_get_response(
                 codes={MOCK_SUCCESS_CODE: 60}
-            ),
-            (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
-                is_redeemed=False
             ),
         }
     )
@@ -142,6 +138,7 @@ def fraud_external_responses(
     return default_external_responses(
         overrides={
             (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
+                is_redeemed=True,
                 exchange_open_id=exchange_open_id
             ),
         }
