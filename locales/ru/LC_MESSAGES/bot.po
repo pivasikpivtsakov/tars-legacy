@@ -275,7 +275,7 @@ msgid "order.codes_header"
 msgstr "Коды:"
 
 msgid "order.codes_line"
-msgstr "{key}: <code>{value}</code>"
+msgstr "<code>{key}</code>: <code>{value}</code>"
 
 msgid "order.btn_ready"
 msgstr "✓ Готово"
@@ -324,3 +324,18 @@ msgstr "Пользователь не заблокирован."
 
 msgid "order.codes_unverified_moderator"
 msgstr "⚠️ Не удалось проверить активацию кодов по заказу #{order_id}: {codes}. Считаем активированными. Юзер id: {user_id}, telegram: {tg_id}."
+
+msgid "order.checkin_prompt"
+msgstr "Все хорошо? Вы делаете заказ?\nЕсли не завершить, заказ будет отменён автоматически через {minutes} мин."
+
+msgid "order.last_call"
+msgstr "⚠️ Последнее предупреждение: заказ будет отменён автоматически через {minutes} мин."
+
+msgid "order.btn_checkin_yes"
+msgstr "Да"
+
+msgid "order.btn_checkin_no"
+msgstr "Нет"
+
+msgid "order.btn_working"
+msgstr "Работаю над этим"

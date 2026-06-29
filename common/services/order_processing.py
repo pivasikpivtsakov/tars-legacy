@@ -205,3 +205,14 @@ class OrderLifecycle:
         await self._pending.release(user_id=user_id)
         await self._dispatch.request()
         return order
+
+    async def expire_taken(self, *, order_id: int, user_id: int) -> Order | None:
+        order = await self._orders.time_out(order_id=order_id, user_id=user_id)
+        if order is None:
+            return None
+        await self._rating.record_not_taken(user_ids=[user_id])
+        # Отправка в Длинный Резерв 2.0
+        await forward_to_third_party(original_id=order.original_id)
+        await self._pending.release(user_id=user_id)
+        await self._dispatch.request()
+        return order

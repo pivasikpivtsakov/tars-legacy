@@ -81,6 +81,13 @@ RATING_SPEED_WINDOW = _env_positive_int("RATING_SPEED_WINDOW", default=3)
 MAX_ORDERS_PENDING = _env_positive_int("MAX_ORDERS_PENDING", default=3)
 FANOUT_CHUNK_SIZE = _env_positive_int("FANOUT_CHUNK_SIZE", default=20)
 OFFER_RECONCILE_GRACE_SECONDS = _env_positive_int("OFFER_RECONCILE_GRACE_SECONDS", default=15)
+ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS = _env_positive_int(
+    "ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS", default=180
+)
+ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS = _env_positive_int(
+    "ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS", default=240
+)
+ORDER_EXPIRY_DELAY_SECONDS = _env_positive_int("ORDER_EXPIRY_DELAY_SECONDS", default=180)
 
 LOG_LEVEL = env_get("LOG_LEVEL", default="INFO", raise_if_failed=False)
 LOG_FORMAT = env_get(

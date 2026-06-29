@@ -1,4 +1,7 @@
+import contextlib
+
 from aiogram import Bot, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.utils.i18n import gettext as _
@@ -8,6 +11,7 @@ from bot.utils.telegram import ignore_not_modified
 from common.keyboards.orders import (
     CancelOrderCB,
     NoopCB,
+    OrderDismissCB,
     ReadyOrderCB,
     TakeOrderCB,
     working_inline_kb,
@@ -18,6 +22,7 @@ from common.rendering.orders import render_taken_text
 from common.services.anti_fraud import AntiFraudService, FraudVerdict
 from common.services.broadcast import BroadcastService
 from common.services.order_processing import OrderLifecycle, TakeStatus
+from common.services.order_timeouts import OrderTimeoutService
 
 router = Router(name="orders")
 
@@ -82,6 +87,7 @@ async def take_order(
     callback: CallbackQuery,
     callback_data: TakeOrderCB,
     order_lifecycle: OrderLifecycle,
+    order_timeouts: OrderTimeoutService,
     profile: UserProfile | None,
 ) -> None:
     if profile is None:
@@ -102,6 +108,11 @@ async def take_order(
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
     await _render_taken(callback=callback, order=result.order, profile=profile)
+    order_timeouts.start(
+        order_id=result.order.id,
+        user_id=profile.id,
+        chat_id=callback.message.chat.id,
+    )
     await callback.answer()
 
 
@@ -112,6 +123,7 @@ async def ready_order(
     state: FSMContext,
     bot: Bot,
     order_lifecycle: OrderLifecycle,
+    order_timeouts: OrderTimeoutService,
     anti_fraud: AntiFraudService,
     broadcast: BroadcastService,
     profile: UserProfile | None,
@@ -183,6 +195,7 @@ async def ready_order(
     if order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
+    order_timeouts.clear(order_id=callback_data.order_id)
     await _finalize(callback=callback, text=_("order.completed").format(order_id=order.id))
     await callback.answer()
 
@@ -192,6 +205,7 @@ async def cancel_order(
     callback: CallbackQuery,
     callback_data: CancelOrderCB,
     order_lifecycle: OrderLifecycle,
+    order_timeouts: OrderTimeoutService,
     profile: UserProfile | None,
 ) -> None:
     if profile is None:
@@ -204,7 +218,15 @@ async def cancel_order(
     if order is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
+    order_timeouts.clear(order_id=callback_data.order_id)
     await _finalize(callback=callback, text=_("order.cancelled").format(order_id=order.id))
+    await callback.answer()
+
+
+@router.callback_query(OrderDismissCB.filter())
+async def dismiss_order(callback: CallbackQuery) -> None:
+    with contextlib.suppress(TelegramAPIError):
+        await callback.message.delete()
     await callback.answer()
 
 

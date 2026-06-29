@@ -1,8 +1,9 @@
 import asyncpg
-from aiogram import Dispatcher
+from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.utils.i18n import FSMI18nMiddleware
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from redis.asyncio import Redis
 
 from bot.handlers import (
@@ -22,8 +23,14 @@ from bot.middlewares.logging import LoggingContextMiddleware
 from bot.middlewares.menu import MenuMiddleware
 from bot.middlewares.profile import ProfileMiddleware
 from bot.middlewares.roles import RoleContextMiddleware
-from common.environment import RATING_SPEED_WINDOW
+from common.environment import (
+    ORDER_EXPIRY_DELAY_SECONDS,
+    ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS,
+    ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS,
+    RATING_SPEED_WINDOW,
+)
 from common.i18n import build_i18n
+from common.jobs.registry import set_job_services
 from common.repositories.bot_switch import BotSwitchRepository
 from common.repositories.online_index import (
     CodeOnlineIndex,
@@ -45,6 +52,7 @@ from common.services.dispatch_signal import DispatchSignal
 from common.services.external_order_api import ExternalOrderApi
 from common.services.moderation import ModerationService
 from common.services.order_processing import OrderLifecycle
+from common.services.order_timeouts import OrderTimeoutService
 from common.services.ranking import build_strategies
 from common.services.request_service import RequestService
 from common.services.user_profiles import UserProfileService
@@ -55,6 +63,8 @@ def build_dispatcher(
     pool: asyncpg.Pool,
     redis: Redis,
     redis_url: str,
+    bot: Bot,
+    scheduler: AsyncIOScheduler,
 ) -> Dispatcher:
     storage = RedisStorage.from_url(
         redis_url,
@@ -92,7 +102,7 @@ def build_dispatcher(
     dispatcher["transactions"] = transactions
     dispatcher["pack_price_limits"] = PackPriceLimitRepository(redis=redis)
     dispatcher["dispatch_signal"] = dispatch_signal
-    dispatcher["order_lifecycle"] = OrderLifecycle(
+    order_lifecycle = OrderLifecycle(
         pool=pool,
         orders=orders_repo,
         offers=offers_repo,
@@ -102,6 +112,18 @@ def build_dispatcher(
         dispatch_signal=dispatch_signal,
         strategies=strategies,
     )
+    dispatcher["order_lifecycle"] = order_lifecycle
+    order_timeouts = OrderTimeoutService(
+        scheduler=scheduler,
+        bot=bot,
+        orders=orders_repo,
+        lifecycle=order_lifecycle,
+        notification_1_delay=ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS,
+        notification_2_delay=ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS,
+        expiry_delay=ORDER_EXPIRY_DELAY_SECONDS,
+    )
+    dispatcher["order_timeouts"] = order_timeouts
+    set_job_services(order_timeouts=order_timeouts)
     dispatcher["anti_fraud"] = AntiFraudService(
         orders=orders_repo,
         external_api=external_order_api,

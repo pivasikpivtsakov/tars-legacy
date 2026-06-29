@@ -14,6 +14,7 @@ class OrderStatus(StrEnum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_TAKERS = "no_takers"
+    TIMED_OUT = "timed_out"
 
 
 class ExternalOrderStatus(StrEnum):

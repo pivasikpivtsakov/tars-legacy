@@ -297,6 +297,20 @@ class OrderRepository:
             conn=conn,
         )
 
+    async def time_out(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        conn: asyncpg.Connection | None = None,
+    ) -> Order | None:
+        return await self._resolve(
+            order_id=order_id,
+            user_id=user_id,
+            status=OrderStatus.TIMED_OUT,
+            conn=conn,
+        )
+
     async def _resolve(
         self,
         *,

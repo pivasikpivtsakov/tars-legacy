@@ -18,14 +18,15 @@ async def _load_counts(pool: asyncpg.Pool) -> dict[int, dict[str, int]]:
     resolved = await pool.fetch(
         "SELECT taken_by AS user_id, "
         "count(*) FILTER (WHERE status = 'completed') AS complete, "
-        "count(*) FILTER (WHERE status = 'cancelled') AS incomplete "
+        "count(*) FILTER (WHERE status = 'cancelled') AS incomplete, "
+        "count(*) FILTER (WHERE status = 'timed_out') AS timed_out "
         "FROM orders WHERE taken_by IS NOT NULL GROUP BY taken_by",
     )
     for row in resolved:
         counts[row["user_id"]] = {
             "complete": row["complete"],
             "incomplete": row["incomplete"],
-            "not_taken": 0,
+            "not_taken": row["timed_out"],
         }
     not_taken = await pool.fetch(
         "SELECT oo.user_id AS user_id, count(*) AS not_taken "
@@ -39,7 +40,7 @@ async def _load_counts(pool: asyncpg.Pool) -> dict[int, dict[str, int]]:
             row["user_id"],
             {"complete": 0, "incomplete": 0, "not_taken": 0},
         )
-        user["not_taken"] = row["not_taken"]
+        user["not_taken"] += row["not_taken"]
     return counts
 
 

@@ -275,7 +275,7 @@ msgid "order.codes_header"
 msgstr "Codes:"
 
 msgid "order.codes_line"
-msgstr "{key}: <code>{value}</code>"
+msgstr "<code>{key}</code>: <code>{value}</code>"
 
 msgid "order.btn_ready"
 msgstr "✓ Ready"
@@ -324,3 +324,18 @@ msgstr "User was not banned."
 
 msgid "order.codes_unverified_moderator"
 msgstr "⚠️ Could not verify activation of codes for order #{order_id}: {codes}. Assumed activated. User id: {user_id}, telegram: {tg_id}."
+
+msgid "order.checkin_prompt"
+msgstr "Everything okay? Are you working on the order?\nIf it isn't finished, it will be cancelled automatically in {minutes} min."
+
+msgid "order.last_call"
+msgstr "⚠️ Final warning: the order will be cancelled automatically in {minutes} min."
+
+msgid "order.btn_checkin_yes"
+msgstr "Yes"
+
+msgid "order.btn_checkin_no"
+msgstr "No"
+
+msgid "order.btn_working"
+msgstr "Working on it"

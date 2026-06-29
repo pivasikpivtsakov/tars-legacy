@@ -46,6 +46,14 @@ def render_taken_text(
     return f"{text}\n{header}\n{codes_block}"
 
 
+def render_checkin_text(*, minutes: int, gettext: Callable[[str], str]) -> str:
+    return gettext("order.checkin_prompt").format(minutes=minutes)
+
+
+def render_last_call_text(*, minutes: int, gettext: Callable[[str], str]) -> str:
+    return gettext("order.last_call").format(minutes=minutes)
+
+
 def _history_items(group: TransactionGroup) -> str:
     if group.kind is TransactionKind.PACK:
         return ", ".join(label for label, _amount in group.items)
