@@ -39,6 +39,7 @@ async def _render_taken(
             reply_markup=working_inline_kb(
                 order_id=order.id,
                 ready_text=_("order.btn_ready"),
+                noop_text=_("order.btn_noop"),
                 cancel_text=_("order.btn_cancel"),
             ),
         )

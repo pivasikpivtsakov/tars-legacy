@@ -35,6 +35,7 @@ def working_inline_kb(
     *,
     order_id: int,
     ready_text: str,
+    noop_text: str,
     cancel_text: str,
 ) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
@@ -42,14 +43,16 @@ def working_inline_kb(
             [
                 InlineKeyboardButton(
                     text=ready_text,
+                    style="success",
                     callback_data=ReadyOrderCB(order_id=order_id).pack(),
                 ),
                 InlineKeyboardButton(
-                    text=" ",
+                    text=noop_text,
                     callback_data=NoopCB().pack(),
                 ),
                 InlineKeyboardButton(
                     text=cancel_text,
+                    style="danger",
                     callback_data=CancelOrderCB(order_id=order_id).pack(),
                 ),
             ],

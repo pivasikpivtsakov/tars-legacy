@@ -278,10 +278,13 @@ msgid "order.codes_line"
 msgstr "{key}: <code>{value}</code>"
 
 msgid "order.btn_ready"
-msgstr "Готово"
+msgstr "✓ Готово"
+
+msgid "order.btn_noop"
+msgstr "▫️"
 
 msgid "order.btn_cancel"
-msgstr "Отменить"
+msgstr "✕ Отменить"
 
 msgid "order.completed"
 msgstr "Заказ #{order_id} выполнен. Спасибо!"
