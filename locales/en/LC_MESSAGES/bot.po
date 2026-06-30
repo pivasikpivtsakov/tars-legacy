@@ -304,6 +304,9 @@ msgstr "« Back"
 msgid "order.long_reserve_forwarded"
 msgstr "Order #{order_id} sent to long reserve. Refusal reason: {reason}"
 
+msgid "order.no_takers_moderator"
+msgstr "⚠️ No available users for order #{order_id} ({amount} UC). It was sent to long reserve."
+
 msgid "order.unavailable"
 msgstr "This order is no longer available."
 

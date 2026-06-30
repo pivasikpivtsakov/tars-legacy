@@ -26,6 +26,17 @@ def render_offer_text(
     )
 
 
+def render_no_takers_text(
+    *,
+    order: Order,
+    gettext: Callable[[str], str],
+) -> str:
+    return gettext("order.no_takers_moderator").format(
+        order_id=order.id,
+        amount=order.amount,
+    )
+
+
 def render_taken_text(
     *,
     order: Order,

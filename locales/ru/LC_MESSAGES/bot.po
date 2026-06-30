@@ -304,6 +304,9 @@ msgstr "« Назад"
 msgid "order.long_reserve_forwarded"
 msgstr "Заказ #{order_id} отправлен в длинный резерв. Причина отказа: {reason}"
 
+msgid "order.no_takers_moderator"
+msgstr "⚠️ Нет доступных пользователей для заказа #{order_id} ({amount} UC). Он отправлен в длинный резерв."
+
 msgid "order.unavailable"
 msgstr "Этот заказ уже недоступен."
 

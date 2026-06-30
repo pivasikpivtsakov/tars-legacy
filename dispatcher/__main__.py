@@ -76,6 +76,7 @@ async def main() -> None:
             pending=PendingOrdersRepository(redis=redis),
             deadlines=OfferDeadlineQueue(redis=redis),
             excluded_user_ids=frozenset(moderator_ids),
+            moderator_ids=moderator_ids,
         )
         logger.info("starting dispatcher")
         try:

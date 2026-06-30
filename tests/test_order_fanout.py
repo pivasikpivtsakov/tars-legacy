@@ -125,21 +125,37 @@ class _FakeBot:
         self._message_id = message_id
         self.sent: list[int] = []
 
-    async def send_message(self, *, chat_id: int, text: str, reply_markup: object) -> object:
+    async def send_message(
+        self,
+        *,
+        chat_id: int,
+        text: str,
+        reply_markup: object = None,
+    ) -> object:
         self.sent.append(chat_id)
         assert text
-        assert reply_markup is not None
         return SimpleNamespace(message_id=self._message_id)
 
 
 class _FakeProfiles:
-    def __init__(self, *, tg_id: int | None) -> None:
+    def __init__(
+        self,
+        *,
+        tg_id: int | None,
+        tg_ids: dict[int, int] | None = None,
+    ) -> None:
         self._tg_id = tg_id
+        self._tg_ids = dict(tg_ids or {})
         self.get_tg_id_calls: list[int] = []
+        self.get_tg_ids_calls: list[list[int]] = []
 
     async def get_tg_id(self, *, profile_id: int) -> int | None:
         self.get_tg_id_calls.append(profile_id)
         return self._tg_id
+
+    async def get_tg_ids(self, *, profile_ids: object) -> dict[int, int]:
+        self.get_tg_ids_calls.append(list(profile_ids))
+        return dict(self._tg_ids)
 
 
 class _FakeStrategy:
@@ -202,6 +218,7 @@ def _service(**overrides: object) -> OrderFanoutService:
         "pending": _FakePending(),
         "deadlines": _FakeDeadlines(),
         "excluded_user_ids": frozenset(),
+        "moderator_ids": frozenset(),
     }
     defaults.update(overrides)
     return OrderFanoutService(**defaults)
@@ -234,6 +251,44 @@ def test_sweep_recovers_orphan_then_offers() -> None:
     assert rating.not_taken == [[9]]  # orphan released once via batch expire
     assert pending.released_many == [[9]]
     assert orders.mark_no_takers_calls == [5]  # no-candidates branch does not re-expire
+
+
+def test_no_takers_notifies_moderators() -> None:
+    order = _order(status=OrderStatus.PENDING, order_id=8)
+    orders = _FakeOrders()
+    bot = _FakeBot()
+    profiles = _FakeProfiles(tg_id=None, tg_ids={11: 5001, 22: 5002})
+    service = _service(
+        orders=orders,
+        bot=bot,
+        profiles=profiles,
+        strategies={False: _FakeStrategy(), True: _FakeStrategy()},
+        moderator_ids=frozenset({11, 22}),
+    )
+
+    asyncio.run(service.offer_order_to_next_user(order=order, already_offered_user_ids=set()))
+
+    assert orders.mark_no_takers_calls == [8]
+    assert len(profiles.get_tg_ids_calls) == 1
+    assert sorted(profiles.get_tg_ids_calls[0]) == [11, 22]
+    assert sorted(bot.sent) == [5001, 5002]
+
+
+def test_no_takers_without_moderators_skips_notify() -> None:
+    order = _order(status=OrderStatus.PENDING, order_id=8)
+    bot = _FakeBot()
+    profiles = _FakeProfiles(tg_id=None)
+    service = _service(
+        bot=bot,
+        profiles=profiles,
+        strategies={False: _FakeStrategy(), True: _FakeStrategy()},
+        moderator_ids=frozenset(),
+    )
+
+    asyncio.run(service.offer_order_to_next_user(order=order, already_offered_user_ids=set()))
+
+    assert profiles.get_tg_ids_calls == []
+    assert bot.sent == []
 
 
 def _candidate(*, user_id: int) -> RankedCandidate:

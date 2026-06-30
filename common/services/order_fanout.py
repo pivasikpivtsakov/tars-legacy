@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
@@ -14,7 +14,7 @@ from common.environment import (
 from common.i18n import build_i18n
 from common.keyboards.orders import take_inline_kb
 from common.models.orders import Order
-from common.rendering.orders import render_offer_text
+from common.rendering.orders import render_no_takers_text, render_offer_text
 from common.repositories.offer_deadlines import OfferDeadlineQueue
 from common.repositories.order_offers import OrderOfferRepository
 from common.repositories.orders import OrderRepository
@@ -43,6 +43,7 @@ class OrderFanoutService:
         pending: PendingOrdersRepository,
         deadlines: OfferDeadlineQueue,
         excluded_user_ids: frozenset[int],
+        moderator_ids: Collection[int],
     ) -> None:
         self._bot = bot
         self._orders = orders
@@ -53,6 +54,7 @@ class OrderFanoutService:
         self._pending = pending
         self._deadlines = deadlines
         self._excluded_user_ids = excluded_user_ids
+        self._moderator_ids = moderator_ids
 
     async def offer_order_to_next_user(
         self,
@@ -68,6 +70,7 @@ class OrderFanoutService:
         if not ranked_candidates:
             await self._orders.mark_no_takers(order_id=order.id)
             await forward_to_third_party(original_id=order.original_id)
+            await self._notify_moderators_no_takers(order=order)
             return
 
         next_recipient = None
@@ -148,6 +151,29 @@ class OrderFanoutService:
         finally:
             for strategy in self._strategies.values():
                 strategy.end_sweep()
+
+    async def _notify_moderators_no_takers(self, *, order: Order) -> None:
+        if not self._moderator_ids:
+            return
+        text = render_no_takers_text(order=order, gettext=_)
+        tg_ids = await self._profiles.get_tg_ids(profile_ids=self._moderator_ids)
+        for moderator_id in self._moderator_ids:
+            tg_id = tg_ids.get(moderator_id)
+            if tg_id is None:
+                logger.warning(
+                    "cannot resolve tg_id for moderator_id=%s order_id=%s",
+                    moderator_id,
+                    order.id,
+                )
+                continue
+            try:
+                await self._bot.send_message(chat_id=tg_id, text=text)
+            except TelegramAPIError:
+                logger.exception(
+                    "failed to notify moderator_id=%s order_id=%s",
+                    moderator_id,
+                    order.id,
+                )
 
     async def _rollback_offer(self, *, order_id: int, user_id: int) -> None:
         await self._offers.expire_one(order_id=order_id, user_id=user_id)
