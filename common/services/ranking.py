@@ -153,6 +153,24 @@ class PackRankingStrategy(RankingStrategy):
         self._pack_index = pack_index
         self._rating = rating
         self._transactions = transactions
+        self._rating_cache: dict[int, RatingStats] | None = None
+
+    def begin_sweep(self) -> None:
+        super().begin_sweep()
+        self._rating_cache = {}
+
+    def end_sweep(self) -> None:
+        super().end_sweep()
+        self._rating_cache = None
+
+    async def _rating_stats(self, *, user_ids: list[int]) -> dict[int, RatingStats]:
+        cache = self._rating_cache
+        if cache is None:
+            return await self._rating.get_many(user_ids=user_ids)
+        missing = [user_id for user_id in user_ids if user_id not in cache]
+        if missing:
+            cache.update(await self._rating.get_many(user_ids=missing))
+        return {user_id: cache[user_id] for user_id in user_ids}
 
     async def select_candidates(
         self,
@@ -172,7 +190,7 @@ class PackRankingStrategy(RankingStrategy):
         if not rows:
             return []
         bucket = _cheapest_price_bucket(rows)
-        stats = await self._rating.get_many(user_ids=[row.user_id for row in bucket])
+        stats = await self._rating_stats(user_ids=[row.user_id for row in bucket])
         bucket.sort(key=lambda row: _pack_sort_key(row, stats[row.user_id]))
         return [RankedCandidate(user_id=row.user_id, full_price=row.full_price) for row in bucket]
 

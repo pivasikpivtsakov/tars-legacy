@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from datetime import timedelta
 
 import asyncpg
 
@@ -12,12 +11,21 @@ class OrderOfferRepository:
     def __init__(self, *, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
-    async def offered_user_ids(self, *, order_id: int) -> set[int]:
+    async def offered_user_ids_many(
+        self,
+        *,
+        order_ids: Sequence[int],
+    ) -> dict[int, set[int]]:
+        if not order_ids:
+            return {}
         rows = await self._pool.fetch(
-            f"SELECT user_id FROM {_TABLE} WHERE order_id = $1",
-            order_id,
+            f"SELECT order_id, user_id FROM {_TABLE} WHERE order_id = ANY($1::int[])",
+            order_ids,
         )
-        return {row["user_id"] for row in rows}
+        result: dict[int, set[int]] = {}
+        for row in rows:
+            result.setdefault(row["order_id"], set()).add(row["user_id"])
+        return result
 
     async def offered_counts_by_user(self) -> dict[int, int]:
         rows = await self._pool.fetch(
@@ -85,22 +93,6 @@ class OrderOfferRepository:
             conn=conn,
         )
 
-    async def has_active_offer(
-        self,
-        *,
-        order_id: int,
-        ttl_seconds: int,
-        conn: asyncpg.Connection | None = None,
-    ) -> bool:
-        return await (conn or self._pool).fetchval(
-            f"SELECT EXISTS(SELECT 1 FROM {_TABLE} "
-            f"WHERE order_id = $1 AND status = $2::order_offer_status "
-            f"AND offered_at + $3::interval > NOW())",
-            order_id,
-            OrderOfferStatus.OFFERED.value,
-            timedelta(seconds=ttl_seconds),
-        )
-
     async def expire_offered(
         self,
         *,
@@ -118,6 +110,26 @@ class OrderOfferRepository:
             OrderOfferStatus.OFFERED.value,
         )
         return [row["user_id"] for row in rows]
+
+    async def expire_offered_for_orders(
+        self,
+        *,
+        order_ids: Sequence[int],
+    ) -> list[tuple[int, int]]:
+        if not order_ids:
+            return []
+        rows = await self._pool.fetch(
+            f"UPDATE {_TABLE} SET "
+            f"status = $2::order_offer_status, "
+            f"resolved_at = NOW() "
+            f"WHERE order_id = ANY($1::int[]) "
+            f"AND status = $3::order_offer_status "
+            f"RETURNING order_id, user_id",
+            order_ids,
+            OrderOfferStatus.EXPIRED.value,
+            OrderOfferStatus.OFFERED.value,
+        )
+        return [(row["order_id"], row["user_id"]) for row in rows]
 
     async def expire_many(
         self,

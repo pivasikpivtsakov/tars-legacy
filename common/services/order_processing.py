@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Collection, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
@@ -23,7 +23,7 @@ from common.repositories.user_profiles import UserProfileRepository
 from common.services.dispatch_signal import DispatchSignal
 
 if TYPE_CHECKING:
-    from common.services.ranking import RankedCandidate, RankingStrategy
+    from common.services.ranking import RankingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -104,28 +104,6 @@ async def forward_to_third_party(
             original_id,
             reason,
         )
-
-
-class OrderManager:
-    def __init__(self, *, strategies: Mapping[bool, RankingStrategy]) -> None:
-        self._strategies = strategies
-
-    def begin_sweep(self) -> None:
-        for strategy in self._strategies.values():
-            strategy.begin_sweep()
-
-    def end_sweep(self) -> None:
-        for strategy in self._strategies.values():
-            strategy.end_sweep()
-
-    async def select_candidates(
-        self,
-        *,
-        order: Order,
-        exclude_user_ids: Collection[int] = (),
-    ) -> list[RankedCandidate]:
-        strategy = self._strategies[order.is_only_w_codes]
-        return await strategy.select_candidates(order=order, exclude_user_ids=exclude_user_ids)
 
 
 class _TakeAbortError(Exception):

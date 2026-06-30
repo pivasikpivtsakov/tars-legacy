@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from itertools import batched
+from collections.abc import Mapping
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
@@ -21,7 +21,8 @@ from common.repositories.orders import OrderRepository
 from common.repositories.pending_orders import PendingOrdersRepository
 from common.repositories.rating import RatingRepository
 from common.repositories.user_profiles import UserProfileRepository
-from common.services.order_processing import OrderManager, forward_to_third_party
+from common.services.order_processing import forward_to_third_party
+from common.services.ranking import RankingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,8 @@ class OrderFanoutService:
         bot: Bot,
         orders: OrderRepository,
         offers: OrderOfferRepository,
+        strategies: Mapping[bool, RankingStrategy],
         profiles: UserProfileRepository,
-        order_manager: OrderManager,
         rating: RatingRepository,
         pending: PendingOrdersRepository,
         deadlines: OfferDeadlineQueue,
@@ -46,26 +47,26 @@ class OrderFanoutService:
         self._bot = bot
         self._orders = orders
         self._offers = offers
+        self._strategies = strategies
         self._profiles = profiles
-        self._order_manager = order_manager
         self._rating = rating
         self._pending = pending
         self._deadlines = deadlines
         self._excluded_user_ids = excluded_user_ids
 
-    async def offer_order_to_next_user(self, *, order: Order) -> None:
-        if await self._offers.has_active_offer(order_id=order.id, ttl_seconds=OFFER_TTL_SECONDS):
-            return
-        already_offered_user_ids = await self._offers.offered_user_ids(order_id=order.id)
-        ranked_candidates = await self._order_manager.select_candidates(
+    async def offer_order_to_next_user(
+        self,
+        *,
+        order: Order,
+        already_offered_user_ids: set[int],
+    ) -> None:
+        ranked_candidates = await self._strategies[order.is_only_w_codes].select_candidates(
             order=order,
             exclude_user_ids={*already_offered_user_ids, *self._excluded_user_ids},
         )
 
         if not ranked_candidates:
             await self._orders.mark_no_takers(order_id=order.id)
-            expired_user_ids = await self._offers.expire_offered(order_id=order.id)
-            await self._release_not_taken(user_ids=expired_user_ids)
             await forward_to_third_party(original_id=order.original_id)
             return
 
@@ -124,14 +125,29 @@ class OrderFanoutService:
             stale_after_seconds=stale_after_seconds,
             limit=limit,
         )
-        self._order_manager.begin_sweep()
-        try:
-            for chunk in batched(due_orders, FANOUT_CHUNK_SIZE, strict=False):
-                await asyncio.gather(
-                    *(self._recover_and_offer(order=order) for order in chunk),
+        if not due_orders:
+            return
+        order_ids = [order.id for order in due_orders]
+        expired = await self._offers.expire_offered_for_orders(order_ids=order_ids)
+        await self._release_not_taken(user_ids=[user_id for _, user_id in expired])
+        offered_by_order = await self._offers.offered_user_ids_many(order_ids=order_ids)
+
+        for strategy in self._strategies.values():
+            strategy.begin_sweep()
+        semaphore = asyncio.Semaphore(FANOUT_CHUNK_SIZE)
+
+        async def _offer(order: Order) -> None:
+            async with semaphore:
+                await self.offer_order_to_next_user(
+                    order=order,
+                    already_offered_user_ids=offered_by_order.get(order.id, set()),
                 )
+
+        try:
+            await asyncio.gather(*(_offer(order) for order in due_orders))
         finally:
-            self._order_manager.end_sweep()
+            for strategy in self._strategies.values():
+                strategy.end_sweep()
 
     async def _rollback_offer(self, *, order_id: int, user_id: int) -> None:
         await self._offers.expire_one(order_id=order_id, user_id=user_id)
@@ -142,8 +158,3 @@ class OrderFanoutService:
             return
         await self._rating.record_not_taken(user_ids=user_ids)
         await self._pending.release_many(user_ids=user_ids)
-
-    async def _recover_and_offer(self, *, order: Order) -> None:
-        expired_user_ids = await self._offers.expire_offered(order_id=order.id)
-        await self._release_not_taken(user_ids=expired_user_ids)
-        await self.offer_order_to_next_user(order=order)

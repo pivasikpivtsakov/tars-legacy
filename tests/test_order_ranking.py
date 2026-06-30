@@ -11,7 +11,6 @@ from common.models.orders import Order, OrderStatus
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile, UserProfileStatus
 from common.repositories.online_index import CodeCandidate, PricedCandidate
-from common.services.order_processing import OrderManager
 from common.services.ranking import (
     CodeRankingStrategy,
     PackRankingStrategy,
@@ -419,21 +418,19 @@ def test_code_strategy_validate_take(tier: TierNumber, with_codes: bool, expecte
     assert strategy.validate_take(order=order, profile=profile) is expected
 
 
-def test_order_manager_routes_by_is_only_w_codes() -> None:
+def test_strategies_route_by_is_only_w_codes() -> None:
     pack_index = _FakePackIndex(rows=[_priced(1, 100)])
     rating = _FakeRating(stats={1: _stats(speed_seconds=10)})
     code_index = _FakeCodeIndex(candidates=[CodeCandidate(user_id=5)])
-    manager = OrderManager(
-        strategies={
-            False: _pack_strategy(pack_index=pack_index, rating=rating),
-            True: _code_strategy(code_index=code_index),
-        },
-    )
+    strategies = {
+        False: _pack_strategy(pack_index=pack_index, rating=rating),
+        True: _code_strategy(code_index=code_index),
+    }
 
-    pack_result = asyncio.run(manager.select_candidates(order=_pack_order(amount=60)))
-    code_result = asyncio.run(
-        manager.select_candidates(order=_code_order(codes={"CODE-1": 60})),
-    )
+    pack_order = _pack_order(amount=60)
+    code_order = _code_order(codes={"CODE-1": 60})
+    pack_result = _run(strategy=strategies[pack_order.is_only_w_codes], order=pack_order)
+    code_result = _run(strategy=strategies[code_order.is_only_w_codes], order=code_order)
 
     assert [c.user_id for c in pack_result] == [1]
     assert [c.user_id for c in code_result] == [5]

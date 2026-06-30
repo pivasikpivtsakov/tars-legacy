@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -41,35 +42,35 @@ class _FakeOffers:
         self,
         *,
         expire_one: int | None = None,
-        expire_offered: list[int] | None = None,
-        has_active: bool = False,
+        expire_offered_for_orders: list[tuple[int, int]] | None = None,
+        offered_user_ids_many: dict[int, set[int]] | None = None,
     ) -> None:
         self._expire_one = expire_one
-        self._expire_offered = list(expire_offered or [])
-        self._has_active = has_active
+        self._expire_offered_for_orders = list(expire_offered_for_orders or [])
+        self._offered_user_ids_many = dict(offered_user_ids_many or {})
         self.expire_one_calls: list[tuple[int, int]] = []
-        self.expire_offered_calls: list[int] = []
-        self.has_active_offer_calls: list[tuple[int, int]] = []
-        self.offered_user_ids_calls: list[int] = []
+        self.expire_offered_for_orders_calls: list[list[int]] = []
+        self.offered_user_ids_many_calls: list[list[int]] = []
         self.record_offer_calls: list[tuple[int, int]] = []
 
     async def expire_one(self, *, order_id: int, user_id: int) -> int | None:
         self.expire_one_calls.append((order_id, user_id))
         return self._expire_one
 
-    async def expire_offered(self, *, order_id: int) -> list[int]:
-        self.expire_offered_calls.append(order_id)
-        result = list(self._expire_offered)
-        self._expire_offered = []  # rows already expired on subsequent calls
-        return result
+    async def expire_offered_for_orders(
+        self,
+        *,
+        order_ids: Sequence[int],
+    ) -> list[tuple[int, int]]:
+        self.expire_offered_for_orders_calls.append(list(order_ids))
+        return list(self._expire_offered_for_orders)
 
-    async def has_active_offer(self, *, order_id: int, ttl_seconds: int) -> bool:
-        self.has_active_offer_calls.append((order_id, ttl_seconds))
-        return self._has_active
-
-    async def offered_user_ids(self, *, order_id: int) -> set[int]:
-        self.offered_user_ids_calls.append(order_id)
-        return set()
+    async def offered_user_ids_many(self, *, order_ids: Sequence[int]) -> dict[int, set[int]]:
+        self.offered_user_ids_many_calls.append(list(order_ids))
+        return {
+            order_id: set(user_ids)
+            for order_id, user_ids in self._offered_user_ids_many.items()
+        }
 
     async def record_offer(self, *, order_id: int, user_id: int) -> None:
         self.record_offer_calls.append((order_id, user_id))
@@ -141,10 +142,12 @@ class _FakeProfiles:
         return self._tg_id
 
 
-class _FakeOrderManager:
+class _FakeStrategy:
     def __init__(self, *, candidates: list[object] | None = None) -> None:
         self._candidates = list(candidates or [])
-        self.calls: list[object] = []
+        self.calls: list[tuple[int, object]] = []
+        self.begin_calls = 0
+        self.end_calls = 0
 
     async def select_candidates(
         self,
@@ -156,10 +159,10 @@ class _FakeOrderManager:
         return list(self._candidates)
 
     def begin_sweep(self) -> None:
-        pass
+        self.begin_calls += 1
 
     def end_sweep(self) -> None:
-        pass
+        self.end_calls += 1
 
 
 class _FakeDeadlines:
@@ -193,8 +196,8 @@ def _service(**overrides: object) -> OrderFanoutService:
         "bot": _FakeBot(),
         "orders": _FakeOrders(),
         "offers": _FakeOffers(),
-        "profiles": None,
-        "order_manager": _FakeOrderManager(),
+        "strategies": {False: _FakeStrategy(), True: _FakeStrategy()},
+        "profiles": _FakeProfiles(tg_id=None),
         "rating": _FakeRating(),
         "pending": _FakePending(),
         "deadlines": _FakeDeadlines(),
@@ -217,7 +220,7 @@ def test_release_not_taken_is_noop_on_empty() -> None:
 
 def test_sweep_recovers_orphan_then_offers() -> None:
     order = _order(status=OrderStatus.OFFERING, order_id=5)
-    offers = _FakeOffers(expire_offered=[9], has_active=False)
+    offers = _FakeOffers(expire_offered_for_orders=[(5, 9)])
     orders = _FakeOrders(due=[order])
     rating = _FakeRating()
     pending = _FakePending()
@@ -226,10 +229,11 @@ def test_sweep_recovers_orphan_then_offers() -> None:
     asyncio.run(service.sweep_and_fan_out(stale_after_seconds=45, limit=100))
 
     assert orders.due_calls == [(45, 100)]
-    assert offers.expire_offered_calls == [5, 5]  # recovery cleanup + no-candidates branch
-    assert rating.not_taken == [[9]]  # orphan released once
+    assert offers.expire_offered_for_orders_calls == [[5]]  # single batched recovery
+    assert offers.offered_user_ids_many_calls == [[5]]  # single batched offered fetch
+    assert rating.not_taken == [[9]]  # orphan released once via batch expire
     assert pending.released_many == [[9]]
-    assert orders.mark_no_takers_calls == [5]
+    assert orders.mark_no_takers_calls == [5]  # no-candidates branch does not re-expire
 
 
 def _candidate(*, user_id: int) -> RankedCandidate:
@@ -238,12 +242,15 @@ def _candidate(*, user_id: int) -> RankedCandidate:
 
 def test_offer_order_to_next_user_offers_and_records_deadline() -> None:
     order_id, user_id, chat_id, message_id = 7, 42, 9001, 555
-    offers = _FakeOffers(has_active=False)
+    offers = _FakeOffers()
     pending = _FakePending(reserve=True)
     orders = _FakeOrders()
     bot = _FakeBot(message_id=message_id)
     profiles = _FakeProfiles(tg_id=chat_id)
-    order_manager = _FakeOrderManager(candidates=[_candidate(user_id=user_id)])
+    strategies = {
+        False: _FakeStrategy(candidates=[_candidate(user_id=user_id)]),
+        True: _FakeStrategy(),
+    }
     deadlines = _FakeDeadlines()
     service = _service(
         offers=offers,
@@ -251,12 +258,12 @@ def test_offer_order_to_next_user_offers_and_records_deadline() -> None:
         orders=orders,
         bot=bot,
         profiles=profiles,
-        order_manager=order_manager,
+        strategies=strategies,
         deadlines=deadlines,
     )
 
     order = _order(status=OrderStatus.PENDING, order_id=order_id)
-    asyncio.run(service.offer_order_to_next_user(order=order))
+    asyncio.run(service.offer_order_to_next_user(order=order, already_offered_user_ids=set()))
 
     assert offers.record_offer_calls == [(order_id, user_id)]
     assert [reserved for reserved, _ in pending.reserved] == [user_id]
@@ -275,23 +282,26 @@ def test_offer_order_to_next_user_offers_and_records_deadline() -> None:
 
 def test_offer_order_rolls_back_when_tg_id_missing() -> None:
     order_id, user_id = 7, 42
-    offers = _FakeOffers(has_active=False)
+    offers = _FakeOffers()
     pending = _FakePending(reserve=True)
     orders = _FakeOrders()
     profiles = _FakeProfiles(tg_id=None)
-    order_manager = _FakeOrderManager(candidates=[_candidate(user_id=user_id)])
+    strategies = {
+        False: _FakeStrategy(candidates=[_candidate(user_id=user_id)]),
+        True: _FakeStrategy(),
+    }
     deadlines = _FakeDeadlines()
     service = _service(
         offers=offers,
         pending=pending,
         orders=orders,
         profiles=profiles,
-        order_manager=order_manager,
+        strategies=strategies,
         deadlines=deadlines,
     )
 
     order = _order(status=OrderStatus.PENDING, order_id=order_id)
-    asyncio.run(service.offer_order_to_next_user(order=order))
+    asyncio.run(service.offer_order_to_next_user(order=order, already_offered_user_ids=set()))
 
     assert offers.record_offer_calls == [(order_id, user_id)]
     assert offers.expire_one_calls == [(order_id, user_id)]  # rollback expired the offer

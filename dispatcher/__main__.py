@@ -31,7 +31,6 @@ from common.repositories.user_profiles import UserProfileRepository
 from common.repositories.user_roles import UserRole, UserRoleRepository
 from common.services.dispatch_signal import DispatchSignal
 from common.services.order_fanout import OrderFanoutService
-from common.services.order_processing import OrderManager
 from common.services.ranking import build_strategies
 
 logger = logging.getLogger(__name__)
@@ -62,19 +61,17 @@ async def main() -> None:
             pack=PackOnlineIndex(redis=redis),
             code=CodeOnlineIndex(redis=redis),
         )
-        order_manager = OrderManager(
-            strategies=build_strategies(
-                online_index=online_index,
-                rating=rating,
-                transactions=TransactionsRepository(pool=pool),
-            ),
+        strategies = build_strategies(
+            online_index=online_index,
+            rating=rating,
+            transactions=TransactionsRepository(pool=pool),
         )
         service = OrderFanoutService(
             bot=bot,
             orders=OrderRepository(pool=pool),
             offers=OrderOfferRepository(pool=pool),
+            strategies=strategies,
             profiles=UserProfileRepository(pool=pool),
-            order_manager=order_manager,
             rating=rating,
             pending=PendingOrdersRepository(redis=redis),
             deadlines=OfferDeadlineQueue(redis=redis),
