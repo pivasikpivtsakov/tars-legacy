@@ -36,10 +36,10 @@ from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
 from common.money import format_money
 from common.rendering.orders import render_transaction_history
-from common.repositories.online_index import OnlineIndexRouter
-from common.repositories.rating import RatingRepository
-from common.repositories.transactions import TransactionsRepository
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.transactions import TransactionsRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.online_index import OnlineIndexRouter
+from common.repositories.redis.rating import RatingRepository
 from common.services.bot_switch import BotSwitchService
 
 _HISTORY_PAGE_SIZE = 10

@@ -14,8 +14,8 @@ from bot.keyboards.profile import (
 from bot.keyboards.start import OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
 from common.models.user_profiles import UserProfile
-from common.repositories.pack_price_limits import PackPriceLimitRepository
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.pack_price_limits import PackPriceLimitRepository
 from common.services.moderation import ModerationService
 
 router = Router(name="editing")

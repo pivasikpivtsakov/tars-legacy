@@ -15,11 +15,11 @@ from common.exceptions.orders import OrderAmountError
 from common.i18n import build_i18n
 from common.models.orders import Order
 from common.models.user_profiles import UserProfile
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.rating import RatingRepository
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.rating import RatingRepository
 from common.services.dispatch_signal import DispatchSignal
 
 if TYPE_CHECKING:

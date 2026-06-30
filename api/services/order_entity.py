@@ -15,10 +15,10 @@ from common.exceptions import (
 )
 from common.models.orders import ExternalOrderStatus
 from common.models.orders import Order as OrderEntity
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.user_roles import UserRole, UserRoleRepository
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.user_roles import UserRole, UserRoleRepository
 from common.schemas.external_order import ExternalOrder
 from common.services.broadcast import BroadcastService
 from common.services.external_order_api import ExternalOrderApi

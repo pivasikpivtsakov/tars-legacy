@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, Message, TelegramObject, User
 from aiogram.utils.i18n import gettext as _
 
 from common.models.user_profiles import UserProfile, UserProfileStatus
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
 
 REQUIRE_ACTIVE_PROFILE_FLAG = "require_active_profile"
 

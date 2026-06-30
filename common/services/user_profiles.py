@@ -1,5 +1,5 @@
 from common.models.user_profiles import UserProfile, UserProfileStatus
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
 
 
 class UserProfileService:

@@ -12,8 +12,8 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms.menu import MenuContext, render_menu
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.i18n import DOMAIN, LOCALES_DIR
-from common.repositories.online_index import OnlineIndexRouter
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.online_index import OnlineIndexRouter
 from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService
 

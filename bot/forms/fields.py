@@ -29,8 +29,8 @@ from common.catalog.packages import format_prices, format_prices_table
 from common.catalog.tiers import PACK_TIERS, TierNumber
 from common.models.user_profiles import UserProfile
 from common.money import format_money, parse_money
-from common.repositories.pack_price_limits import PackPriceLimitRepository
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.pack_price_limits import PackPriceLimitRepository
 from common.services.moderation import ModerationService
 
 _PACK_MSG_KEY = "pack_msg_id"

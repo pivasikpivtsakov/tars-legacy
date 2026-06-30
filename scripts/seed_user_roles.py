@@ -3,7 +3,7 @@ import logging
 
 from common.logging_config import setup_logging
 from common.redis import create_redis
-from common.repositories.user_roles import UserRole, UserRoleRepository
+from common.repositories.redis.user_roles import UserRole, UserRoleRepository
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
-from common.repositories.bot_switch import BotSwitchRepository
-from common.repositories.online_index import OnlineIndexRouter
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.bot_switch import BotSwitchRepository
+from common.repositories.redis.online_index import OnlineIndexRouter
 
 
 class BotSwitchService:

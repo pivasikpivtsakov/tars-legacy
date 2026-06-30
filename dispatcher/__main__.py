@@ -16,19 +16,19 @@ from common.environment import (
 )
 from common.logging_config import setup_logging
 from common.redis import create_redis
-from common.repositories.offer_deadlines import OfferDeadlineQueue
-from common.repositories.online_index import (
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.postgres.transactions import TransactionsRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.offer_deadlines import OfferDeadlineQueue
+from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
     PackOnlineIndex,
 )
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.rating import RatingRepository
-from common.repositories.transactions import TransactionsRepository
-from common.repositories.user_profiles import UserProfileRepository
-from common.repositories.user_roles import UserRole, UserRoleRepository
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.rating import RatingRepository
+from common.repositories.redis.user_roles import UserRole, UserRoleRepository
 from common.services.dispatch_signal import DispatchSignal
 from common.services.order_fanout import OrderFanoutService
 from common.services.ranking import build_strategies

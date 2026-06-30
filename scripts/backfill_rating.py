@@ -8,7 +8,7 @@ from common.db import create_pool
 from common.environment import RATING_SPEED_WINDOW
 from common.logging_config import setup_logging
 from common.redis import create_redis
-from common.repositories.rating import RatingRepository
+from common.repositories.redis.rating import RatingRepository
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from bot.forms.menu import build_menu_context, open_menu
 from bot.forms.states import REGISTRATION_INPUT_STATES
 from bot.keyboards.menu import MENU_BUTTON_KEY, reply_text_matches
 from common.models.user_profiles import UserProfile
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
 
 _MENU_COMMAND = "/menu"
 _REGISTRATION_STATE_NAMES = frozenset(item.state for item in REGISTRATION_INPUT_STATES)

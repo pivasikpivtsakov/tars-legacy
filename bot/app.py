@@ -32,20 +32,20 @@ from common.environment import (
 )
 from common.i18n import build_i18n
 from common.jobs.registry import set_job_services
-from common.repositories.bot_switch import BotSwitchRepository
-from common.repositories.online_index import (
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.postgres.transactions import TransactionsRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.bot_switch import BotSwitchRepository
+from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
     PackOnlineIndex,
 )
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pack_price_limits import PackPriceLimitRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.rating import RatingRepository
-from common.repositories.transactions import TransactionsRepository
-from common.repositories.user_profiles import UserProfileRepository
-from common.repositories.user_roles import UserRoleRepository
+from common.repositories.redis.pack_price_limits import PackPriceLimitRepository
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.rating import RatingRepository
+from common.repositories.redis.user_roles import UserRoleRepository
 from common.services.anti_fraud import AntiFraudService
 from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService

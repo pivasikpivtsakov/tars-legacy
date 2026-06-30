@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from common.models.orders import Order, OrderStatus
 from common.models.user_profiles import UserProfile
-from common.repositories.orders import OrderRepository
+from common.repositories.postgres.orders import OrderRepository
 from common.schemas.external_order import ExternalOrder
 from common.services.external_order_api import ExternalOrderApi
 from common.services.user_profiles import UserProfileService

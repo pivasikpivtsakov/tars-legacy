@@ -8,8 +8,8 @@ from common.catalog.tiers import PACK_TIERS
 from common.keyboards.moderation import moderation_decision_kb
 from common.models.user_profiles import UserProfile
 from common.rendering.moderation import render_pending_review
-from common.repositories.online_index import OnlineIndexRouter
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.online_index import OnlineIndexRouter
 
 logger = logging.getLogger(__name__)
 

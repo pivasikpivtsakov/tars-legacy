@@ -4,7 +4,7 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 
-from common.repositories.user_roles import UserRole, UserRoleRepository
+from common.repositories.redis.user_roles import UserRole, UserRoleRepository
 
 
 class RoleContextMiddleware(BaseMiddleware):

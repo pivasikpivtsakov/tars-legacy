@@ -12,10 +12,10 @@ from common.environment import (
 )
 from common.logging_config import setup_logging
 from common.redis import create_redis
-from common.repositories.offer_deadlines import OfferDeadlineQueue
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.rating import RatingRepository
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.redis.offer_deadlines import OfferDeadlineQueue
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.rating import RatingRepository
 from common.services.dispatch_signal import DispatchSignal
 from common.services.offer_expiry import OfferExpiryService
 

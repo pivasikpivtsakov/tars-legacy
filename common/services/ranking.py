@@ -11,14 +11,14 @@ from common.catalog.tiers import CODE_TIERS, PACK_TIERS
 from common.models.orders import Order
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
-from common.repositories.online_index import (
+from common.repositories.postgres.transactions import TransactionsRepository
+from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
     PackOnlineIndex,
     PricedCandidate,
 )
-from common.repositories.rating import RatingRepository
-from common.repositories.transactions import TransactionsRepository
+from common.repositories.redis.rating import RatingRepository
 from common.services.order_processing import decompose_amount, full_price_for
 
 _PRICE_TOLERANCE = Decimal("0.01")

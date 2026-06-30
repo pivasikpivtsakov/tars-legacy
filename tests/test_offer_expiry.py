@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Sequence
 
-from common.repositories.offer_deadlines import OfferDeadline
+from common.repositories.redis.offer_deadlines import OfferDeadline
 from common.services.offer_expiry import OfferExpiryService
 
 

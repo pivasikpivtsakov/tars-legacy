@@ -14,8 +14,8 @@ from common.i18n import build_i18n
 from common.keyboards.orders import checkin_inline_kb, last_call_inline_kb
 from common.models.orders import OrderStatus
 from common.rendering.orders import render_checkin_text, render_last_call_text
-from common.repositories.order_timeout_messages import OrderTimeoutMessageStore
-from common.repositories.orders import OrderRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.redis.order_timeout_messages import OrderTimeoutMessageStore
 from common.services.order_processing import OrderLifecycle
 
 logger = logging.getLogger(__name__)

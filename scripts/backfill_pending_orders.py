@@ -4,9 +4,9 @@ import logging
 from common.db import create_pool
 from common.logging_config import setup_logging
 from common.redis import create_redis
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pending_orders import PendingOrdersRepository
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.redis.pending_orders import PendingOrdersRepository
 
 logger = logging.getLogger(__name__)
 

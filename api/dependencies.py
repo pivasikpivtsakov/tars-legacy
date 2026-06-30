@@ -10,11 +10,11 @@ from common.bot import create_bot
 from common.db import create_pool
 from common.environment import TELEGRAM_BOT_TOKEN
 from common.redis import create_redis
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.orders import OrderRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.user_profiles import UserProfileRepository
-from common.repositories.user_roles import UserRoleRepository
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.postgres.orders import OrderRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.user_roles import UserRoleRepository
 from common.services.broadcast import BroadcastService
 from common.services.external_order_api import ExternalOrderApi
 from common.services.external_order_mock import (

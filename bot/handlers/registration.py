@@ -11,8 +11,8 @@ from bot.keyboards.profile import (
     ProfileField,
     WithCodesCB,
 )
-from common.repositories.pack_price_limits import PackPriceLimitRepository
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.pack_price_limits import PackPriceLimitRepository
 from common.services.moderation import ModerationService
 
 router = Router(name="registration")

@@ -6,7 +6,7 @@ from itertools import batched
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
 
 logger = logging.getLogger(__name__)
 

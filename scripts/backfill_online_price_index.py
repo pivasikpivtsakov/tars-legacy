@@ -4,12 +4,12 @@ import logging
 from common.db import create_pool
 from common.logging_config import setup_logging
 from common.redis import create_redis
-from common.repositories.online_index import (
+from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
     PackOnlineIndex,
 )
-from common.repositories.user_profiles import UserProfileRepository
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,7 @@ from bot.keyboards.pack_limits import (
 from bot.keyboards.start import OpenZoneCB, StartZone
 from common.catalog.packages import format_prices_table
 from common.money import format_money, parse_money
-from common.repositories.pack_price_limits import PackPriceLimitRepository
+from common.repositories.redis.pack_price_limits import PackPriceLimitRepository
 from common.services.moderation import ModerationService
 
 router = Router(name="pack_limits")

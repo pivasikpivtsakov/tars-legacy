@@ -5,10 +5,10 @@ from collections.abc import Sequence
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
-from common.repositories.offer_deadlines import OfferDeadline
-from common.repositories.order_offers import OrderOfferRepository
-from common.repositories.pending_orders import PendingOrdersRepository
-from common.repositories.rating import RatingRepository
+from common.repositories.postgres.order_offers import OrderOfferRepository
+from common.repositories.redis.offer_deadlines import OfferDeadline
+from common.repositories.redis.pending_orders import PendingOrdersRepository
+from common.repositories.redis.rating import RatingRepository
 from common.services.dispatch_signal import DispatchSignal
 
 _MAX_CONCURRENT_EDITS = 20

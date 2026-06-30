@@ -5,7 +5,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, Update, User
 from aiogram.utils.i18n import gettext as _
 
-from common.repositories.user_profiles import UserProfileRepository
+from common.repositories.postgres.user_profiles import UserProfileRepository
 from common.services.bot_switch import BotSwitchService
 
 

@@ -10,7 +10,7 @@ from common.catalog.tiers import Tier, TierNumber
 from common.models.orders import Order, OrderStatus
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile, UserProfileStatus
-from common.repositories.online_index import CodeCandidate, PricedCandidate
+from common.repositories.redis.online_index import CodeCandidate, PricedCandidate
 from common.services.ranking import (
     CodeRankingStrategy,
     PackRankingStrategy,
