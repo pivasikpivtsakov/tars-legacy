@@ -113,7 +113,7 @@ msgid "registration.btn_no"
 msgstr "No"
 
 msgid "registration.ask_with_codes"
-msgstr "Do you work with our codes, or on your own?"
+msgstr "Are you ready to make orders with codes?"
 
 msgid "registration.ask_packages"
 msgstr "Which packs do you make? Tap the packs to select them, then press Done to set prices."

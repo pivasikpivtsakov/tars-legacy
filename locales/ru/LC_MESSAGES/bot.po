@@ -113,7 +113,7 @@ msgid "registration.btn_no"
 msgstr "Нет"
 
 msgid "registration.ask_with_codes"
-msgstr "Работаете ли вы с нашими кодами или самостоятельно?"
+msgstr "Готовы ли вы делать заказы с кодами?"
 
 msgid "registration.ask_packages"
 msgstr "Какие паки ты делаешь? Отметь нужные паки и нажми «Готово», чтобы указать цены."

@@ -11,7 +11,7 @@ from common.services.external_order_api import (
     ExternalOrderApi,
 )
 from common.services.external_order_mock import (
-    MOCK_DEFAULT_CODE,
+    MOCK_CODE,
     MOCK_ORDER_AMOUNT,
     MOCK_PLAYER_OPEN_ID,
     MockRequestService,
@@ -70,14 +70,14 @@ def test_check_unused_codes_keeps_valid_available_code_without_admin_message(
             order=ExternalOrder(
                 original_id=4,
                 shop_access_key="mock-shop-access-key",
-                unused_codes={MOCK_DEFAULT_CODE: 60},
+                unused_codes={MOCK_CODE: MOCK_ORDER_AMOUNT},
                 additional_data={"player_open_id": MOCK_PLAYER_OPEN_ID},
             )
         )
     )
 
     assert messages == []
-    assert order.unused_codes == {MOCK_DEFAULT_CODE: 60}
+    assert order.unused_codes == {MOCK_CODE: MOCK_ORDER_AMOUNT}
     assert order.redeemed_codes == []
 
 
@@ -99,15 +99,15 @@ def test_check_unused_codes_reports_previously_redeemed_code_for_same_player(
             order=ExternalOrder(
                 original_id=5,
                 shop_access_key="mock-shop-access-key",
-                unused_codes={MOCK_DEFAULT_CODE: 60},
+                unused_codes={MOCK_CODE: MOCK_ORDER_AMOUNT},
                 additional_data={"player_open_id": MOCK_PLAYER_OPEN_ID},
             )
         )
     )
 
     assert order.unused_codes == {}
-    assert order.redeemed_codes == [MOCK_DEFAULT_CODE]
+    assert order.redeemed_codes == [MOCK_CODE]
     assert messages == [
-        f"🙆‍♂️ <b>Найден корректно активированный ранее код: {MOCK_DEFAULT_CODE}"
+        f"🙆‍♂️ <b>Найден корректно активированный ранее код: {MOCK_CODE}"
         f" в заказе: {order.original_id}</b>"
     ]

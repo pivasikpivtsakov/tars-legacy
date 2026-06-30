@@ -130,7 +130,7 @@ class _FakeBot:
         *,
         chat_id: int,
         text: str,
-        reply_markup: object = None,
+        reply_markup: object = None,  # noqa: ARG002
     ) -> object:
         self.sent.append(chat_id)
         assert text
