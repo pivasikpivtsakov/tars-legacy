@@ -2,8 +2,8 @@ from collections.abc import Mapping
 from typing import Any
 
 import httpx
-from fastapi import FastAPI
 
+from common.environment import MOCK_EXTERNAL_API
 from common.models.orders import ExternalOrderStatus
 from common.services.external_order_api import (
     PATH_CODE_EXCHANGE_STATUS,
@@ -120,11 +120,14 @@ def default_external_responses(
 
 
 def success_external_responses() -> dict[ResponseKey, ResponseSpec]:
-    """Fresh unused code -> order creation completes without admin warnings."""
+    """Code redeemed by the right player -> order passes the anti-fraud finished check."""
     return default_external_responses(
         overrides={
             (PATH_ORDER_GET, MethodsEnum.GET): order_get_response(
                 codes={MOCK_SUCCESS_CODE: 60}
+            ),
+            (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
+                is_redeemed=True
             ),
         }
     )
@@ -139,7 +142,7 @@ def fraud_external_responses(
         overrides={
             (PATH_CODE_EXCHANGE_TIME, MethodsEnum.GET): code_exchange_time_response(
                 is_redeemed=True,
-                exchange_open_id=exchange_open_id
+                exchange_open_id=exchange_open_id,
             ),
         }
     )
@@ -156,13 +159,11 @@ def unfinished_external_responses() -> dict[ResponseKey, ResponseSpec]:
     )
 
 
-def enable_mock_external_api(
-    app: FastAPI,
+def build_request_service(
     *,
-    responses: Mapping[ResponseKey, ResponseSpec] | None = None,
-) -> MockRequestService:
-    from api.dependencies import get_request_service  # noqa: PLC0415
-
-    mock = MockRequestService(responses=responses or success_external_responses())
-    app.dependency_overrides[get_request_service] = lambda: mock
-    return mock
+    responses: Mapping[ResponseKey, ResponseSpec],
+) -> RequestService:
+    """Return canned responses when MOCK_EXTERNAL_API is set, otherwise a real client."""
+    if MOCK_EXTERNAL_API:
+        return MockRequestService(responses=responses)
+    return RequestService()

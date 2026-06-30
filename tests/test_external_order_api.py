@@ -2,14 +2,6 @@ import asyncio
 
 import pytest
 
-from api.testing import (
-    MOCK_DEFAULT_CODE,
-    MOCK_ORDER_AMOUNT,
-    MOCK_PLAYER_OPEN_ID,
-    MockRequestService,
-    code_exchange_time_response,
-    default_external_responses,
-)
 from common.exceptions.orders import OrderProcessingError
 from common.models.orders import ExternalOrderStatus
 from common.schemas.external_order import ExternalOrder
@@ -17,6 +9,14 @@ from common.services.external_order_api import (
     PATH_CODE_EXCHANGE_TIME,
     PATH_ORDER_GET,
     ExternalOrderApi,
+)
+from common.services.external_order_mock import (
+    MOCK_DEFAULT_CODE,
+    MOCK_ORDER_AMOUNT,
+    MOCK_PLAYER_OPEN_ID,
+    MockRequestService,
+    code_exchange_time_response,
+    default_external_responses,
 )
 from common.services.request_service import MethodsEnum
 

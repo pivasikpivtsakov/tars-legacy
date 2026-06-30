@@ -17,6 +17,10 @@ from common.repositories.user_profiles import UserProfileRepository
 from common.repositories.user_roles import UserRoleRepository
 from common.services.broadcast import BroadcastService
 from common.services.external_order_api import ExternalOrderApi
+from common.services.external_order_mock import (
+    build_request_service,
+    default_external_responses,
+)
 from common.services.request_service import RequestService
 
 bot = create_bot(token=TELEGRAM_BOT_TOKEN)
@@ -68,7 +72,7 @@ def get_broadcast_service() -> BroadcastService:
 
 
 def get_request_service() -> RequestService:
-    return RequestService()
+    return build_request_service(responses=default_external_responses())
 
 
 def get_external_order_api(

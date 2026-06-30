@@ -51,11 +51,14 @@ from common.services.bot_switch import BotSwitchService
 from common.services.broadcast import BroadcastService
 from common.services.dispatch_signal import DispatchSignal
 from common.services.external_order_api import ExternalOrderApi
+from common.services.external_order_mock import (
+    build_request_service,
+    success_external_responses,
+)
 from common.services.moderation import ModerationService
 from common.services.order_processing import OrderLifecycle
 from common.services.order_timeouts import OrderTimeoutService
 from common.services.ranking import build_strategies
-from common.services.request_service import RequestService
 from common.services.user_profiles import UserProfileService
 
 
@@ -96,7 +99,9 @@ def build_dispatcher(
         online_price_index=online_price_index,
     )
     broadcast = BroadcastService(profiles=profiles)
-    external_order_api = ExternalOrderApi(requests=RequestService())
+    external_order_api = ExternalOrderApi(
+        requests=build_request_service(responses=success_external_responses()),
+    )
     dispatcher["profiles"] = profiles
     dispatcher["rating"] = rating
     dispatcher["online_price_index"] = online_price_index

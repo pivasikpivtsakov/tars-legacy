@@ -86,15 +86,14 @@ def _env_optional_int(varname: str) -> int | None:
 
 
 def _env_boolean(varname: str, *, default: bool) -> bool:
-    return bool(
-        env_get(
-            varname,
-            default=str(default),
-            validation_rule=lambda val: val in ("True", "False", "1", "0"),
-            warning_message=f"{varname} must be a boolean",
-            raise_if_failed=True,
-        )
+    raw = env_get(
+        varname,
+        default=str(default),
+        validation_rule=lambda val: val in ("True", "False", "1", "0"),
+        warning_message=f"{varname} must be a boolean",
+        raise_if_failed=True,
     )
+    return raw in ("True", "1")
 
 
 # How often the dispatcher sweeps with no wake signal (backstop for missed wakes).
@@ -139,6 +138,8 @@ APP_ENVIRONMENT = env_get("APP_ENVIRONMENT", default="production", raise_if_fail
 # ExternalOrderApi/OrderEntityService validation real. Distinct from APP_ENVIRONMENT=local,
 # which short-circuits (and thus skips) that validation.
 MOCK_EXTERNAL_API = _env_boolean("MOCK_EXTERNAL_API", default=False)
+if MOCK_EXTERNAL_API:
+    logger.warning("MOCK_EXTERNAL_API is enabled: serving canned upstream responses")
 
 API_TOKEN = env_get("API_TOKEN")
 API_URL = env_get("API_URL")
