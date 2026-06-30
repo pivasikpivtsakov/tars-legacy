@@ -26,7 +26,7 @@ _ACTIVE_FANOUT_STATUSES: tuple[str, ...] = (
 _ACTIVE_FANOUT_STATUS_SQL = ", ".join(f"'{status}'" for status in _ACTIVE_FANOUT_STATUSES)
 
 _SELECT_COLUMNS = (
-    "id, original_id, shop_access_key, status, status_reason, amount, pubg_id, "
+    "id, original_id, shop_access_key, status, status_reason, refusal_reason, amount, pubg_id, "
     "codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
     "offered_at, closed_at, taken_at, taken_by, taken_price, created_at, updated_at, "
     "external_status, is_only_w_codes"
@@ -288,12 +288,14 @@ class OrderRepository:
         *,
         order_id: int,
         user_id: int,
+        reason: str | None = None,
         conn: asyncpg.Connection | None = None,
     ) -> Order | None:
         return await self._resolve(
             order_id=order_id,
             user_id=user_id,
             status=OrderStatus.CANCELLED,
+            reason=reason,
             conn=conn,
         )
 
@@ -302,12 +304,14 @@ class OrderRepository:
         *,
         order_id: int,
         user_id: int,
+        reason: str | None = None,
         conn: asyncpg.Connection | None = None,
     ) -> Order | None:
         return await self._resolve(
             order_id=order_id,
             user_id=user_id,
             status=OrderStatus.TIMED_OUT,
+            reason=reason,
             conn=conn,
         )
 
@@ -317,11 +321,13 @@ class OrderRepository:
         order_id: int,
         user_id: int,
         status: OrderStatus,
+        reason: str | None = None,
         conn: asyncpg.Connection | None = None,
     ) -> Order | None:
         row = await (conn or self._pool).fetchrow(
             f"UPDATE {_TABLE} SET "
             f"status = $3, "
+            f"refusal_reason = $5, "
             f"closed_at = NOW(), "
             f"updated_at = NOW() "
             f"WHERE id = $1 AND taken_by = $2 AND status = $4::order_status "
@@ -330,6 +336,7 @@ class OrderRepository:
             user_id,
             status.value,
             OrderStatus.TAKEN.value,
+            reason,
         )
         if row is None:
             return None

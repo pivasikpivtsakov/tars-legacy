@@ -1,8 +1,8 @@
 import json
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, StringConstraints, model_validator
 
 from common.models.orders import ExternalOrderStatus
 
@@ -10,19 +10,22 @@ JSON_ATTRS = ("codes", "unused_codes", "broken_codes", "additional_data")
 
 logger = logging.getLogger(__name__)
 
+DB_VARCHAR_MAX_LENGTH = 255
+BoundedVarchar = Annotated[str, StringConstraints(max_length=DB_VARCHAR_MAX_LENGTH)]
+
 
 class ExternalOrder(BaseModel):
     id: int | None = None
     original_id: int
-    shop_access_key: str | None = None
+    shop_access_key: BoundedVarchar | None = None
     amount: int | None = None
     pubg_id: int | None = None
     status: ExternalOrderStatus = ExternalOrderStatus.CREATED
-    status_reason: str | None = None
+    status_reason: BoundedVarchar | None = None
     codes: dict[str, int] = {}
     unused_codes: dict[str, int] = {}
-    broken_codes: list[str] = []
-    redeemed_codes: list[str] = []
+    broken_codes: list[BoundedVarchar] = []
+    redeemed_codes: list[BoundedVarchar] = []
     additional_data: dict[str, Any] = {}
     is_only_w_codes: bool = False
 

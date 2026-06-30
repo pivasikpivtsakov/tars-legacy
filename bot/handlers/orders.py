@@ -1,22 +1,24 @@
 import contextlib
 
-from aiogram import Bot, Router
-from aiogram.exceptions import TelegramAPIError
+from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.i18n import gettext as _
 
-from bot.forms.states import UserSession
+from bot.forms.states import OrderCancellation, UserSession
 from bot.utils.telegram import ignore_not_modified
 from common.keyboards.orders import (
     CancelOrderCB,
+    CancelReasonCB,
     NoopCB,
     OrderDismissCB,
     ReadyOrderCB,
     TakeOrderCB,
+    cancel_reason_prompt_kb,
     working_inline_kb,
 )
-from common.models.orders import Order
+from common.models.orders import Order, OrderStatus
 from common.models.user_profiles import UserProfile
 from common.rendering.orders import render_taken_text
 from common.services.anti_fraud import AntiFraudService, FraudVerdict
@@ -25,6 +27,9 @@ from common.services.order_processing import OrderLifecycle, TakeStatus
 from common.services.order_timeouts import OrderTimeoutService
 
 router = Router(name="orders")
+
+_CANCEL_ORDER_ID_KEY = "cancel_order_id"
+_CANCEL_PROMPT_MESSAGE_ID_KEY = "cancel_prompt_message_id"
 
 
 async def _render_taken(
@@ -207,23 +212,89 @@ async def ready_order(
 async def cancel_order(
     callback: CallbackQuery,
     callback_data: CancelOrderCB,
-    order_lifecycle: OrderLifecycle,
-    order_timeouts: OrderTimeoutService,
+    state: FSMContext,
     profile: UserProfile | None,
 ) -> None:
     if profile is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
-    order = await order_lifecycle.cancel(
-        order_id=callback_data.order_id,
-        user_id=profile.id,
+    # The order stays "taken" until a reason arrives, so the expiry scheduler keeps
+    # running: a user who dawdles gets cancelled by the regular timeout procedure.
+    await state.set_state(OrderCancellation.awaiting_reason)
+    await state.update_data(
+        {
+            _CANCEL_ORDER_ID_KEY: callback_data.order_id,
+            _CANCEL_PROMPT_MESSAGE_ID_KEY: callback.message.message_id,
+        },
     )
-    if order is None:
+    with ignore_not_modified():
+        await callback.message.edit_text(
+            _("order.cancel_reason_prompt").format(order_id=callback_data.order_id),
+            reply_markup=cancel_reason_prompt_kb(
+                order_id=callback_data.order_id,
+                cancel_text=_("order.btn_cancel_reason"),
+            ),
+        )
+    await callback.answer()
+
+
+@router.callback_query(CancelReasonCB.filter())
+async def abort_cancel_reason(
+    callback: CallbackQuery,
+    callback_data: CancelReasonCB,
+    state: FSMContext,
+    order_lifecycle: OrderLifecycle,
+    profile: UserProfile | None,
+) -> None:
+    await state.set_state(None)
+    if profile is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
-    await order_timeouts.clear(order_id=callback_data.order_id)
-    await _finalize(callback=callback, text=_("order.cancelled").format(order_id=order.id))
+    order = await order_lifecycle.get(order_id=callback_data.order_id)
+    if order is None or order.taken_by != profile.id or order.status is not OrderStatus.TAKEN:
+        await _finalize(callback=callback, text=_("order.unavailable"))
+        await callback.answer()
+        return
+    await _render_taken(callback=callback, order=order, profile=profile)
     await callback.answer()
+
+
+@router.message(OrderCancellation.awaiting_reason, F.text)
+async def submit_cancel_reason(
+    message: Message,
+    state: FSMContext,
+    order_lifecycle: OrderLifecycle,
+    order_timeouts: OrderTimeoutService,
+    profile: UserProfile | None,
+) -> None:
+    data = await state.get_data()
+    await state.set_state(None)
+    order_id = data[_CANCEL_ORDER_ID_KEY]
+    if profile is None:
+        await message.answer(_("order.unavailable"))
+        return
+    order = await order_lifecycle.cancel(
+        order_id=order_id,
+        user_id=profile.id,
+        reason=message.text.strip(),
+    )
+    if order is None:
+        await message.answer(_("order.unavailable"))
+        return
+    await order_timeouts.clear(order_id=order_id)
+    cancelled_text = _("order.cancelled").format(order_id=order.id)
+    prompt_message_id = data.get(_CANCEL_PROMPT_MESSAGE_ID_KEY)
+    if prompt_message_id is not None:
+        try:
+            await message.bot.edit_message_text(
+                text=cancelled_text,
+                chat_id=message.chat.id,
+                message_id=prompt_message_id,
+            )
+            return
+        except TelegramBadRequest:
+            pass
+    await message.answer(cancelled_text)
 
 
 @router.callback_query(OrderDismissCB.filter())

@@ -16,6 +16,7 @@ def _order(*, status: OrderStatus, order_id: int = 1) -> Order:
         shop_access_key=None,
         status=status,
         status_reason=None,
+        refusal_reason=None,
         amount=60,
         pubg_id=None,
         codes=None,

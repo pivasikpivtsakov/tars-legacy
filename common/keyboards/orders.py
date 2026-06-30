@@ -14,6 +14,10 @@ class CancelOrderCB(CallbackData, prefix="cancel_order"):
     order_id: int
 
 
+class CancelReasonCB(CallbackData, prefix="cancel_reason"):
+    order_id: int
+
+
 class NoopCB(CallbackData, prefix="noop"):
     pass
 
@@ -29,6 +33,19 @@ def take_inline_kb(*, order_id: int, take_text: str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text=take_text,
                     callback_data=TakeOrderCB(order_id=order_id).pack(),
+                ),
+            ],
+        ],
+    )
+
+
+def cancel_reason_prompt_kb(*, order_id: int, cancel_text: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=cancel_text,
+                    callback_data=CancelReasonCB(order_id=order_id).pack(),
                 ),
             ],
         ],

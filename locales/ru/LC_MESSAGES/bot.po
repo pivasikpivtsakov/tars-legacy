@@ -295,6 +295,15 @@ msgstr "Заказ #{order_id} выполнен. Спасибо!"
 msgid "order.cancelled"
 msgstr "Заказ #{order_id} отменён."
 
+msgid "order.cancel_reason_prompt"
+msgstr "Укажите причину отмены заказа #{order_id}:"
+
+msgid "order.btn_cancel_reason"
+msgstr "« Назад"
+
+msgid "order.long_reserve_forwarded"
+msgstr "Заказ #{order_id} отправлен в длинный резерв. Причина отказа: {reason}"
+
 msgid "order.unavailable"
 msgstr "Этот заказ уже недоступен."
 

@@ -295,6 +295,15 @@ msgstr "Order #{order_id} completed. Thanks!"
 msgid "order.cancelled"
 msgstr "Order #{order_id} cancelled."
 
+msgid "order.cancel_reason_prompt"
+msgstr "Please enter a reason for cancelling order #{order_id}:"
+
+msgid "order.btn_cancel_reason"
+msgstr "« Back"
+
+msgid "order.long_reserve_forwarded"
+msgstr "Order #{order_id} sent to long reserve. Refusal reason: {reason}"
+
 msgid "order.unavailable"
 msgstr "This order is no longer available."
 

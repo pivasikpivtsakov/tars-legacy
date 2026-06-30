@@ -46,16 +46,43 @@ TELEGRAM_BOT_TOKEN = env_get(
 )
 
 
-def _env_positive_int(varname: str, *, default: int) -> int:
-    return int(
-        env_get(
-            varname,
-            default=str(default),
-            validation_rule=lambda val: val.isdigit() and int(val) > 0,
-            warning_message=f"{varname} must be a positive integer",
-            raise_if_failed=True,
-        )
+def _env_int(
+    varname: str,
+    *,
+    default: int | None = None,
+    positive: bool = False,
+    required: bool = True,
+) -> int | None:
+    def validate_positive(val: str) -> bool:
+        return val.isdigit() and int(val) > 0
+
+    def validate_any(val: str) -> bool:
+        return val.lstrip("-").isdigit()
+
+    if positive:
+        validation_rule = validate_positive
+        int_type = "positive integer"
+    else:
+        validation_rule = validate_any
+        int_type = "integer"
+    raw = env_get(
+        varname,
+        default=str(default) if default is not None else None,
+        validation_rule=validation_rule,
+        warning_message=f"{varname} must be a {int_type}",
+        raise_if_failed=required,
     )
+    if raw is None:
+        return None
+    return int(raw)
+
+
+def _env_positive_int(varname: str, *, default: int) -> int:
+    return _env_int(varname, default=default, positive=True, required=True)
+
+
+def _env_optional_int(varname: str) -> int | None:
+    return _env_int(varname, positive=False, required=False)
 
 
 def _env_boolean(varname: str, *, default: bool) -> bool:
@@ -88,6 +115,9 @@ ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS = _env_positive_int(
     "ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS", default=240
 )
 ORDER_EXPIRY_DELAY_SECONDS = _env_positive_int("ORDER_EXPIRY_DELAY_SECONDS", default=180)
+
+# Telegram chat that receives cancelled/timed-out orders handed off to the long reserve.
+LONG_RESERVE_CHAT_ID = _env_optional_int("LONG_RESERVE_CHAT_ID")
 
 LOG_LEVEL = env_get("LOG_LEVEL", default="INFO", raise_if_failed=False)
 LOG_FORMAT = env_get(

@@ -24,6 +24,7 @@ from bot.middlewares.menu import MenuMiddleware
 from bot.middlewares.profile import ProfileMiddleware
 from bot.middlewares.roles import RoleContextMiddleware
 from common.environment import (
+    LONG_RESERVE_CHAT_ID,
     ORDER_EXPIRY_DELAY_SECONDS,
     ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS,
     ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS,
@@ -111,6 +112,8 @@ def build_dispatcher(
         pending=pending,
         dispatch_signal=dispatch_signal,
         strategies=strategies,
+        bot=bot,
+        long_reserve_chat_id=LONG_RESERVE_CHAT_ID,
     )
     dispatcher["order_lifecycle"] = order_lifecycle
     order_timeouts = OrderTimeoutService(

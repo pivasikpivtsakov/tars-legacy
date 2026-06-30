@@ -6,10 +6,13 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import asyncpg
+from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 
 from common.catalog.packages import PACKAGE_UNIT_COUNT
 from common.environment import MAX_ORDERS_PENDING
 from common.exceptions.orders import OrderAmountError
+from common.i18n import build_i18n
 from common.models.orders import Order
 from common.models.user_profiles import UserProfile
 from common.repositories.order_offers import OrderOfferRepository
@@ -23,6 +26,11 @@ if TYPE_CHECKING:
     from common.services.ranking import RankedCandidate, RankingStrategy
 
 logger = logging.getLogger(__name__)
+
+_ = build_i18n().gettext
+
+# Reason recorded automatically when a taken order expires without user action.
+TIMEOUT_REASON = "timeout"
 
 _PACKAGE_SIZES_DESC: tuple[int, ...] = tuple(sorted(PACKAGE_UNIT_COUNT, reverse=True))
 
@@ -72,8 +80,30 @@ def full_price_for(*, prices: Mapping[int, Decimal], counts: Mapping[int, int]) 
     )
 
 
-async def forward_to_third_party(*, original_id: int) -> None:
-    logger.info("third-party hand-off requested original_id=%s", original_id)
+async def forward_to_third_party(
+    *,
+    original_id: int,
+    reason: str | None = None,
+    bot: Bot | None = None,
+    chat_id: int | None = None,
+) -> None:
+    logger.info(
+        "third-party hand-off requested original_id=%s reason=%s", original_id, reason
+    )
+    if bot is None or chat_id is None:
+        return
+    text = _("order.long_reserve_forwarded").format(
+        order_id=original_id,
+        reason=reason or "-",
+    )
+    try:
+        await bot.send_message(chat_id=chat_id, text=text)
+    except TelegramAPIError:
+        logger.exception(
+            "failed to deliver long-reserve notice original_id=%s reason=%s",
+            original_id,
+            reason,
+        )
 
 
 class OrderManager:
@@ -115,6 +145,8 @@ class OrderLifecycle:
         pending: PendingOrdersRepository,
         dispatch_signal: DispatchSignal,
         strategies: Mapping[bool, RankingStrategy],
+        bot: Bot,
+        long_reserve_chat_id: int | None,
     ) -> None:
         self._pool = pool
         self._orders = orders
@@ -124,6 +156,11 @@ class OrderLifecycle:
         self._pending = pending
         self._dispatch = dispatch_signal
         self._strategies = strategies
+        self._bot = bot
+        self._long_reserve_chat_id = long_reserve_chat_id
+
+    async def get(self, *, order_id: int) -> Order | None:
+        return await self._orders.get(order_id=order_id)
 
     async def take(
         self,
@@ -195,24 +232,37 @@ class OrderLifecycle:
         await self._dispatch.request()
         return order
 
-    async def cancel(self, *, order_id: int, user_id: int) -> Order | None:
-        order = await self._orders.cancel(order_id=order_id, user_id=user_id)
+    async def cancel(self, *, order_id: int, user_id: int, reason: str) -> Order | None:
+        order = await self._orders.cancel(order_id=order_id, user_id=user_id, reason=reason)
         if order is None:
             return None
         strategy = self._strategies[order.is_only_w_codes]
         await strategy.on_cancel(user_id=user_id)
-        await forward_to_third_party(original_id=order.original_id)
+        # заказ отправляется в длинный резерв
+        await forward_to_third_party(
+            original_id=order.original_id,
+            reason=reason,
+            bot=self._bot,
+            chat_id=self._long_reserve_chat_id,
+        )
         await self._pending.release(user_id=user_id)
         await self._dispatch.request()
         return order
 
     async def expire_taken(self, *, order_id: int, user_id: int) -> Order | None:
-        order = await self._orders.time_out(order_id=order_id, user_id=user_id)
+        order = await self._orders.time_out(
+            order_id=order_id, user_id=user_id, reason=TIMEOUT_REASON
+        )
         if order is None:
             return None
         await self._rating.record_not_taken(user_ids=[user_id])
-        # Отправка в Длинный Резерв 2.0
-        await forward_to_third_party(original_id=order.original_id)
+        # заказ отправляется в длинный резерв
+        await forward_to_third_party(
+            original_id=order.original_id,
+            reason=TIMEOUT_REASON,
+            bot=self._bot,
+            chat_id=self._long_reserve_chat_id,
+        )
         await self._pending.release(user_id=user_id)
         await self._dispatch.request()
         return order

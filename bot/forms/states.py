@@ -38,6 +38,10 @@ class PackPriceLimits(StatesGroup):
     awaiting_value = State()
 
 
+class OrderCancellation(StatesGroup):
+    awaiting_reason = State()
+
+
 REGISTRATION_INPUT_STATES = (
     Registration.chat_addable,
     Registration.with_codes,

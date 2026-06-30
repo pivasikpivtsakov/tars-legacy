@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from common.models.orders import ExternalOrderStatus, OrderStatus
+from common.schemas.external_order import BoundedVarchar
 
 
 class OrderCreate(BaseModel):
@@ -13,7 +14,7 @@ class OrderCreate(BaseModel):
 
     shop_id: int
     shop_name: str
-    shop_access_key: str
+    shop_access_key: BoundedVarchar
     shop_access_key_name: str
 
     order_type: str
@@ -24,7 +25,7 @@ class OrderCreate(BaseModel):
     pubg_id: int
 
     status: ExternalOrderStatus = ExternalOrderStatus.CREATED
-    status_reason: str | None = None
+    status_reason: BoundedVarchar | None = None
 
     redeem_attempts: int = 2
     max_redeem_attempts: int = 5
@@ -32,8 +33,8 @@ class OrderCreate(BaseModel):
 
     codes: dict[str, int] = {}
     unused_codes: dict[str, int] = {}
-    broken_codes: list[str] = []
-    redeemed_codes: list[str] = []
+    broken_codes: list[BoundedVarchar] = []
+    redeemed_codes: list[BoundedVarchar] = []
 
     screenshots: list[str] = []
     webhook: str | None = None

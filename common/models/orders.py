@@ -37,6 +37,7 @@ class Order:
     shop_access_key: str | None
     status: OrderStatus
     status_reason: str | None
+    refusal_reason: str | None
     amount: int
     pubg_id: int | None
     codes: Any
@@ -62,6 +63,7 @@ class Order:
             shop_access_key=row["shop_access_key"],
             status=OrderStatus(row["status"]),
             status_reason=row["status_reason"],
+            refusal_reason=row["refusal_reason"],
             amount=row["amount"],
             pubg_id=row["pubg_id"],
             codes=row["codes"],
