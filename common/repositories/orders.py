@@ -161,7 +161,7 @@ class OrderRepository:
             f"  AND oo.status = $1::order_offer_status "
             f"  AND oo.offered_at + $2::interval > NOW()"
             f") "
-            f"ORDER BY o.created_at ASC "
+            f"ORDER BY o.amount DESC, o.created_at ASC "
             f"LIMIT $3",
             OrderOfferStatus.OFFERED.value,
             timedelta(seconds=stale_after_seconds),
