@@ -9,7 +9,8 @@ from aiogram.utils.i18n import gettext as _
 from bot.forms.fields import begin_registration
 from bot.forms.menu import build_menu_context, open_menu
 from bot.forms.states import REGISTRATION_INPUT_STATES
-from bot.keyboards.menu import MENU_BUTTON_KEY, reply_text_matches
+from bot.keyboards.menu import MENU_BUTTON_KEY
+from bot.utils.reply_match import reply_text_matches
 from common.models.user_profiles import UserProfile
 from common.repositories.postgres.user_profiles import UserProfileRepository
 

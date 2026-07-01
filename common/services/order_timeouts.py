@@ -10,11 +10,12 @@ from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from redis.asyncio import Redis
 
-from common.i18n import build_i18n
+from common.i18n import gettext_for
 from common.keyboards.orders import checkin_inline_kb, last_call_inline_kb
 from common.models.orders import OrderStatus
 from common.rendering.orders import render_checkin_text, render_last_call_text
 from common.repositories.postgres.orders import OrderRepository
+from common.repositories.redis.language import LanguageRepository
 from common.repositories.redis.order_timeout_messages import OrderTimeoutMessageStore
 from common.services.order_processing import OrderLifecycle
 
@@ -32,6 +33,7 @@ class OrderTimeoutService:
         redis: Redis,
         orders: OrderRepository,
         lifecycle: OrderLifecycle,
+        language: LanguageRepository,
         notification_1_delay: int,
         notification_2_delay: int,
         expiry_delay: int,
@@ -40,6 +42,7 @@ class OrderTimeoutService:
         self._bot = bot
         self._orders = orders
         self._lifecycle = lifecycle
+        self._language = language
         self._notification_1_delay = notification_1_delay
         self._notification_2_delay = notification_2_delay
         self._expiry_delay = expiry_delay
@@ -50,7 +53,6 @@ class OrderTimeoutService:
             + expiry_delay
             + _MESSAGE_TTL_BUFFER_SECONDS
         )
-        self._gettext = build_i18n().gettext
 
     def _job_id(self, order_id: int) -> str:
         return f"order_timeout:{order_id}"
@@ -113,18 +115,19 @@ class OrderTimeoutService:
     ) -> None:
         if not await self._in_work(order_id=order_id, user_id=user_id):
             return
+        translate = gettext_for(await self._language.get(tg_id=chat_id))
         await self._notify(
             order_id=order_id,
             chat_id=chat_id,
             text=render_checkin_text(
                 minutes=(self._notification_2_delay + self._expiry_delay) // 60,
-                gettext=self._gettext,
+                gettext=translate,
             ),
             reply_markup=checkin_inline_kb(
                 order_id=order_id,
-                yes_text=self._gettext("order.btn_checkin_yes"),
-                spacer_text=self._gettext("order.btn_noop"),
-                no_text=self._gettext("order.btn_checkin_no"),
+                yes_text=translate("order.btn_checkin_yes"),
+                spacer_text=translate("order.btn_noop"),
+                no_text=translate("order.btn_checkin_no"),
             ),
         )
         self._schedule(
@@ -140,18 +143,20 @@ class OrderTimeoutService:
     ) -> None:
         if not await self._in_work(order_id=order_id, user_id=user_id):
             return
+        locale = await self._language.get(tg_id=chat_id)
+        translate = gettext_for(locale)
         await self._notify(
             order_id=order_id,
             chat_id=chat_id,
             text=render_last_call_text(
                 minutes=self._expiry_delay // 60,
-                gettext=self._gettext,
+                gettext=translate,
             ),
             reply_markup=last_call_inline_kb(
                 order_id=order_id,
-                working_text=self._gettext("order.btn_working"),
-                spacer_text=self._gettext("order.btn_noop"),
-                cancel_text=self._gettext("order.btn_cancel"),
+                working_text=translate("order.btn_working"),
+                spacer_text=translate("order.btn_noop"),
+                cancel_text=translate("order.btn_cancel"),
             ),
         )
         self._schedule(

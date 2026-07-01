@@ -12,7 +12,7 @@ from aiogram.exceptions import TelegramAPIError
 from common.catalog.packages import PACKAGE_UNIT_COUNT
 from common.environment import MAX_ORDERS_PENDING
 from common.exceptions.orders import OrderAmountError
-from common.i18n import build_i18n
+from common.i18n import gettext_for, i18n
 from common.models.orders import Order
 from common.models.user_profiles import UserProfile
 from common.repositories.postgres.order_offers import OrderOfferRepository
@@ -26,8 +26,6 @@ if TYPE_CHECKING:
     from common.services.ranking import RankingStrategy
 
 logger = logging.getLogger(__name__)
-
-_ = build_i18n().gettext
 
 # Reason recorded automatically when a taken order expires without user action.
 TIMEOUT_REASON = "timeout"
@@ -90,7 +88,8 @@ async def forward_to_third_party(
     logger.info("third-party hand-off requested original_id=%s reason=%s", original_id, reason)
     if bot is None or chat_id is None:
         return
-    text = _("order.long_reserve_forwarded").format(
+    default_translate = gettext_for(i18n.default_locale)
+    text = default_translate("order.long_reserve_forwarded").format(
         order_id=original_id,
         reason=reason or "-",
     )

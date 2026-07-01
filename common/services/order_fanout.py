@@ -11,13 +11,14 @@ from common.environment import (
     MAX_ORDERS_PENDING,
     OFFER_TTL_SECONDS,
 )
-from common.i18n import build_i18n
+from common.i18n import gettext_for, i18n
 from common.keyboards.orders import take_inline_kb
 from common.models.orders import Order
 from common.rendering.orders import render_no_takers_text, render_offer_text
 from common.repositories.postgres.order_offers import OrderOfferRepository
 from common.repositories.postgres.orders import OrderRepository
 from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.language import LanguageRepository
 from common.repositories.redis.offer_deadlines import OfferDeadlineQueue
 from common.repositories.redis.pending_orders import PendingOrdersRepository
 from common.repositories.redis.rating import RatingRepository
@@ -25,9 +26,6 @@ from common.services.order_processing import forward_to_third_party
 from common.services.ranking import RankingStrategy
 
 logger = logging.getLogger(__name__)
-
-_i18n = build_i18n()
-_ = _i18n.gettext
 
 
 class OrderFanoutService:
@@ -42,6 +40,7 @@ class OrderFanoutService:
         rating: RatingRepository,
         pending: PendingOrdersRepository,
         deadlines: OfferDeadlineQueue,
+        language: LanguageRepository,
         excluded_user_ids: frozenset[int],
         moderator_ids: Collection[int],
     ) -> None:
@@ -53,6 +52,7 @@ class OrderFanoutService:
         self._rating = rating
         self._pending = pending
         self._deadlines = deadlines
+        self._language = language
         self._excluded_user_ids = excluded_user_ids
         self._moderator_ids = moderator_ids
 
@@ -83,11 +83,6 @@ class OrderFanoutService:
 
         await self._offers.record_offer(order_id=order.id, user_id=next_recipient.user_id)
         tg_id = await self._profiles.get_tg_id(profile_id=next_recipient.user_id)
-        offer_text = render_offer_text(
-            order=order,
-            full_price=next_recipient.full_price,
-            gettext=_,
-        )
         if tg_id is None:
             logger.warning(
                 "cannot resolve tg_id order_id=%s user_id=%s",
@@ -96,13 +91,19 @@ class OrderFanoutService:
             )
             await self._rollback_offer(order_id=order.id, user_id=next_recipient.user_id)
             return
+        translate = gettext_for(await self._language.get(tg_id=tg_id))
+        offer_text = render_offer_text(
+            order=order,
+            full_price=next_recipient.full_price,
+            gettext=translate,
+        )
         try:
             sent = await self._bot.send_message(
                 chat_id=tg_id,
                 text=offer_text,
                 reply_markup=take_inline_kb(
                     order_id=order.id,
-                    take_text=_("order.btn_take"),
+                    take_text=translate("order.btn_take"),
                 ),
             )
         except TelegramAPIError:
@@ -118,7 +119,7 @@ class OrderFanoutService:
             user_id=next_recipient.user_id,
             chat_id=tg_id,
             message_id=sent.message_id,
-            expired_text=f"{offer_text}\n{_('order.expired')}",
+            expired_text=f"{offer_text}\n{translate('order.expired')}",
             deadline_ts=time.time() + OFFER_TTL_SECONDS,
         )
         await self._orders.mark_offering(order_id=order.id)
@@ -155,7 +156,8 @@ class OrderFanoutService:
     async def _notify_moderators_no_takers(self, *, order: Order) -> None:
         if not self._moderator_ids:
             return
-        text = render_no_takers_text(order=order, gettext=_)
+        default_translate = gettext_for(i18n.default_locale)
+        text = render_no_takers_text(order=order, gettext=default_translate)
         tg_ids = await self._profiles.get_tg_ids(profile_ids=self._moderator_ids)
         for moderator_id in self._moderator_ids:
             tg_id = tg_ids.get(moderator_id)

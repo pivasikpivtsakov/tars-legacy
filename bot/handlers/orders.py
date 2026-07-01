@@ -8,6 +8,7 @@ from aiogram.utils.i18n import gettext as _
 
 from bot.forms.states import OrderCancellation, UserSession
 from bot.utils.telegram import ignore_not_modified
+from common.i18n import gettext_for, i18n
 from common.keyboards.orders import (
     CancelOrderCB,
     CancelReasonCB,
@@ -71,12 +72,13 @@ async def _report_fraud(
     admin_ids: frozenset[int],
     blocked: bool,
 ) -> None:
+    default_translate = gettext_for(i18n.default_locale)
     if blocked:
         await state.set_state(UserSession.blocked)
     await broadcast.send_to_user_ids(
         bot=bot,
         user_ids=admin_ids,
-        text=_("order.fraud_detected").format(
+        text=default_translate("order.fraud_detected").format(
             order_id=order.original_id,
             user=callback.from_user.id,
         ),
@@ -141,6 +143,7 @@ async def ready_order(
     if profile is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
+    default_translate = gettext_for(i18n.default_locale)
     is_user_privileged = profile.id in admin_ids or profile.id in moderator_ids
     review = await anti_fraud.review(
         order_id=callback_data.order_id,
@@ -151,7 +154,7 @@ async def ready_order(
         await broadcast.send_to_user_ids(
             bot=bot,
             user_ids=moderator_ids,
-            text=_("order.codes_unverified_moderator").format(
+            text=default_translate("order.codes_unverified_moderator").format(
                 order_id=review.order.original_id,
                 codes=", ".join(review.unverified_codes),
                 user_id=profile.id,
@@ -162,14 +165,14 @@ async def ready_order(
         await broadcast.send_to_user_ids(
             bot=bot,
             user_ids=moderator_ids,
-            text=_("order.check_failed_moderator").format(
+            text=default_translate("order.check_failed_moderator").format(
                 order_id=review.order.original_id,
-                reason=_("order.check_reason_fraud"),
+                reason=default_translate("order.check_reason_fraud"),
                 user_id=profile.id,
                 tg_id=profile.tg_id,
-                ban_status=_("order.user_banned")
+                ban_status=default_translate("order.user_banned")
                 if not is_user_privileged
-                else _("order.user_not_banned"),
+                else default_translate("order.user_not_banned"),
             ),
         )
         await _report_fraud(
@@ -186,12 +189,12 @@ async def ready_order(
         await broadcast.send_to_user_ids(
             bot=bot,
             user_ids=moderator_ids,
-            text=_("order.check_failed_moderator").format(
+            text=default_translate("order.check_failed_moderator").format(
                 order_id=review.order.original_id,
-                reason=_("order.check_reason_not_activated"),
+                reason=default_translate("order.check_reason_not_activated"),
                 user_id=profile.id,
                 tg_id=profile.tg_id,
-                ban_status=_("order.user_not_banned"),
+                ban_status=default_translate("order.user_not_banned"),
             ),
         )
         await callback.answer(_("order.unfinished"), show_alert=True)

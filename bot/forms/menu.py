@@ -182,5 +182,5 @@ async def open_menu(context: MenuContext) -> None:
             chat_id=target.chat.id,
             state=context.state,
         )
-    await context.state.clear()
+    await context.state.set_state(None)
     await render_menu(context)

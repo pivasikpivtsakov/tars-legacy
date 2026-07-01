@@ -112,6 +112,9 @@ msgstr "Your profile is on moderation. Please wait for approval."
 msgid "withdraw.placeholder"
 msgstr "Withdrawal flow is not wired yet. Tap Back to return."
 
+msgid "registration.ask_language"
+msgstr "Choose your language:\nВыберите язык:"
+
 msgid "registration.ask_chat_addable"
 msgstr "Do you want to add the bot to a group chat with several people?"
 
@@ -157,6 +160,9 @@ msgstr "That price is too high — the maximum for the <code>{size}</code> UC pa
 msgid "registration.ask_withdrawal_method"
 msgstr "Enter only TRC20 wallets. Don't use exchange wallets — they can be frozen."
 
+msgid "registration.ask_withdrawal_method_codes"
+msgstr "Enter a TRC20 wallet, card number, or SBP phone number — just one of these. Don't use exchange wallets — they can be frozen."
+
 msgid "registration.ask_work_start"
 msgstr "What time do you start working? (HH:MM, Moscow time)"
 
@@ -201,6 +207,9 @@ msgstr "Work start"
 
 msgid "edit.field_work_end"
 msgstr "Work end"
+
+msgid "edit.field_language"
+msgstr "Language"
 
 msgid "edit.btn_save"
 msgstr "Save"

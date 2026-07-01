@@ -206,6 +206,14 @@ class _FakeDeadlines:
         )
 
 
+class _FakeLanguage:
+    def __init__(self, locale: str = "en") -> None:
+        self._locale = locale
+
+    async def get(self, *, tg_id: int) -> str:  # noqa: ARG002
+        return self._locale
+
+
 def _service(**overrides: object) -> OrderFanoutService:
     defaults: dict[str, object] = {
         "bot": _FakeBot(),
@@ -216,6 +224,7 @@ def _service(**overrides: object) -> OrderFanoutService:
         "rating": _FakeRating(),
         "pending": _FakePending(),
         "deadlines": _FakeDeadlines(),
+        "language": _FakeLanguage(),
         "excluded_user_ids": frozenset(),
         "moderator_ids": frozenset(),
     }

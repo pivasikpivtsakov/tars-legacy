@@ -17,6 +17,7 @@ from bot.forms.states import Moderation
 from bot.keyboards.profile import PackagesDoneCB
 from bot.utils.telegram import ignore_not_modified
 from common.catalog.tiers import PACK_TIERS, Tier, TierNumber, tiers_for
+from common.i18n import LOCALE_FSM_KEY
 from common.keyboards.moderation import (
     ModApproveCB,
     ModDenyCB,
@@ -37,7 +38,6 @@ router = Router(name="moderation")
 
 _MOD_PROFILE_ID_KEY = "mod_profile_id"
 _MOD_WITH_CODES_KEY = "mod_with_codes"
-_LOCALE_KEY = "locale"
 
 
 class _IsModerator(BaseFilter):
@@ -241,8 +241,9 @@ async def approve_user(
         await callback.answer(_("moderation.profile_not_found"), show_alert=True)
         return
     user_state = _user_state(storage=fsm_storage, bot=bot, tg_id=profile.tg_id)
-    user_locale = (await user_state.get_data()).get(_LOCALE_KEY) or i18n.default_locale
-    await user_state.clear()
+    user_state_data = await user_state.get_data()
+    user_locale = user_state_data.get(LOCALE_FSM_KEY) or i18n.default_locale
+    await user_state.set_state(None)
     await _annotate(
         callback=callback,
         note=f"#approved by {_moderator_label(callback.from_user)}",

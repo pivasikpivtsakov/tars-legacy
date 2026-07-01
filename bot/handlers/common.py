@@ -20,7 +20,6 @@ from bot.forms.menu import (
 from bot.keyboards.menu import (
     ONLINE_STATE_OFF_KEY,
     ONLINE_STATE_ON_KEY,
-    reply_text_matches,
 )
 from bot.keyboards.start import (
     BackCB,
@@ -31,6 +30,7 @@ from bot.keyboards.start import (
     history_kb,
 )
 from bot.middlewares.profile import require_active_profile
+from bot.utils.reply_match import reply_text_matches
 from common.catalog.packages import format_prices_table
 from common.models.rating import RatingStats
 from common.models.user_profiles import UserProfile
@@ -67,7 +67,7 @@ async def cmd_start(
     admin_ids: frozenset[int],
     bot_switch: BotSwitchService,
 ) -> None:
-    await state.clear()
+    await state.set_state(None)
     if profile is None:
         await fields.begin_registration(message=message, state=state)
         return

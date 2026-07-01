@@ -14,6 +14,7 @@ from common.environment import (
     RATING_SPEED_WINDOW,
     TELEGRAM_BOT_TOKEN,
 )
+from common.i18n import i18n
 from common.logging_config import setup_logging
 from common.redis import create_redis
 from common.repositories.postgres.order_offers import OrderOfferRepository
@@ -21,6 +22,7 @@ from common.repositories.postgres.orders import OrderRepository
 from common.repositories.postgres.transactions import TransactionsRepository
 from common.repositories.postgres.user_profiles import UserProfileRepository
 from common.repositories.redis.code_order_price import CodeOrderPriceRepository
+from common.repositories.redis.language import LanguageRepository
 from common.repositories.redis.offer_deadlines import OfferDeadlineQueue
 from common.repositories.redis.online_index import (
     CodeOnlineIndex,
@@ -55,6 +57,7 @@ async def main() -> None:
     async with create_pool() as pool:
         redis = create_redis()
         bot = create_bot(token=TELEGRAM_BOT_TOKEN)
+        language = LanguageRepository(redis=redis, default_locale=i18n.default_locale)
         signal = DispatchSignal(redis=redis)
         moderator_ids = await UserRoleRepository(redis=redis).get(role=UserRole.MODERATOR)
         rating = RatingRepository(redis=redis, speed_window=RATING_SPEED_WINDOW)
@@ -77,6 +80,7 @@ async def main() -> None:
             rating=rating,
             pending=PendingOrdersRepository(redis=redis),
             deadlines=OfferDeadlineQueue(redis=redis),
+            language=language,
             excluded_user_ids=frozenset(moderator_ids),
             moderator_ids=moderator_ids,
         )

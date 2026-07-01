@@ -67,10 +67,14 @@ def working_inline_kb(
                     style="success",
                     callback_data=ReadyOrderCB(order_id=order_id).pack(),
                 ),
+            ],
+            [
                 InlineKeyboardButton(
                     text=noop_text,
                     callback_data=NoopCB().pack(),
                 ),
+            ],
+            [
                 InlineKeyboardButton(
                     text=cancel_text,
                     style="danger",

@@ -29,12 +29,17 @@ class PackagesDoneCB(CallbackData, prefix="pkg_done"):
 
 
 class ProfileField(StrEnum):
+    language = "language"
     chat_addable = "chat_addable"
     with_codes = "with_codes"
     packages = "packages"
     withdrawal_method = "withdrawal_method"
     work_start = "work_start"
     work_end = "work_end"
+
+
+class SetLanguageCB(CallbackData, prefix="lang"):
+    value: str
 
 
 class EditFieldCB(CallbackData, prefix="ef"):
@@ -58,6 +63,20 @@ def _bool_kb(
                 InlineKeyboardButton(text=yes_text, callback_data=yes_callback),
                 InlineKeyboardButton(text=no_text, callback_data=no_callback),
             ],
+        ],
+    )
+
+
+def language_kb(*, names: Mapping[str, str]) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=name,
+                    callback_data=SetLanguageCB(value=code).pack(),
+                ),
+            ]
+            for code, name in names.items()
         ],
     )
 

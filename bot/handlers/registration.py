@@ -1,6 +1,7 @@
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.i18n import FSMI18nMiddleware
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms import fields
@@ -9,6 +10,7 @@ from bot.keyboards.profile import (
     ChatAddableCB,
     PackagesDoneCB,
     ProfileField,
+    SetLanguageCB,
     WithCodesCB,
 )
 from common.repositories.postgres.user_profiles import UserProfileRepository
@@ -16,6 +18,20 @@ from common.repositories.redis.pack_price_limits import PackPriceLimitRepository
 from common.services.moderation import ModerationService
 
 router = Router(name="registration")
+
+
+@router.callback_query(Registration.language, SetLanguageCB.filter())
+async def process_language(
+    callback: CallbackQuery,
+    callback_data: SetLanguageCB,
+    state: FSMContext,
+    i18n_middleware: FSMI18nMiddleware,
+) -> None:
+    await i18n_middleware.set_locale(state=state, locale=callback_data.value)
+    await state.set_state(Registration.chat_addable)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await fields.send_prompt(callback.message, ProfileField.chat_addable)
+    await callback.answer()
 
 
 @router.callback_query(Registration.chat_addable, ChatAddableCB.filter())
@@ -41,7 +57,7 @@ async def process_with_codes(
     if callback_data.value:
         await state.set_state(Registration.withdrawal_method)
         await callback.message.edit_reply_markup(reply_markup=None)
-        await fields.send_prompt(callback.message, ProfileField.withdrawal_method)
+        await fields.send_prompt(callback.message, ProfileField.withdrawal_method, with_codes=True)
     else:
         await state.set_state(Registration.packages)
         await fields.show_packages_grid(target=callback, state=state)

@@ -31,7 +31,7 @@ from common.environment import (
     ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS,
     RATING_SPEED_WINDOW,
 )
-from common.i18n import build_i18n
+from common.i18n import i18n
 from common.jobs.registry import set_job_services
 from common.repositories.postgres.order_offers import OrderOfferRepository
 from common.repositories.postgres.orders import OrderRepository
@@ -39,6 +39,7 @@ from common.repositories.postgres.transactions import TransactionsRepository
 from common.repositories.postgres.user_profiles import UserProfileRepository
 from common.repositories.redis.bot_switch import BotSwitchRepository
 from common.repositories.redis.code_order_price import CodeOrderPriceRepository
+from common.repositories.redis.language import LanguageRepository
 from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
@@ -127,6 +128,7 @@ def build_dispatcher(
         redis=redis,
         orders=orders_repo,
         lifecycle=order_lifecycle,
+        language=LanguageRepository(redis=redis, default_locale=i18n.default_locale),
         notification_1_delay=ORDER_EXPIRY_NOTIFICATION_1_DELAY_SECONDS,
         notification_2_delay=ORDER_EXPIRY_NOTIFICATION_2_DELAY_SECONDS,
         expiry_delay=ORDER_EXPIRY_DELAY_SECONDS,
@@ -149,7 +151,7 @@ def build_dispatcher(
     )
     dispatcher.update.outer_middleware(LoggingContextMiddleware())
     dispatcher.update.outer_middleware(RoleContextMiddleware(roles=roles))
-    dispatcher.update.middleware(FSMI18nMiddleware(i18n=build_i18n()))
+    dispatcher.update.middleware(FSMI18nMiddleware(i18n=i18n))
     dispatcher.update.middleware(
         BotSwitchMiddleware(switch=bot_switch, profiles=profiles),
     )

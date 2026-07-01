@@ -11,7 +11,7 @@ from aiogram.utils.i18n import gettext as _
 
 from bot.forms.menu import MenuContext, render_menu
 from bot.keyboards.start import OpenZoneCB, StartZone
-from common.i18n import DOMAIN, LOCALES_DIR
+from common.i18n import DOMAIN, LOCALES_DIR, gettext_for, i18n
 from common.repositories.postgres.user_profiles import UserProfileRepository
 from common.repositories.redis.online_index import OnlineIndexRouter
 from common.services.bot_switch import BotSwitchService
@@ -117,8 +117,11 @@ async def cmd_enable(
     bot_switch: BotSwitchService,
     broadcast: BroadcastService,
 ) -> None:
+    default_translate = gettext_for(i18n.default_locale)
     await bot_switch.enable()
-    await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_online_announcement"))
+    await broadcast.send_to_everyone(
+        bot=bot, text=default_translate("admin.bot_online_announcement")
+    )
     await message.answer(_("admin.bot_enabled"))
 
 
@@ -129,8 +132,11 @@ async def cmd_disable(
     bot_switch: BotSwitchService,
     broadcast: BroadcastService,
 ) -> None:
+    default_translate = gettext_for(i18n.default_locale)
     await bot_switch.disable()
-    await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_disabled_announcement"))
+    await broadcast.send_to_everyone(
+        bot=bot, text=default_translate("admin.bot_disabled_announcement")
+    )
     await message.answer(_("admin.bot_disabled"))
 
 
@@ -147,11 +153,16 @@ async def toggle_bot_enabled(
     broadcast: BroadcastService,
     moderator_ids: frozenset[int],
 ) -> None:
+    default_translate = gettext_for(i18n.default_locale)
     enabled = await bot_switch.toggle()
     if enabled:
-        await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_online_announcement"))
+        await broadcast.send_to_everyone(
+            bot=bot, text=default_translate("admin.bot_online_announcement")
+        )
     else:
-        await broadcast.send_to_everyone(bot=bot, text=_("admin.bot_disabled_announcement"))
+        await broadcast.send_to_everyone(
+            bot=bot, text=default_translate("admin.bot_disabled_announcement")
+        )
     profile = await profiles.get_by_tg_id(tg_id=callback.from_user.id)
     text = _("admin.bot_enabled") if enabled else _("admin.bot_disabled")
     await callback.answer(text, show_alert=False)

@@ -1,15 +1,18 @@
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.i18n import FSMI18nMiddleware
 from aiogram.utils.i18n import gettext as _
 
 from bot.forms import fields
+from bot.forms.menu import install_menu_button
 from bot.forms.states import ProfileEdit
 from bot.keyboards.profile import (
     ChatAddableCB,
     EditFieldCB,
     EditSaveCB,
     PackagesDoneCB,
+    SetLanguageCB,
 )
 from bot.keyboards.start import OpenZoneCB, StartZone
 from bot.middlewares.profile import require_active_profile
@@ -44,6 +47,21 @@ async def open_field(
     state: FSMContext,
 ) -> None:
     await fields.begin_field_edit(callback=callback, state=state, field=callback_data.field)
+    await callback.answer()
+
+
+@router.callback_query(ProfileEdit.language, SetLanguageCB.filter())
+@require_active_profile
+async def edit_language(
+    callback: CallbackQuery,
+    callback_data: SetLanguageCB,
+    state: FSMContext,
+    profile: UserProfile,
+    i18n_middleware: FSMI18nMiddleware,
+) -> None:
+    await i18n_middleware.set_locale(state=state, locale=callback_data.value)
+    await install_menu_button(message=callback.message, profile=profile, is_moderator=False)
+    await fields.show_edit_menu(target=callback, state=state)
     await callback.answer()
 
 

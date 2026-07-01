@@ -1,5 +1,4 @@
 from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup
-from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
 from bot.keyboards.start import OnlineButton, StartZone, reply_menu_kb, welcome_kb
@@ -9,15 +8,6 @@ MENU_BUTTON_KEY = "start.btn_menu"
 ONLINE_STATE_ON_KEY = "start.btn_online_state_on"
 ONLINE_STATE_OFF_KEY = "start.btn_online_state_off"
 ONLINE_STYLE_GREEN = "success"
-
-
-def reply_text_matches(text: str, *keys: str) -> bool:
-    i18n = I18n.get_current(no_error=True)
-    if i18n is None:
-        return False
-    return text in {
-        i18n.gettext(key, locale=locale) for key in keys for locale in i18n.available_locales
-    }
 
 
 def online_toggle_text(*, is_online: bool) -> str:

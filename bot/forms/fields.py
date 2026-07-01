@@ -20,6 +20,7 @@ from bot.keyboards.profile import (
     ProfileField,
     chat_addable_kb,
     edit_menu_kb,
+    language_kb,
     pack_price_kb,
     packages_grid_kb,
     with_codes_kb,
@@ -27,6 +28,7 @@ from bot.keyboards.profile import (
 from bot.utils.telegram import ignore_message_gone
 from common.catalog.packages import format_prices, format_prices_table
 from common.catalog.tiers import PACK_TIERS, TierNumber
+from common.i18n import LANGUAGE_NAMES
 from common.models.user_profiles import UserProfile
 from common.money import format_money, parse_money
 from common.repositories.postgres.user_profiles import UserProfileRepository
@@ -96,7 +98,13 @@ _TEXT_PROMPT_KEYS = {
 }
 
 
-def field_prompt(field: ProfileField) -> tuple[str, InlineKeyboardMarkup | None]:
+def field_prompt(
+    field: ProfileField,
+    *,
+    with_codes: bool = False,
+) -> tuple[str, InlineKeyboardMarkup | None]:
+    if field is ProfileField.language:
+        return _("registration.ask_language"), language_kb(names=LANGUAGE_NAMES)
     if field is ProfileField.chat_addable:
         return _("registration.ask_chat_addable"), chat_addable_kb(
             yes_text=_("registration.btn_yes"),
@@ -107,16 +115,21 @@ def field_prompt(field: ProfileField) -> tuple[str, InlineKeyboardMarkup | None]
             yes_text=_("registration.btn_yes"),
             no_text=_("registration.btn_no"),
         )
+    if field is ProfileField.withdrawal_method and with_codes:
+        return _("registration.ask_withdrawal_method_codes"), None
     return _(_TEXT_PROMPT_KEYS[field]), None
 
 
-async def send_prompt(message: Message, field: ProfileField) -> None:
-    text, markup = field_prompt(field)
+async def send_prompt(message: Message, field: ProfileField, *, with_codes: bool = False) -> None:
+    text, markup = field_prompt(field, with_codes=with_codes)
     await message.answer(text, reply_markup=markup)
 
 
 def _edit_labels(*, with_codes: bool) -> dict[ProfileField, str]:
-    labels = {ProfileField.chat_addable: _("edit.field_chat_addable")}
+    labels = {
+        ProfileField.language: _("edit.field_language"),
+        ProfileField.chat_addable: _("edit.field_chat_addable"),
+    }
     if not with_codes:
         labels[ProfileField.packages] = _("edit.field_packages")
     labels[ProfileField.withdrawal_method] = _("edit.field_withdrawal")
@@ -415,8 +428,8 @@ async def apply_work_end(*, message: Message, state: FSMContext) -> bool:
 
 async def begin_registration(*, message: Message, state: FSMContext) -> None:
     await state.clear()
-    await state.set_state(Registration.chat_addable)
-    await send_prompt(message, ProfileField.chat_addable)
+    await state.set_state(Registration.language)
+    await send_prompt(message, ProfileField.language)
 
 
 async def save_profile_from_data(
@@ -513,7 +526,8 @@ async def begin_field_edit(
     if field is ProfileField.packages:
         await show_packages_grid(target=callback, state=state)
         return
-    text, markup = field_prompt(field)
+    data = await state.get_data()
+    text, markup = field_prompt(field, with_codes=bool(data["with_codes"]))
     await callback.message.edit_text(text, reply_markup=markup)
 
 
@@ -534,6 +548,6 @@ async def save_edits(
         moderation=moderation,
         moderator_ids=moderator_ids,
     )
-    await state.clear()
+    await state.set_state(None)
     await render_menu(MenuContext(target=callback, state=state, profile=updated))
     await callback.answer(_("edit.saved"))

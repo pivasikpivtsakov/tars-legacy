@@ -8,6 +8,7 @@ class UserSession(StatesGroup):
 
 
 class Registration(StatesGroup):
+    language = State()
     chat_addable = State()
     with_codes = State()
     packages = State()
@@ -20,6 +21,7 @@ class Registration(StatesGroup):
 
 class ProfileEdit(StatesGroup):
     menu = State()
+    language = State()
     chat_addable = State()
     with_codes = State()
     packages = State()
@@ -47,6 +49,7 @@ class OrderCancellation(StatesGroup):
 
 
 REGISTRATION_INPUT_STATES = (
+    Registration.language,
     Registration.chat_addable,
     Registration.with_codes,
     Registration.packages,
@@ -57,6 +60,7 @@ REGISTRATION_INPUT_STATES = (
 )
 
 STATE_BY_FIELD = {
+    ProfileField.language: ProfileEdit.language,
     ProfileField.chat_addable: ProfileEdit.chat_addable,
     ProfileField.with_codes: ProfileEdit.with_codes,
     ProfileField.packages: ProfileEdit.packages,
