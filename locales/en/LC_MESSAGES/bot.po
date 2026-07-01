@@ -11,10 +11,10 @@ msgid "start.welcome"
 msgstr "Welcome! Pick a section below."
 
 msgid "start.btn_online_state_on"
-msgstr "🛏️ Go offline"
+msgstr "⚡ You are online"
 
 msgid "start.btn_online_state_off"
-msgstr "⚡ Go online"
+msgstr "🛏️ You are offline. Press to get orders"
 
 msgid "start.btn_balance"
 msgstr "Balance & withdrawal"
