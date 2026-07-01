@@ -162,6 +162,17 @@ class _FakeTransactions:
     pass
 
 
+_FLAT_CODE_PRICE = Decimal("1")
+
+
+class _FakeCodeOrderPrice:
+    def __init__(self, *, price: Decimal = _FLAT_CODE_PRICE) -> None:
+        self._price = price
+
+    async def get(self) -> Decimal:
+        return self._price
+
+
 def _pack_strategy(
     *,
     pack_index: _FakePackIndex,
@@ -338,13 +349,21 @@ def test_pack_strategy_taken_price_sums_priced_packages() -> None:
     )
     profile = _profile(prices={60: "10.00", 325: "40.00"})
 
-    taken = strategy.taken_price(order=_pack_order(amount=385), profile=profile)
+    taken = asyncio.run(strategy.taken_price(order=_pack_order(amount=385), profile=profile))
 
     assert taken == Decimal("50.00")
 
 
-def _code_strategy(*, code_index: _FakeCodeIndex) -> CodeRankingStrategy:
-    return CodeRankingStrategy(code_index=code_index, transactions=_FakeTransactions())
+def _code_strategy(
+    *,
+    code_index: _FakeCodeIndex,
+    price: Decimal = _FLAT_CODE_PRICE,
+) -> CodeRankingStrategy:
+    return CodeRankingStrategy(
+        code_index=code_index,
+        transactions=_FakeTransactions(),
+        code_order_price=_FakeCodeOrderPrice(price=price),
+    )
 
 
 def test_code_strategy_orders_by_online_time_and_filters_tiers() -> None:
@@ -371,13 +390,13 @@ def test_code_strategy_excludes_user_ids() -> None:
     assert [c.user_id for c in result] == [3, 2]
 
 
-def test_code_strategy_full_price_is_sum_of_code_amounts() -> None:
+def test_code_strategy_full_price_is_flat_price() -> None:
     code_index = _FakeCodeIndex(candidates=[CodeCandidate(user_id=1)])
-    strategy = _code_strategy(code_index=code_index)
+    strategy = _code_strategy(code_index=code_index, price=Decimal("2.50"))
 
     result = _run(strategy=strategy, order=_code_order(codes={"CODE-1": 60, "CODE-2": 325}))
 
-    assert [c.full_price for c in result] == [Decimal(385)]
+    assert [c.full_price for c in result] == [Decimal("2.50")]
 
 
 def test_code_strategy_code_outside_any_tier_yields_no_candidates() -> None:
@@ -390,16 +409,18 @@ def test_code_strategy_code_outside_any_tier_yields_no_candidates() -> None:
     assert code_index.requested_tiers == []
 
 
-def test_code_strategy_taken_price_is_sum_of_code_amounts() -> None:
-    strategy = _code_strategy(code_index=_FakeCodeIndex(candidates=[]))
+def test_code_strategy_taken_price_is_flat_price() -> None:
+    strategy = _code_strategy(code_index=_FakeCodeIndex(candidates=[]), price=Decimal("2.50"))
     profile = _profile(tier=TierNumber.T2, with_codes=True)
 
-    taken = strategy.taken_price(
-        order=_code_order(codes={"CODE-1": 60, "CODE-2": 325}),
-        profile=profile,
+    taken = asyncio.run(
+        strategy.taken_price(
+            order=_code_order(codes={"CODE-1": 60, "CODE-2": 325}),
+            profile=profile,
+        ),
     )
 
-    assert taken == Decimal(385)
+    assert taken == Decimal("2.50")
 
 
 @pytest.mark.parametrize(

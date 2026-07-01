@@ -87,9 +87,7 @@ async def forward_to_third_party(
     bot: Bot | None = None,
     chat_id: int | None = None,
 ) -> None:
-    logger.info(
-        "third-party hand-off requested original_id=%s reason=%s", original_id, reason
-    )
+    logger.info("third-party hand-off requested original_id=%s reason=%s", original_id, reason)
     if bot is None or chat_id is None:
         return
     text = _("order.long_reserve_forwarded").format(
@@ -174,7 +172,7 @@ class OrderLifecycle:
                     )
                     if claimed_offer is None:
                         raise _TakeAbortError(TakeStatus.UNAVAILABLE)
-                    taken_price = strategy.taken_price(order=order, profile=profile)
+                    taken_price = await strategy.taken_price(order=order, profile=profile)
                     claimed = await self._orders.claim_for_take(
                         order_id=order_id,
                         user_id=user_id,

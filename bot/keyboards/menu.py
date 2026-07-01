@@ -43,6 +43,7 @@ def full_menu_kb(
         }
     if for_admin or is_moderator:
         buttons[StartZone.PACK_PRICE_LIMITS] = _("start.btn_pack_price_limits")
+        buttons[StartZone.CODE_ORDER_PRICE] = _("start.btn_code_order_price")
     if for_admin:
         buttons[StartZone.TOGGLE_BOT_ENABLED] = _toggle_bot_text(bot_enabled=bot_enabled)
     if not buttons:

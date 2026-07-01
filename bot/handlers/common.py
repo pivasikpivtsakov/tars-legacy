@@ -132,9 +132,7 @@ async def open_priority(
         else RatingStats(speed_seconds=None, complete=0, incomplete=0, not_taken=0)
     )
     complete, incomplete, total, rate_full = _order_stats(stats)
-    prices = (
-        format_prices_table(profile.prices) if profile is not None else "<code>-</code>"
-    )
+    prices = format_prices_table(profile.prices) if profile is not None else "<code>-</code>"
     speed = stats.speed_seconds if stats.speed_seconds is not None else "-"
     text = _("start.priority").format(
         speed=speed,
@@ -154,9 +152,7 @@ async def open_balance(
     transactions: TransactionsRepository,
 ) -> None:
     balance = (
-        await transactions.balance_of(profile_id=profile.id)
-        if profile is not None
-        else Decimal(0)
+        await transactions.balance_of(profile_id=profile.id) if profile is not None else Decimal(0)
     )
     await show_panel(
         callback=callback,
@@ -177,16 +173,16 @@ async def _show_history(
     offset: int,
 ) -> None:
     if profile is None:
-        groups, has_next = [], False
+        records, has_next = [], False
     else:
-        groups, has_next = await transactions.history(
+        records, has_next = await transactions.history(
             profile_id=profile.id,
             limit=_HISTORY_PAGE_SIZE,
             offset=offset,
         )
     await show_panel(
         callback=callback,
-        text=render_transaction_history(groups, has_next=has_next, gettext=_),
+        text=render_transaction_history(records, has_next=has_next, gettext=_),
         markup=history_kb(
             offset=offset,
             limit=_HISTORY_PAGE_SIZE,

@@ -20,6 +20,7 @@ from common.repositories.postgres.order_offers import OrderOfferRepository
 from common.repositories.postgres.orders import OrderRepository
 from common.repositories.postgres.transactions import TransactionsRepository
 from common.repositories.postgres.user_profiles import UserProfileRepository
+from common.repositories.redis.code_order_price import CodeOrderPriceRepository
 from common.repositories.redis.offer_deadlines import OfferDeadlineQueue
 from common.repositories.redis.online_index import (
     CodeOnlineIndex,
@@ -65,6 +66,7 @@ async def main() -> None:
             online_index=online_index,
             rating=rating,
             transactions=TransactionsRepository(pool=pool),
+            code_order_price=CodeOrderPriceRepository(redis=redis),
         )
         service = OrderFanoutService(
             bot=bot,

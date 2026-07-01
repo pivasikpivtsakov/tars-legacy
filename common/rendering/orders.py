@@ -3,7 +3,7 @@ from collections.abc import Callable, Sequence
 from decimal import Decimal
 
 from common.models.orders import Order
-from common.models.transactions import TransactionGroup, TransactionKind
+from common.models.transactions import Transaction, TransactionKind
 from common.money import format_money
 
 _HISTORY_DATE_FORMAT = "%Y-%m-%d %H:%M"
@@ -65,31 +65,41 @@ def render_last_call_text(*, minutes: int, gettext: Callable[[str], str]) -> str
     return gettext("order.last_call").format(minutes=minutes)
 
 
-def _history_items(group: TransactionGroup) -> str:
-    if group.kind is TransactionKind.PACK:
-        return ", ".join(label for label, _amount in group.items)
-    return ", ".join(f"{label} ({int(amount)})" for label, amount in group.items)
+_ORDER_KEYS = {
+    TransactionKind.PACK: "history.order_pack",
+    TransactionKind.CODE: "history.order_code",
+}
+_CHILD_KEYS = {
+    TransactionKind.PACK: "history.child_pack",
+    TransactionKind.CODE: "history.child_code",
+}
+
+
+def _child_lines(*, transaction: Transaction, gettext: Callable[[str], str]) -> list[str]:
+    template = gettext(_CHILD_KEYS[transaction.kind])
+    if transaction.kind is TransactionKind.PACK:
+        return [
+            template.format(size=size, count=count) for size, count in transaction.details.items()
+        ]
+    return [template.format(code=code, uc=uc) for code, uc in transaction.details.items()]
 
 
 def render_transaction_history(
-    groups: Sequence[TransactionGroup],
+    transactions: Sequence[Transaction],
     *,
     has_next: bool,  # noqa: ARG001
     gettext: Callable[[str], str],
 ) -> str:
-    if not groups:
+    if not transactions:
         return gettext("history.empty")
-    line_keys = {
-        TransactionKind.PACK: "history.line_pack",
-        TransactionKind.CODE: "history.line_code",
-    }
     lines = [gettext("history.title")]
-    lines.extend(
-        gettext(line_keys[group.kind]).format(
-            items=_history_items(group),
-            total=format_money(group.total),
-            date=group.created_at.strftime(_HISTORY_DATE_FORMAT),
+    for transaction in transactions:
+        lines.append(
+            gettext(_ORDER_KEYS[transaction.kind]).format(
+                order_id=transaction.order_id,
+                total=format_money(transaction.amount),
+                date=transaction.created_at.strftime(_HISTORY_DATE_FORMAT),
+            ),
         )
-        for group in groups
-    )
+        lines.extend(_child_lines(transaction=transaction, gettext=gettext))
     return "\n".join(lines)

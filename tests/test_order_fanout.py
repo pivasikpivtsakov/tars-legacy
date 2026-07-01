@@ -68,8 +68,7 @@ class _FakeOffers:
     async def offered_user_ids_many(self, *, order_ids: Sequence[int]) -> dict[int, set[int]]:
         self.offered_user_ids_many_calls.append(list(order_ids))
         return {
-            order_id: set(user_ids)
-            for order_id, user_ids in self._offered_user_ids_many.items()
+            order_id: set(user_ids) for order_id, user_ids in self._offered_user_ids_many.items()
         }
 
     async def record_offer(self, *, order_id: int, user_id: int) -> None:

@@ -19,7 +19,7 @@ class OrderOfferRepository:
         if not order_ids:
             return {}
         rows = await self._pool.fetch(
-            f"SELECT order_id, user_id FROM {_TABLE} WHERE order_id = ANY($1::int[])",
+            f"SELECT order_id, user_id FROM {_TABLE} WHERE order_id = ANY($1::bigint[])",
             order_ids,
         )
         result: dict[int, set[int]] = {}
@@ -122,7 +122,7 @@ class OrderOfferRepository:
             f"UPDATE {_TABLE} SET "
             f"status = $2::order_offer_status, "
             f"resolved_at = NOW() "
-            f"WHERE order_id = ANY($1::int[]) "
+            f"WHERE order_id = ANY($1::bigint[]) "
             f"AND status = $3::order_offer_status "
             f"RETURNING order_id, user_id",
             order_ids,
@@ -143,7 +143,7 @@ class OrderOfferRepository:
         rows = await self._pool.fetch(
             f"UPDATE {_TABLE} AS oo "
             f"SET status = $3::order_offer_status, resolved_at = NOW() "
-            f"FROM unnest($1::int[], $2::bigint[]) AS due(order_id, user_id) "
+            f"FROM unnest($1::bigint[], $2::bigint[]) AS due(order_id, user_id) "
             f"WHERE oo.order_id = due.order_id "
             f"AND oo.user_id = due.user_id "
             f"AND oo.status = $4::order_offer_status "

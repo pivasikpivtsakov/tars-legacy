@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 
 from bot.handlers import (
     admin,
+    code_price,
     common,
     editing,
     fallback,
@@ -37,6 +38,7 @@ from common.repositories.postgres.orders import OrderRepository
 from common.repositories.postgres.transactions import TransactionsRepository
 from common.repositories.postgres.user_profiles import UserProfileRepository
 from common.repositories.redis.bot_switch import BotSwitchRepository
+from common.repositories.redis.code_order_price import CodeOrderPriceRepository
 from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
@@ -84,29 +86,27 @@ def build_dispatcher(
         code=CodeOnlineIndex(redis=redis),
     )
     transactions = TransactionsRepository(pool=pool)
+    code_order_price = CodeOrderPriceRepository(redis=redis)
     strategies = build_strategies(
         online_index=online_price_index,
         rating=rating,
         transactions=transactions,
+        code_order_price=code_order_price,
     )
     pending = PendingOrdersRepository(redis=redis)
     dispatch_signal = DispatchSignal(redis=redis)
-    bot_switch_repo = BotSwitchRepository(redis=redis)
     roles = UserRoleRepository(redis=redis)
     bot_switch = BotSwitchService(
-        repo=bot_switch_repo,
+        repo=BotSwitchRepository(redis=redis),
         profiles=profiles,
         online_price_index=online_price_index,
-    )
-    broadcast = BroadcastService(profiles=profiles)
-    external_order_api = ExternalOrderApi(
-        requests=build_request_service(responses=success_external_responses()),
     )
     dispatcher["profiles"] = profiles
     dispatcher["rating"] = rating
     dispatcher["online_price_index"] = online_price_index
     dispatcher["transactions"] = transactions
     dispatcher["pack_price_limits"] = PackPriceLimitRepository(redis=redis)
+    dispatcher["code_order_price"] = code_order_price
     dispatcher["dispatch_signal"] = dispatch_signal
     order_lifecycle = OrderLifecycle(
         pool=pool,
@@ -135,12 +135,14 @@ def build_dispatcher(
     set_job_services(order_timeouts=order_timeouts)
     dispatcher["anti_fraud"] = AntiFraudService(
         orders=orders_repo,
-        external_api=external_order_api,
+        external_api=ExternalOrderApi(
+            requests=build_request_service(responses=success_external_responses()),
+        ),
         user_profiles=UserProfileService(repo=profiles),
     )
     dispatcher["roles"] = roles
     dispatcher["bot_switch"] = bot_switch
-    dispatcher["broadcast"] = broadcast
+    dispatcher["broadcast"] = BroadcastService(profiles=profiles)
     dispatcher["moderation"] = ModerationService(
         profiles=profiles,
         online_price_index=online_price_index,
@@ -166,6 +168,7 @@ def build_dispatcher(
     dispatcher.include_router(admin.router)
     dispatcher.include_router(moderation.router)
     dispatcher.include_router(pack_limits.router)
+    dispatcher.include_router(code_price.router)
     dispatcher.include_router(common.router)
     dispatcher.include_router(withdraw.router)
     dispatcher.include_router(orders.router)

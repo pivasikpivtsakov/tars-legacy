@@ -10,8 +10,10 @@ import asyncpg
 from common.catalog.tiers import CODE_TIERS, PACK_TIERS
 from common.models.orders import Order
 from common.models.rating import RatingStats
+from common.models.transactions import TransactionKind
 from common.models.user_profiles import UserProfile
 from common.repositories.postgres.transactions import TransactionsRepository
+from common.repositories.redis.code_order_price import CodeOrderPriceRepository
 from common.repositories.redis.online_index import (
     CodeOnlineIndex,
     OnlineIndexRouter,
@@ -126,7 +128,7 @@ class RankingStrategy(ABC):
     def validate_take(self, *, order: Order, profile: UserProfile) -> bool: ...
 
     @abstractmethod
-    def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal: ...
+    async def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal: ...
 
     @abstractmethod
     async def on_complete(
@@ -216,7 +218,7 @@ class PackRankingStrategy(RankingStrategy):
         prices = profile.prices
         return bool(prices) and all(size in prices for size in pack_sizes)
 
-    def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal:
+    async def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal:
         counts = decompose_amount(order.amount).package_counts
         return full_price_for(prices=profile.prices, counts=counts)
 
@@ -229,11 +231,12 @@ class PackRankingStrategy(RankingStrategy):
     ) -> None:
         counts = decompose_amount(order.amount).package_counts
         prices = profile.prices or {}
-        lines = {size: prices[size] * count for size, count in counts.items()}
-        await self._transactions.record_pack_credit(
+        await self._transactions.record_credit(
             profile_id=profile.id,
             order_id=order.id,
-            lines=lines,
+            kind=TransactionKind.PACK,
+            amount=full_price_for(prices=prices, counts=counts),
+            details={str(size): count for size, count in counts.items()},
             conn=conn,
         )
         if order.taken_at is not None and order.closed_at is not None:
@@ -253,10 +256,12 @@ class CodeRankingStrategy(RankingStrategy):
         *,
         code_index: CodeOnlineIndex,
         transactions: TransactionsRepository,
+        code_order_price: CodeOrderPriceRepository,
     ) -> None:
         super().__init__()
         self._code_index = code_index
         self._transactions = transactions
+        self._code_order_price = code_order_price
 
     async def select_candidates(
         self,
@@ -264,8 +269,7 @@ class CodeRankingStrategy(RankingStrategy):
         order: Order,
         exclude_user_ids: Collection[int],
     ) -> list[RankedCandidate]:
-        code_amounts = _code_amounts(order)
-        tiers = CODE_TIERS.serving(code_amounts)
+        tiers = CODE_TIERS.serving(_code_amounts(order))
         if not tiers:
             return []
         candidates = await self._sweep.fetch(
@@ -273,7 +277,7 @@ class CodeRankingStrategy(RankingStrategy):
             loader=lambda: self._code_index.get_candidates(tiers=tiers),
         )
         excluded = set(exclude_user_ids)
-        full_price = Decimal(sum(code_amounts))
+        full_price = await self._code_order_price.get()
         return [
             RankedCandidate(user_id=candidate.user_id, full_price=full_price)
             for candidate in candidates
@@ -285,8 +289,8 @@ class CodeRankingStrategy(RankingStrategy):
             return False
         return profile.tier.allows(_code_amounts(order))
 
-    def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal:  # noqa: ARG002
-        return Decimal(sum(_code_amounts(order)))
+    async def taken_price(self, *, order: Order, profile: UserProfile) -> Decimal:  # noqa: ARG002
+        return await self._code_order_price.get()
 
     async def on_complete(
         self,
@@ -295,10 +299,12 @@ class CodeRankingStrategy(RankingStrategy):
         profile: UserProfile,
         conn: asyncpg.Connection,
     ) -> None:
-        await self._transactions.record_code_credit(
+        await self._transactions.record_credit(
             profile_id=profile.id,
             order_id=order.id,
-            codes=_unused_codes(order),
+            kind=TransactionKind.CODE,
+            amount=await self._code_order_price.get(),
+            details=_unused_codes(order),
             conn=conn,
         )
 
@@ -311,6 +317,7 @@ def build_strategies(
     online_index: OnlineIndexRouter,
     rating: RatingRepository,
     transactions: TransactionsRepository,
+    code_order_price: CodeOrderPriceRepository,
 ) -> Mapping[bool, RankingStrategy]:
     return {
         False: PackRankingStrategy(
@@ -321,5 +328,6 @@ def build_strategies(
         True: CodeRankingStrategy(
             code_index=online_index.code,
             transactions=transactions,
+            code_order_price=code_order_price,
         ),
     }

@@ -22,6 +22,7 @@ class StartZone(StrEnum):
     TOGGLE_BOT_ENABLED = "toggle_bot_enabled"
     # for admins & moderators
     PACK_PRICE_LIMITS = "pack_price_limits"
+    CODE_ORDER_PRICE = "code_order_price"
 
 
 class OpenZoneCB(CallbackData, prefix="zone"):

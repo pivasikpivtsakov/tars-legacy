@@ -58,9 +58,7 @@ class OrderTimeoutMessageStore:
         fields, _deleted = await pipe.execute()
         if not fields or _FIELD_TAKEN not in fields:
             return None
-        ping_message_ids = tuple(
-            int(field) for field in fields if field not in _RESERVED_FIELDS
-        )
+        ping_message_ids = tuple(int(field) for field in fields if field not in _RESERVED_FIELDS)
         return OrderTimeoutMessages(
             chat_id=int(fields[_FIELD_CHAT]),
             taken_message_id=int(fields[_FIELD_TAKEN]),

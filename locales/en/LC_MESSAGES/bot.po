@@ -52,6 +52,9 @@ msgstr "Disable bot"
 msgid "start.btn_pack_price_limits"
 msgstr "Pack price limits"
 
+msgid "start.btn_code_order_price"
+msgstr "Code order price"
+
 msgid "start.menu_hint"
 msgstr "Tap the ☰ Menu button below to reopen the menu anytime."
 
@@ -76,11 +79,17 @@ msgstr "Your credit history:"
 msgid "history.empty"
 msgstr "No credits yet."
 
-msgid "history.line_pack"
-msgstr "📦 {items} — +{total} ({date})"
+msgid "history.order_pack"
+msgstr "📦 #{order_id} — +{total} ({date})"
 
-msgid "history.line_code"
-msgstr "🎟 {items} — +{total} ({date})"
+msgid "history.order_code"
+msgstr "🎟 #{order_id} — +{total} ({date})"
+
+msgid "history.child_pack"
+msgstr "  • {size} x{count}"
+
+msgid "history.child_code"
+msgstr "  • {code} ({uc})"
 
 msgid "start.profile_required"
 msgstr "Finish registration first."
@@ -234,6 +243,18 @@ msgstr "I couldn't parse that. Please send a positive number up to {max}, with a
 
 msgid "admin.pack_limits_reset_done"
 msgstr "Limits reset to defaults."
+
+msgid "admin.code_price_title"
+msgstr "Flat price paid per completed code order: {price}."
+
+msgid "admin.btn_code_price_edit"
+msgstr "Edit price"
+
+msgid "admin.code_price_prompt"
+msgstr "Send the new flat price for code orders (current: {current}). Up to 2 decimals."
+
+msgid "admin.code_price_invalid"
+msgstr "I couldn't parse that. Please send a positive number, with at most 2 decimals."
 
 msgid "tier.basic"
 msgstr "Basic"

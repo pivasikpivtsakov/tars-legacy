@@ -38,6 +38,10 @@ class PackPriceLimits(StatesGroup):
     awaiting_value = State()
 
 
+class CodeOrderPrice(StatesGroup):
+    awaiting_value = State()
+
+
 class OrderCancellation(StatesGroup):
     awaiting_reason = State()
 
