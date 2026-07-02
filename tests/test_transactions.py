@@ -1,9 +1,13 @@
 import json
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from common.models.orders import Order
 from common.models.transactions import Transaction, TransactionKind
 from common.rendering.orders import render_transaction_history
+
+_PUBLIC_ID_RE = re.compile(r"^(C|NC)-[A-Z0-9]{8}$")
 
 _AT = datetime(2024, 1, 2, 15, 30, tzinfo=UTC)
 
@@ -24,6 +28,7 @@ def _gettext(key: str) -> str:
 def _txn(
     *,
     order_id: int,
+    public_id: str,
     kind: TransactionKind,
     amount: Decimal,
     details: dict[str, int],
@@ -32,6 +37,7 @@ def _txn(
         id=0,
         profile_id=1,
         order_id=order_id,
+        public_id=public_id,
         kind=kind,
         amount=amount,
         details=details,
@@ -44,6 +50,7 @@ def test_from_row_parses_details_json() -> None:
         "id": 3,
         "profile_id": 1,
         "order_id": 9,
+        "public_id": "C-ABCD1234",
         "kind": "code",
         "amount": Decimal("1.00"),
         "details": json.dumps({"CODE-1": 60, "CODE-2": 325}),
@@ -54,7 +61,15 @@ def test_from_row_parses_details_json() -> None:
 
     assert transaction.kind is TransactionKind.CODE
     assert transaction.amount == Decimal("1.00")
+    assert transaction.public_id == "C-ABCD1234"
     assert transaction.details == {"CODE-1": 60, "CODE-2": 325}
+
+
+def test_generate_order_public_id_format() -> None:
+    assert Order.generate_public_id(is_only_w_codes=True).startswith("C-")
+    assert Order.generate_public_id(is_only_w_codes=False).startswith("NC-")
+    assert _PUBLIC_ID_RE.match(Order.generate_public_id(is_only_w_codes=True))
+    assert _PUBLIC_ID_RE.match(Order.generate_public_id(is_only_w_codes=False))
 
 
 def test_render_transaction_history_empty() -> None:
@@ -64,12 +79,14 @@ def test_render_transaction_history_empty() -> None:
 def test_render_transaction_history_pack_and_code_tree() -> None:
     pack = _txn(
         order_id=7,
+        public_id="NC-12FV8K9P",
         kind=TransactionKind.PACK,
         amount=Decimal("50.00"),
         details={"325": 1, "60": 1},
     )
     code = _txn(
         order_id=9,
+        public_id="C-9ZQW3XT7",
         kind=TransactionKind.CODE,
         amount=Decimal("1.00"),
         details={"CODE-1": 60, "CODE-2": 325},
@@ -79,10 +96,12 @@ def test_render_transaction_history_pack_and_code_tree() -> None:
 
     assert rendered == (
         "History:\n"
-        "PACK #7 +50.00 2024-01-02 15:30\n"
+        "PACK #NC-12FV8K9P +50.00 2024-01-02 15:30\n"
         "  325 x1\n"
         "  60 x1\n"
-        "CODE #9 +1.00 2024-01-02 15:30\n"
+        "CODE #C-9ZQW3XT7 +1.00 2024-01-02 15:30\n"
         "  CODE-1 (60)\n"
         "  CODE-2 (325)"
     )
+    assert "#7" not in rendered
+    assert "#9" not in rendered

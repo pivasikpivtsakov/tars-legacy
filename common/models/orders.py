@@ -1,3 +1,5 @@
+import secrets
+import string
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -5,6 +7,9 @@ from enum import StrEnum
 from typing import Any
 
 import asyncpg
+
+_PUBLIC_ID_ALPHABET = string.ascii_uppercase + string.digits
+_PUBLIC_ID_BODY_LENGTH = 8
 
 
 class OrderStatus(StrEnum):
@@ -34,6 +39,7 @@ class ExternalOrderStatus(StrEnum):
 class Order:
     id: int
     original_id: int
+    public_id: str
     shop_access_key: str | None
     status: OrderStatus
     status_reason: str | None
@@ -55,11 +61,18 @@ class Order:
     external_status: ExternalOrderStatus
     is_only_w_codes: bool
 
+    @staticmethod
+    def generate_public_id(*, is_only_w_codes: bool) -> str:
+        prefix = "C" if is_only_w_codes else "NC"
+        body = "".join(secrets.choice(_PUBLIC_ID_ALPHABET) for _ in range(_PUBLIC_ID_BODY_LENGTH))
+        return f"{prefix}-{body}"
+
     @classmethod
     def from_row(cls, row: asyncpg.Record) -> Order:
         return cls(
             id=row["id"],
             original_id=row["original_id"],
+            public_id=row["public_id"],
             shop_access_key=row["shop_access_key"],
             status=OrderStatus(row["status"]),
             status_reason=row["status_reason"],

@@ -80,10 +80,10 @@ msgid "history.empty"
 msgstr "Пока нет начислений."
 
 msgid "history.order_pack"
-msgstr "📦 №{order_id} — +{total} ({date})"
+msgstr "📦 №<code>{order_id}</code> — +{total} ({date})"
 
 msgid "history.order_code"
-msgstr "🎟 №{order_id} — +{total} ({date})"
+msgstr "🎟 №<code>{order_id}</code> — +{total} ({date})"
 
 msgid "history.child_pack"
 msgstr "  • {size} x{count}"
@@ -320,22 +320,22 @@ msgid "order.btn_cancel"
 msgstr "✕ Отменить"
 
 msgid "order.completed"
-msgstr "Заказ #{order_id} выполнен. Спасибо!"
+msgstr "Заказ #<code>{order_id}</code> выполнен. Спасибо!"
 
 msgid "order.cancelled"
-msgstr "Заказ #{order_id} отменён."
+msgstr "Заказ #<code>{order_id}</code> отменён."
 
 msgid "order.cancel_reason_prompt"
-msgstr "Укажите причину отмены заказа #{order_id}:"
+msgstr "Укажите причину отмены заказа #<code>{order_id}</code>:"
 
 msgid "order.btn_cancel_reason"
 msgstr "« Назад"
 
 msgid "order.long_reserve_forwarded"
-msgstr "Заказ #{order_id} отправлен в длинный резерв. Причина отказа: {reason}"
+msgstr "Заказ #{order_id} (<code>{public_id}</code>) отправлен в длинный резерв. Причина отказа: {reason}"
 
 msgid "order.no_takers_moderator"
-msgstr "⚠️ Нет доступных пользователей для заказа #{order_id} ({amount} UC). Он отправлен в длинный резерв."
+msgstr "⚠️ Нет доступных пользователей для заказа #{order_id} (<code>{public_id}</code>, {amount} UC). Он отправлен в длинный резерв."
 
 msgid "order.unavailable"
 msgstr "Этот заказ уже недоступен."
@@ -350,10 +350,10 @@ msgid "order.unfinished"
 msgstr "Не все коды активированы. Проверьте ещё раз."
 
 msgid "order.fraud_detected"
-msgstr "⚠️ В заказе #{order_id} обнаружен потенциальный фрод от пользователя {user}: коды активированы на другом аккаунте."
+msgstr "⚠️ В заказе #{order_id} (<code>{public_id}</code>) обнаружен потенциальный фрод от пользователя {user}: коды активированы на другом аккаунте."
 
 msgid "order.check_failed_moderator"
-msgstr "⚠️ Проверка кодов не пройдена по заказу #{order_id}.\nПричина: {reason}\nЮзер id: {user_id}, telegram: {tg_id}\n{ban_status}"
+msgstr "⚠️ Проверка кодов не пройдена по заказу #{order_id} (<code>{public_id}</code>).\nПричина: {reason}\nЮзер id: {user_id}, telegram: {tg_id}\n{ban_status}"
 
 msgid "order.check_reason_not_activated"
 msgstr "код не активирован"
@@ -368,7 +368,7 @@ msgid "order.user_not_banned"
 msgstr "Пользователь не заблокирован."
 
 msgid "order.codes_unverified_moderator"
-msgstr "⚠️ Не удалось проверить активацию кодов по заказу #{order_id}: {codes}. Считаем активированными. Юзер id: {user_id}, telegram: {tg_id}."
+msgstr "⚠️ Не удалось проверить активацию кодов по заказу #{order_id} (<code>{public_id}</code>): {codes}. Считаем активированными. Юзер id: {user_id}, telegram: {tg_id}."
 
 msgid "order.checkin_prompt"
 msgstr "Все хорошо? Вы делаете заказ?\nЕсли не завершить, заказ будет отменён автоматически через {minutes} мин."

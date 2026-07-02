@@ -52,6 +52,7 @@ class OrderResponse(BaseModel):
 
     id: int
     original_id: int
+    public_id: str
     shop_access_key: str | None = None
     status: OrderStatus
     external_status: ExternalOrderStatus | None = None

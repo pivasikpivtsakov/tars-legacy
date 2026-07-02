@@ -80,6 +80,7 @@ async def _report_fraud(
         user_ids=admin_ids,
         text=default_translate("order.fraud_detected").format(
             order_id=order.original_id,
+            public_id=order.public_id,
             user=callback.from_user.id,
         ),
     )
@@ -156,6 +157,7 @@ async def ready_order(
             user_ids=moderator_ids,
             text=default_translate("order.codes_unverified_moderator").format(
                 order_id=review.order.original_id,
+                public_id=review.order.public_id,
                 codes=", ".join(review.unverified_codes),
                 user_id=profile.id,
                 tg_id=profile.tg_id,
@@ -167,6 +169,7 @@ async def ready_order(
             user_ids=moderator_ids,
             text=default_translate("order.check_failed_moderator").format(
                 order_id=review.order.original_id,
+                public_id=review.order.public_id,
                 reason=default_translate("order.check_reason_fraud"),
                 user_id=profile.id,
                 tg_id=profile.tg_id,
@@ -191,6 +194,7 @@ async def ready_order(
             user_ids=moderator_ids,
             text=default_translate("order.check_failed_moderator").format(
                 order_id=review.order.original_id,
+                public_id=review.order.public_id,
                 reason=default_translate("order.check_reason_not_activated"),
                 user_id=profile.id,
                 tg_id=profile.tg_id,
@@ -207,7 +211,7 @@ async def ready_order(
         await callback.answer(_("order.unavailable"), show_alert=True)
         return
     await order_timeouts.clear(order_id=callback_data.order_id)
-    await _finalize(callback=callback, text=_("order.completed").format(order_id=order.id))
+    await _finalize(callback=callback, text=_("order.completed").format(order_id=order.public_id))
     await callback.answer()
 
 
@@ -216,10 +220,16 @@ async def cancel_order(
     callback: CallbackQuery,
     callback_data: CancelOrderCB,
     state: FSMContext,
+    order_lifecycle: OrderLifecycle,
     profile: UserProfile | None,
 ) -> None:
     if profile is None:
         await callback.answer(_("order.unavailable"), show_alert=True)
+        return
+    order = await order_lifecycle.get(order_id=callback_data.order_id)
+    if order is None:
+        await _finalize(callback=callback, text=_("order.unavailable"))
+        await callback.answer()
         return
     # The order stays "taken" until a reason arrives, so the expiry scheduler keeps
     # running: a user who dawdles gets cancelled by the regular timeout procedure.
@@ -232,7 +242,7 @@ async def cancel_order(
     )
     with ignore_not_modified():
         await callback.message.edit_text(
-            _("order.cancel_reason_prompt").format(order_id=callback_data.order_id),
+            _("order.cancel_reason_prompt").format(order_id=order.public_id),
             reply_markup=cancel_reason_prompt_kb(
                 order_id=callback_data.order_id,
                 cancel_text=_("order.btn_cancel_reason"),
@@ -285,7 +295,7 @@ async def submit_cancel_reason(
         await message.answer(_("order.unavailable"))
         return
     await order_timeouts.clear(order_id=order_id)
-    cancelled_text = _("order.cancelled").format(order_id=order.id)
+    cancelled_text = _("order.cancelled").format(order_id=order.public_id)
     prompt_message_id = data.get(_CANCEL_PROMPT_MESSAGE_ID_KEY)
     if prompt_message_id is not None:
         try:

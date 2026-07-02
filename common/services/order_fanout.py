@@ -69,7 +69,10 @@ class OrderFanoutService:
 
         if not ranked_candidates:
             await self._orders.mark_no_takers(order_id=order.id)
-            await forward_to_third_party(original_id=order.original_id)
+            await forward_to_third_party(
+                original_id=order.original_id,
+                public_id=order.public_id,
+            )
             await self._notify_moderators_no_takers(order=order)
             return
 

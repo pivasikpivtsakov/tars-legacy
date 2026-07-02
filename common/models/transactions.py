@@ -17,6 +17,7 @@ class Transaction:
     id: int
     profile_id: int
     order_id: int
+    public_id: str
     kind: TransactionKind
     amount: Decimal
     details: dict[str, int]
@@ -28,6 +29,7 @@ class Transaction:
             id=row["id"],
             profile_id=row["profile_id"],
             order_id=row["order_id"],
+            public_id=row["public_id"],
             kind=TransactionKind(row["kind"]),
             amount=row["amount"],
             details=json.loads(row["details"]),

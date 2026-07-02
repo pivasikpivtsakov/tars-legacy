@@ -14,6 +14,7 @@ def _order(*, status: OrderStatus, order_id: int = 1) -> Order:
     return Order(
         id=order_id,
         original_id=1,
+        public_id=f"NC-{order_id:08d}",
         shop_access_key=None,
         status=status,
         status_reason=None,

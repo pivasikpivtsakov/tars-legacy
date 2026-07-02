@@ -8,7 +8,7 @@ from common.models.transactions import Transaction, TransactionKind
 
 _TABLE = "transactions"
 
-_SELECT_COLUMNS = "id, profile_id, order_id, kind, amount, details, created_at"
+_SELECT_COLUMNS = "id, profile_id, order_id, public_id, kind, amount, details, created_at"
 
 
 class TransactionsRepository:
@@ -20,16 +20,18 @@ class TransactionsRepository:
         *,
         profile_id: int,
         order_id: int,
+        public_id: str,
         kind: TransactionKind,
         amount: Decimal,
         details: Mapping[str, int],
         conn: asyncpg.Connection | None = None,
     ) -> None:
         await (conn or self._pool).execute(
-            f"INSERT INTO {_TABLE} (profile_id, order_id, kind, amount, details) "
-            f"VALUES ($1, $2, $3::transaction_kind, $4, $5)",
+            f"INSERT INTO {_TABLE} (profile_id, order_id, public_id, kind, amount, details) "
+            f"VALUES ($1, $2, $3, $4::transaction_kind, $5, $6)",
             profile_id,
             order_id,
+            public_id,
             kind.value,
             amount,
             json.dumps(dict(details)),

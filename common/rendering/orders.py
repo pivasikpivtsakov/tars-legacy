@@ -20,7 +20,7 @@ def render_offer_text(
     gettext: Callable[[str], str],
 ) -> str:
     return gettext("order.offer").format(
-        order_id=order.id,
+        order_id=order.public_id,
         amount=order.amount,
         full_price=format_money(full_price),
     )
@@ -33,6 +33,7 @@ def render_no_takers_text(
 ) -> str:
     return gettext("order.no_takers_moderator").format(
         order_id=order.id,
+        public_id=order.public_id,
         amount=order.amount,
     )
 
@@ -44,7 +45,7 @@ def render_taken_text(
     gettext: Callable[[str], str],
 ) -> str:
     text = gettext("order.taken").format(
-        order_id=order.id,
+        order_id=order.public_id,
         amount=order.amount,
         pubg_id=order.pubg_id,
     )
@@ -96,7 +97,7 @@ def render_transaction_history(
     for transaction in transactions:
         lines.append(
             gettext(_ORDER_KEYS[transaction.kind]).format(
-                order_id=transaction.order_id,
+                order_id=transaction.public_id,
                 total=format_money(transaction.amount),
                 date=transaction.created_at.strftime(_HISTORY_DATE_FORMAT),
             ),

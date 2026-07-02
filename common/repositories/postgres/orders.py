@@ -4,11 +4,14 @@ from decimal import Decimal
 from typing import Any
 
 import asyncpg
+from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from common.models.order_offers import OrderOfferStatus
 from common.models.orders import ExternalOrderStatus, Order, OrderStatus
 
 _TABLE = "orders"
+
+_PUBLIC_ID_MAX_ATTEMPTS = 3
 
 
 def _dump_json(value: Any) -> str:
@@ -26,7 +29,8 @@ _ACTIVE_FANOUT_STATUSES: tuple[str, ...] = (
 _ACTIVE_FANOUT_STATUS_SQL = ", ".join(f"'{status}'" for status in _ACTIVE_FANOUT_STATUSES)
 
 _SELECT_COLUMNS = (
-    "id, original_id, shop_access_key, status, status_reason, refusal_reason, amount, pubg_id, "
+    "id, original_id, public_id, shop_access_key, status, status_reason, refusal_reason, amount, "
+    "pubg_id, "
     "codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
     "offered_at, closed_at, taken_at, taken_by, taken_price, created_at, updated_at, "
     "external_status, is_only_w_codes"
@@ -37,6 +41,11 @@ class OrderRepository:
     def __init__(self, *, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
+    @retry(
+        retry=retry_if_exception_type(asyncpg.UniqueViolationError),
+        stop=stop_after_attempt(_PUBLIC_ID_MAX_ATTEMPTS),
+        reraise=True,
+    )
     async def add(
         self,
         *,
@@ -56,12 +65,13 @@ class OrderRepository:
     ) -> Order:
         row = await (conn or self._pool).fetchrow(
             f"INSERT INTO {_TABLE} ("
-            f"original_id, shop_access_key, status_reason, amount, pubg_id, "
+            f"original_id, public_id, shop_access_key, status_reason, amount, pubg_id, "
             f"codes, unused_codes, broken_codes, redeemed_codes, additional_data, "
             f"external_status, is_only_w_codes"
-            f") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) "
+            f") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) "
             f"RETURNING {_SELECT_COLUMNS}",
             original_id,
+            Order.generate_public_id(is_only_w_codes=is_only_w_codes),
             shop_access_key,
             status_reason,
             amount,

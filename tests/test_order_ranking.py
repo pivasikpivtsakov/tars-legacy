@@ -59,6 +59,7 @@ def _order(*, amount: int, unused_codes: str | None, is_only_w_codes: bool) -> O
     return Order(
         id=1,
         original_id=1,
+        public_id="NC-00000001",
         shop_access_key=None,
         status=OrderStatus.PENDING,
         status_reason=None,

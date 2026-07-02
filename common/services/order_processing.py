@@ -81,6 +81,7 @@ def full_price_for(*, prices: Mapping[int, Decimal], counts: Mapping[int, int]) 
 async def forward_to_third_party(
     *,
     original_id: int,
+    public_id: str | None = None,
     reason: str | None = None,
     bot: Bot | None = None,
     chat_id: int | None = None,
@@ -91,6 +92,7 @@ async def forward_to_third_party(
     default_translate = gettext_for(i18n.default_locale)
     text = default_translate("order.long_reserve_forwarded").format(
         order_id=original_id,
+        public_id=public_id or "-",
         reason=reason or "-",
     )
     try:
@@ -216,6 +218,7 @@ class OrderLifecycle:
         # заказ отправляется в длинный резерв
         await forward_to_third_party(
             original_id=order.original_id,
+            public_id=order.public_id,
             reason=reason,
             bot=self._bot,
             chat_id=self._long_reserve_chat_id,
@@ -234,6 +237,7 @@ class OrderLifecycle:
         # заказ отправляется в длинный резерв
         await forward_to_third_party(
             original_id=order.original_id,
+            public_id=order.public_id,
             reason=TIMEOUT_REASON,
             bot=self._bot,
             chat_id=self._long_reserve_chat_id,

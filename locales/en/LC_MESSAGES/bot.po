@@ -80,10 +80,10 @@ msgid "history.empty"
 msgstr "No credits yet."
 
 msgid "history.order_pack"
-msgstr "📦 #{order_id} — +{total} ({date})"
+msgstr "📦 #<code>{order_id}</code> — +{total} ({date})"
 
 msgid "history.order_code"
-msgstr "🎟 #{order_id} — +{total} ({date})"
+msgstr "🎟 #<code>{order_id}</code> — +{total} ({date})"
 
 msgid "history.child_pack"
 msgstr "  • {size} x{count}"
@@ -320,22 +320,22 @@ msgid "order.btn_cancel"
 msgstr "✕ Cancel"
 
 msgid "order.completed"
-msgstr "Order #{order_id} completed. Thanks!"
+msgstr "Order #<code>{order_id}</code> completed. Thanks!"
 
 msgid "order.cancelled"
-msgstr "Order #{order_id} cancelled."
+msgstr "Order #<code>{order_id}</code> cancelled."
 
 msgid "order.cancel_reason_prompt"
-msgstr "Please enter a reason for cancelling order #{order_id}:"
+msgstr "Please enter a reason for cancelling order #<code>{order_id}</code>:"
 
 msgid "order.btn_cancel_reason"
 msgstr "« Back"
 
 msgid "order.long_reserve_forwarded"
-msgstr "Order #{order_id} sent to long reserve. Refusal reason: {reason}"
+msgstr "Order #{order_id} (<code>{public_id}</code>) sent to long reserve. Refusal reason: {reason}"
 
 msgid "order.no_takers_moderator"
-msgstr "⚠️ No available users for order #{order_id} ({amount} UC). It was sent to long reserve."
+msgstr "⚠️ No available users for order #{order_id} (<code>{public_id}</code>, {amount} UC). It was sent to long reserve."
 
 msgid "order.unavailable"
 msgstr "This order is no longer available."
@@ -350,10 +350,10 @@ msgid "order.unfinished"
 msgstr "Not all codes are activated. Please check again."
 
 msgid "order.fraud_detected"
-msgstr "⚠️ Potential fraud in order #{order_id} by user {user}: codes were activated on a different account."
+msgstr "⚠️ Potential fraud in order #{order_id} (<code>{public_id}</code>) by user {user}: codes were activated on a different account."
 
 msgid "order.check_failed_moderator"
-msgstr "⚠️ Code check failed for order #{order_id}.\nReason: {reason}\nUser id: {user_id}, telegram: {tg_id}\n{ban_status}"
+msgstr "⚠️ Code check failed for order #{order_id} (<code>{public_id}</code>).\nReason: {reason}\nUser id: {user_id}, telegram: {tg_id}\n{ban_status}"
 
 msgid "order.check_reason_not_activated"
 msgstr "code not activated"
@@ -368,7 +368,7 @@ msgid "order.user_not_banned"
 msgstr "User was not banned."
 
 msgid "order.codes_unverified_moderator"
-msgstr "⚠️ Could not verify activation of codes for order #{order_id}: {codes}. Assumed activated. User id: {user_id}, telegram: {tg_id}."
+msgstr "⚠️ Could not verify activation of codes for order #{order_id} (<code>{public_id}</code>): {codes}. Assumed activated. User id: {user_id}, telegram: {tg_id}."
 
 msgid "order.checkin_prompt"
 msgstr "Everything okay? Are you working on the order?\nIf it isn't finished, it will be cancelled automatically in {minutes} min."

@@ -234,6 +234,7 @@ class PackRankingStrategy(RankingStrategy):
         await self._transactions.record_credit(
             profile_id=profile.id,
             order_id=order.id,
+            public_id=order.public_id,
             kind=TransactionKind.PACK,
             amount=full_price_for(prices=prices, counts=counts),
             details={str(size): count for size, count in counts.items()},
@@ -302,6 +303,7 @@ class CodeRankingStrategy(RankingStrategy):
         await self._transactions.record_credit(
             profile_id=profile.id,
             order_id=order.id,
+            public_id=order.public_id,
             kind=TransactionKind.CODE,
             amount=await self._code_order_price.get(),
             details=_unused_codes(order),
